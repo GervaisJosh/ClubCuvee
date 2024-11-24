@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Wine, Database, TrendingUp, Users, Star, Heart, BarChart2, ChevronDown } from 'lucide-react';
+import { Wine } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import Footer from '../components/Footer';
 import ImageCarousel from '../components/ImageCarousel';
@@ -8,6 +8,7 @@ import ImageCarousel from '../components/ImageCarousel';
 const Landing = () => {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
+  const burgundy = "#800020";
 
   return (
     <div className={`min-h-screen ${isDark ? 'bg-black' : 'bg-white'}`}>
@@ -16,20 +17,20 @@ const Landing = () => {
           <div className="flex justify-between items-center py-4">
             <div className="flex items-center">
               <Link to="/" className="flex items-center">
-                <Wine className="h-8 w-8 text-green-500 mr-2" />
-                <span className={`text-xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                <Wine className="h-8 w-8" style={{ color: burgundy }} />
+                <span className={`text-xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`} style={{ fontFamily: 'TayBasal' }}>
                   Cuvee Club
                 </span>
               </Link>
               
-              <nav className="hidden md:flex items-center ml-10 space-x-8">
-                <div className="relative group">
-                  <button className={`flex items-center ${isDark ? 'text-gray-300 hover:text-white' : 'text-gray-600 hover:text-gray-900'}`}>
-                    Product
-                    <ChevronDown className="ml-1 h-4 w-4" />
-                  </button>
-                </div>
-                <Link to="/pricing" className={`${isDark ? 'text-gray-300 hover:text-white' : 'text-gray-600 hover:text-gray-900'}`}>
+              <nav className="hidden md:flex items-center ml-10 space-x-16">
+                <Link to="/features" className={`${isDark ? 'text-gray-300 hover:text-white' : 'text-black hover:text-gray-900'}`} style={{ fontFamily: 'TayBasal' }}>
+                  Features
+                </Link>
+                <Link to="/integrations" className={`${isDark ? 'text-gray-300 hover:text-white' : 'text-black hover:text-gray-900'}`} style={{ fontFamily: 'TayBasal' }}>
+                  Integrations
+                </Link>
+                <Link to="/pricing" className={`${isDark ? 'text-gray-300 hover:text-white' : 'text-black hover:text-gray-900'}`} style={{ fontFamily: 'TayBasal' }}>
                   Pricing
                 </Link>
               </nav>
@@ -38,13 +39,17 @@ const Landing = () => {
             <div className="flex items-center space-x-4">
               <Link 
                 to="/login" 
-                className={`${isDark ? 'text-gray-300 hover:text-white' : 'text-gray-600 hover:text-gray-900'}`}
+                className={`${isDark ? 'text-white hover:text-gray-300' : 'text-black hover:text-gray-900'}`} 
+                style={{ fontFamily: 'TayBasal' }}
               >
                 Sign in
               </Link>
               <Link 
-                to="/signup"
-                className="bg-green-500 text-white px-4 py-2 rounded-md hover:bg-green-600 transition-colors duration-200"
+                to="/pages/SignUp"
+                className="text-white px-4 py-2 rounded-md transition-colors duration-200"
+                style={{ backgroundColor: burgundy, fontFamily: 'TayBasal' }}
+                onMouseEnter={(e) => e.currentTarget.style.color = 'black'}
+                onMouseLeave={(e) => e.currentTarget.style.color = 'white'}
               >
                 Get Started
               </Link>
@@ -54,26 +59,27 @@ const Landing = () => {
       </header>
 
       <main className="pt-32">
-        {/* Hero Section */}
         <div className="max-w-[1920px] mx-auto px-4 flex flex-col lg:flex-row items-center lg:items-start mb-32">
-          {/* Left Side - Text */}
           <div className="lg:w-1/2 flex flex-col items-center lg:justify-center text-center">
             <div className="max-w-2xl">
-              <h1 className={`text-4xl sm:text-5xl md:text-6xl font-extrabold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+              <h1 className={`text-4xl sm:text-5xl md:text-6xl font-extrabold ${isDark ? 'text-white' : 'text-gray-900'}`} style={{ fontFamily: 'HV Florentino' }}>
                 Your Wine Inventory,
               </h1>
-              <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold text-green-500 mt-2">
+              <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold mt-2" style={{ fontFamily: 'HV Florentino', color: burgundy }}>
                 A Personal Wine Club for Your Customers
               </h1>
               
-              <p className={`mt-8 text-xl ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
+              <p className={`mt-8 text-xl ${isDark ? 'text-gray-300' : 'text-black'}`} style={{ fontFamily: 'Helvetica' }}>
                 Cuvee Club uses AI and advanced algorithms to digitize your wine inventory, allowing for data-driven experiences for your members based on their personal reviews, ratings, and wine history—not only increasing brand connection but also generating additional revenue through sales of existing inventory. 
               </p>
 
               <div className="mt-10">
                 <Link 
-                  to="/signup" 
-                  className="bg-green-500 text-white px-8 py-4 rounded-md hover:bg-green-600 transition-colors duration-200 text-lg"
+                  to="/pages/SignUp" 
+                  className="text-white px-8 py-4 rounded-md transition-colors duration-200 text-lg"
+                  style={{ backgroundColor: burgundy, fontFamily: 'TayBasal' }}
+                  onMouseEnter={(e) => e.currentTarget.style.color = 'black'}
+                  onMouseLeave={(e) => e.currentTarget.style.color = 'white'}
                 >
                   Get Started
                 </Link>
@@ -81,7 +87,6 @@ const Landing = () => {
             </div>
           </div>
 
-          {/* Right Side - Image */}
           <div className="lg:w-1/2 mt-16 lg:mt-0 lg:pl-16">
             <div className="relative h-[400px] lg:h-[600px] rounded-lg overflow-hidden">
               <img 
@@ -94,24 +99,21 @@ const Landing = () => {
           </div>
         </div>
 
-        {/* Wine Inventory Section */}
-        <div className="w-full py-32 border-t border-b ${isDark ? 'border-gray-800' : 'border-gray-200'}">
+        <div className={`w-full py-32 border-t border-b ${isDark ? 'border-gray-800' : 'border-gray-200'}`}>
           <div className="max-w-[1920px] mx-auto px-4">
-            <h2 className={`text-4xl md:text-5xl font-bold text-center mb-16 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-              Your Wine Inventory, Digitized
+            <h2 className={`text-4xl md:text-5xl font-bold text-center mb-16 ${isDark ? 'text-white' : 'text-gray-900'}`} style={{ fontFamily: 'HV Florentino' }}>
+              Your Wine Inventory, <span style={{ color: burgundy, fontFamily: 'HV Florentino' }}>Digitized</span>
             </h2>
             <ImageCarousel />
           </div>
         </div>
 
-        {/* Features Section */}
         <div className="w-full py-32">
           <div className="max-w-[1920px] mx-auto px-4">
-            <h2 className={`text-4xl md:text-5xl font-bold text-center mb-24 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+            <h2 className={`text-4xl md:text-5xl font-bold text-center mb-24 ${isDark ? 'text-white' : 'text-gray-900'}`} style={{ fontFamily: 'HV Florentino' }}>
               Features
             </h2>
             <div className="space-y-32">
-              {/* AI-Powered Wine Analysis */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-16">
                 <div className="relative h-[400px] lg:h-[600px] rounded-2xl overflow-hidden group">
                   <img 
@@ -122,7 +124,6 @@ const Landing = () => {
                   <div className="absolute inset-0 bg-gradient-to-r from-black/40 via-black/20 to-transparent"></div>
                 </div>
                 <div className={`flex flex-col justify-center p-12 rounded-2xl border ${isDark ? 'bg-black text-white border-gray-700' : 'bg-white text-black border-gray-300'}`}>
-                  <Database className={`h-12 w-12 mb-8 ${isDark ? 'text-white' : 'text-black'}`} />
                   <h3 className={`text-3xl font-bold mb-6 ${isDark ? 'text-white' : 'text-gray-900'}`}>AI-Powered Wine Analysis</h3>
                   <p className="text-xl leading-relaxed">
                     Transform your inventory into actionable insights with our advanced AI algorithms. Our system analyzes your wine collection, tracks consumption patterns, and provides detailed analytics to optimize your inventory management and enhance customer experiences.
@@ -130,10 +131,8 @@ const Landing = () => {
                 </div>
               </div>
 
-              {/* Revenue Generation */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-16">
                 <div className={`flex flex-col justify-center p-12 rounded-2xl border ${isDark ? 'bg-black text-white border-gray-700' : 'bg-white text-black border-gray-300'}`}>
-                  <TrendingUp className={`h-12 w-12 mb-8 ${isDark ? 'text-white' : 'text-black'}`} />
                   <h3 className={`text-3xl font-bold mb-6 ${isDark ? 'text-white' : 'text-gray-900'}`}>Revenue Generation</h3>
                   <p className="text-xl leading-relaxed">
                     Drive additional sales through personalized recommendations and targeted promotions. Our platform identifies opportunities to maximize revenue by matching wines with customer preferences and optimizing pricing strategies based on market demand.
@@ -149,18 +148,16 @@ const Landing = () => {
                 </div>
               </div>
 
-              {/* Customer Engagement */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-16">
                 <div className="relative h-[400px] lg:h-[600px] rounded-2xl overflow-hidden group">
                   <img 
-                    src="https://github.com/GervaisJosh/Maestro/blob/3ef1db9dc6da84c2d0fa0892109ca6fedec52be4/files_1189343-1731180230248-baa694cc-379a-47f2-a03c-27b181c48a45.jpg?raw=true"
+                    src="https://github.com/GervaisJosh/ClubCuvee/blob/4b47dd5e3ddc2d6116419a9e31467db5c52b098e/ascii-art.png?raw=true"
                     alt="Customer Engagement"
                     className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-700"
                   />
                   <div className="absolute inset-0 bg-gradient-to-r from-black/40 via-black/20 to-transparent"></div>
                 </div>
                 <div className={`flex flex-col justify-center p-12 rounded-2xl border ${isDark ? 'bg-black text-white border-gray-700' : 'bg-white text-black border-gray-300'}`}>
-                  <Users className={`h-12 w-12 mb-8 ${isDark ? 'text-white' : 'text-black'}`} />
                   <h3 className={`text-3xl font-bold mb-6 ${isDark ? 'text-white' : 'text-gray-900'}`}>Customer Engagement</h3>
                   <p className="text-xl leading-relaxed">
                     Build lasting relationships with personalized wine journeys and recommendations. Our platform creates unique experiences for each customer, tracking preferences and providing tailored suggestions that keep them coming back for more.
@@ -168,10 +165,8 @@ const Landing = () => {
                 </div>
               </div>
 
-              {/* Rating System */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-16">
                 <div className={`flex flex-col justify-center p-12 rounded-2xl border ${isDark ? 'bg-black text-white border-gray-700' : 'bg-white text-black border-gray-300'}`}>
-                  <Star className={`h-12 w-12 mb-8 ${isDark ? 'text-white' : 'text-black'}`} />
                   <h3 className={`text-3xl font-bold mb-6 ${isDark ? 'text-white' : 'text-gray-900'}`}>Rating System</h3>
                   <p className="text-xl leading-relaxed">
                     Capture and analyze customer preferences with our detailed rating system. Enable your customers to rate and review wines, building a comprehensive database of preferences that helps you make informed inventory decisions.

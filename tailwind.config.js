@@ -5,17 +5,23 @@ export default {
   theme: {
     extend: {
       colors: {
+        burgundy: '#800020',
         dark: {
           DEFAULT: '#000000',
           secondary: '#1a1a1a',
-          accent: '#2d2d2d'
+          accent: '#2d2d2d',
         },
         light: {
           DEFAULT: '#ffffff',
           secondary: '#f5f5f5',
-          accent: '#e5e5e5'
-        }
-      }
+          accent: '#e5e5e5',
+        },
+      },
+      fontFamily: {
+        TayBasal: ['TayBasal', 'sans-serif'],
+        HVFlorentino: ['HV Florentino', 'serif'],
+        helvetica: ['Helvetica', 'Arial', 'sans-serif'],
+      },
     },
   },
   plugins: [],
