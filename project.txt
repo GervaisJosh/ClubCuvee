@@ -1,0 +1,73 @@
+# Club Cuvee Project Overview
+
+## Project Description
+Club Cuvee is a restaurant wine dashboard application built with modern web technologies, focusing on managing and analyzing wine-related data for restaurants.
+
+## Technology Stack
+
+### Frontend
+- React 18 (with TypeScript)
+- Vite as the build tool
+- TailwindCSS for styling
+- React Router for navigation
+- Recharts for data visualization
+- React Dropzone for file uploads
+
+### Backend
+- Supabase as the backend service
+- Node.js server components
+- TypeScript for type safety
+
+### Development Tools
+- ESLint for code linting
+- TypeScript for static typing
+- PostCSS for CSS processing
+- Vercel for deployment
+
+## Project Architecture
+
+The project follows a modern React-based architecture with clear separation of concerns:
+
+### Directory Structure
+
+/src
+├── api/          # API integration and data fetching logic
+├── components/   # Reusable UI components
+├── contexts/     # React context providers
+├── pages/        # Route-based page components
+├── server/       # Server-side logic
+├── services/     # Business logic and services
+└── supabase.ts   # Supabase client configuration
+
+/public          # Static assets
+/supabase        # Supabase migrations and configurations
+/dist            # Build output directory
+
+## Key Features
+- TypeScript integration for better type safety
+- Modern React patterns with hooks and context
+- Responsive design with TailwindCSS
+- Database migrations through Supabase
+- Excel file processing capabilities (xlsx)
+- Chart visualization (recharts)
+
+## Development Workflow
+- Development server: `npm run dev`
+- Build: `npm run build`
+- Linting: `npm run lint`
+- Preview: `npm run preview`
+
+## Deployment
+- Configured for Vercel deployment
+- Environment variables managed through Vercel
+- Production builds optimized through Vite
+
+## Architecture Patterns
+- Component-based architecture
+- Context-based state management
+- API abstraction layer
+- Type-safe development
+- Server-side rendering capabilities
+- Modular file structure
+
+This project demonstrates modern web development practices with a focus on maintainability, scalability, and developer experience.

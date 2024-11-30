@@ -1,22 +1,28 @@
 {
-    "compilerOptions": {
-      "target": "ES2020",
-      "lib": ["DOM", "DOM.Iterable", "ES2020"],
-      "module": "ESNext",
-      "moduleResolution": "Node",
-      "jsx": "react-jsx",
-      "strict": true,
-      "esModuleInterop": true,
-      "skipLibCheck": true,
-      "forceConsistentCasingInFileNames": true,
-      "baseUrl": "./",
-      "paths": {
-        "@components/*": ["src/components/*"],
-        "@pages/*": ["src/pages/*"],
-        "@utils/*": ["src/utils/*"]
-      }
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "composite": true,
+    "outDir": "./dist/client",
+    "rootDir": "./src",
+    "paths": {
+      "@components/*": ["src/components/*"],
+      "@pages/*": ["src/pages/*"],
+      "@api/*": ["src/api/*"],
+      "@contexts/*": ["src/contexts/*"],
+      "@services/*": ["src/services/*"]
     },
-    "include": ["src/**/*"],
-    "exclude": ["node_modules", "api"]
-  }
-  
+    "module": "ESNext",
+    "noEmit": false
+  },
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "src/**/*.json"
+  ],
+  "exclude": [
+    "node_modules",
+    "src/server/**/*",
+    "**/*.test.ts",
+    "**/*.test.tsx"
+  ]
+}
