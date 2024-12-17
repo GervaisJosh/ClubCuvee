@@ -73,12 +73,12 @@ const Login = () => {
 
   return (
     <AuthLayout>
-      <div className={`${isDark ? 'bg-gray-900' : 'bg-white'} shadow-2xl rounded-lg px-8 py-10 border ${isDark ? 'border-gray-800' : 'border-gray-200'}`}>
+      <div className={`${isDark ? 'bg-gray-900' : 'bg-white'} shadow-2xl rounded-lg px-8 py-10 border ${isDark ? 'border-gray-800' : 'border-gray-200'} w-full max-w-lg mx-auto`}>
         <div className="flex flex-col items-center mb-8">
-          <Wine className="h-16 w-16 text-green-500 mb-4" />
-          <h3 className={`text-3xl font-bold text-center ${isDark ? 'text-white' : 'text-gray-900'}`}>Cuvee Club</h3>
-          <h4 className={`text-2xl font-semibold text-center ${isDark ? 'text-white' : 'text-gray-900'} mt-4`}>Welcome Back</h4>
-          <p className={`text-${isDark ? 'gray-400' : 'gray-600'} mt-2`}>Sign in to your account</p>
+          <Wine className="h-16 w-16 text-[#800020] mb-4" />
+          <h3 className={`text-3xl font-bold text-center ${isDark ? 'text-white' : 'text-gray-900'}`} style={{ fontFamily: 'HV Florentino' }}>Cuvee Club</h3>
+          <h4 className={`text-2xl font-semibold text-center ${isDark ? 'text-gray-300' : 'text-gray-700'} mt-4`}>Welcome Back</h4>
+          <p className={`${isDark ? 'text-gray-400' : 'text-gray-500'} mt-2`}>Sign in to your account</p>
         </div>
 
         <form onSubmit={handleLogin} className="space-y-6">
@@ -93,8 +93,8 @@ const Login = () => {
               onChange={(e) => setEmail(e.target.value)}
               className={`mt-1 block w-full px-4 py-3 rounded-md ${
                 isDark 
-                  ? 'bg-gray-800 border-gray-700 text-white focus:ring-green-500' 
-                  : 'bg-white border-gray-300 text-gray-900 focus:ring-green-500'
+                  ? 'bg-gray-800 border-gray-700 text-white focus:ring-[#800020]' 
+                  : 'bg-white border-gray-300 text-gray-900 focus:ring-[#800020]'
               } focus:outline-none focus:ring-2 focus:border-transparent`}
               required
             />
@@ -105,7 +105,7 @@ const Login = () => {
               <label className={`block text-sm font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
                 Password
               </label>
-              <Link to="/forgot-password" className="text-sm text-green-500 hover:text-green-400">
+              <Link to="/forgot-password" className="text-sm text-[#800020] hover:text-black focus:text-black">
                 Forgot Password?
               </Link>
             </div>
@@ -115,8 +115,8 @@ const Login = () => {
               onChange={(e) => setPassword(e.target.value)}
               className={`mt-1 block w-full px-4 py-3 rounded-md ${
                 isDark 
-                  ? 'bg-gray-800 border-gray-700 text-white focus:ring-green-500' 
-                  : 'bg-white border-gray-300 text-gray-900 focus:ring-green-500'
+                  ? 'bg-gray-800 border-gray-700 text-white focus:ring-[#800020]' 
+                  : 'bg-white border-gray-300 text-gray-900 focus:ring-[#800020]'
               } focus:outline-none focus:ring-2 focus:border-transparent`}
               required
             />
@@ -125,7 +125,7 @@ const Login = () => {
           <button
             type="submit"
             disabled={loading}
-            className="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition duration-150 ease-in-out"
+            className="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[#800020] hover:bg-[#a00028] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#800020] transition duration-150 ease-in-out"
           >
             {loading ? 'Signing In...' : 'Sign In'}
           </button>
@@ -139,7 +139,7 @@ const Login = () => {
               isDark
                 ? 'border-gray-700 text-white hover:bg-gray-800'
                 : 'border-gray-300 text-gray-700 hover:bg-gray-50'
-            } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition duration-150 ease-in-out`}
+            } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#800020] transition duration-150 ease-in-out`}
           >
             <LogIn className="mr-2" size={18} />
             Sign in with Google
@@ -149,7 +149,7 @@ const Login = () => {
         <div className="mt-6 text-center">
           <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
             Don't have an account?{' '}
-            <Link to="/signup" className="font-medium text-green-500 hover:text-green-400">
+            <Link to="/register" className="font-medium text-[#800020] hover:text-black focus:text-black">
               Sign Up Now
             </Link>
           </p>

@@ -1,3 +1,4 @@
+// AuthLayout.tsx
 import React from 'react';
 import { useTheme } from '../contexts/ThemeContext';
 import AuthHeader from './AuthHeader';
