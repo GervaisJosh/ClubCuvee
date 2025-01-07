@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { LogIn, Wine } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { signIn, signInWithGoogle, resendConfirmationEmail } from '../api/supabaseQueries';
+import { signIn, signInWithGoogle, resendConfirmationEmail } from '../../api/supabaseQueries';
 import { useTheme } from '../contexts/ThemeContext';
 import AuthLayout from '../components/AuthLayout';
 

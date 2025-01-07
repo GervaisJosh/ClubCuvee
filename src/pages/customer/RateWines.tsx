@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Wine, Star } from 'lucide-react';
-import { fetchWines, addWineRating } from '../../api/supabaseQueries';
+import { fetchWines, addWineRating } from '../../../api/supabaseQueries';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 
