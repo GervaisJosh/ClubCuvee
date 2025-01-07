@@ -73,6 +73,8 @@ const AuthenticatedApp = () => {
         <Route path="/wishlist" element={<Wishlist />} />
         <Route path="/customer-calendar" element={<CustomerCalendar />} />
         <Route path="/notifications" element={<Notifications />} />
+        
+        
       </Routes>
     </Layout>
   );

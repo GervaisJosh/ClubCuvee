@@ -1,12 +1,13 @@
-import React from 'react';
+
 import { Link } from 'react-router-dom';
-import { Wine, Instagram, Twitter, Youtube, MessageSquare } from 'lucide-react';
+import { Wine, Instagram, Twitter, Youtube } from 'lucide-react';
 import ThemeToggle from './ThemeToggle';
 import { useTheme } from '../contexts/ThemeContext';
 
 const Footer = () => {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
+  const burgundy = "#800020";
 
   const sections = {
     product: {
@@ -42,9 +43,9 @@ const Footer = () => {
           {/* Logo and Social Links */}
           <div>
             <div className="flex items-center mb-4">
-              <Wine className="h-8 w-8 text-green-500 mr-2" />
-              <span className={`text-xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                Cuvee Club
+              <Wine className="h-8 w-8 mr-2" style={{ color: burgundy }} />
+              <span className={`text-xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`} style={{ fontFamily: 'TayBasal' }}>
+                Club Cuvee
               </span>
             </div>
             <div className="flex space-x-4">
@@ -52,7 +53,6 @@ const Footer = () => {
                 { icon: Instagram, href: '#' },
                 { icon: Twitter, href: '#' },
                 { icon: Youtube, href: '#' },
-                { icon: MessageSquare, href: '#' }
               ].map((social, index) => (
                 <a
                   key={index}
