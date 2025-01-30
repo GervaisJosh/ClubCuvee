@@ -1,9 +1,8 @@
-const { PineconeClient } = require('@pinecone-database/pinecone');
-const pinecone = new PineconeClient();
+import { Pinecone } from '@pinecone-database/pinecone';
 
-pinecone.init({
-  apiKey: process.env.PINECONE_API_KEY,
-  environment: process.env.PINECONE_ENV,
+// Initialize the Pinecone client
+const pinecone = new Pinecone({
+  apiKey: import.meta.env.VITE_PINECONE_API_KEY!, 
 });
 
-module.exports = pinecone;
+export default pinecone;
