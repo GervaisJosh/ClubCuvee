@@ -1,6 +1,6 @@
 import { supabase } from '../supabase';
 
-export interface WineData {
+interface WineData {
   id: string;
   name: string;
   producer: string;
@@ -13,29 +13,12 @@ export interface WineData {
   style: string;
   image_path: string;
   alcohol_perc: number;
-  metadata: Record<string, any>;
+  metadata: Record<string, unknown>;
 }
 
-export interface UserRating {
-  wine_id: string;
-  rating: number;
-  review?: string;
-  created_at: string;
-}
-
-export interface UserPreferences {
-  favorite_regions: string[];
-  favorite_styles: string[];
-  average_rating: number;
-  price_range?: number;
-  primary_region?: string;
-  primary_country?: string;
-}
-
-export interface RecommendationFilters {
-  region?: string;
-  style?: string;
-  priceRange?: [number, number];
+interface RecommendationEntry {
+  compatibility_score: number;
+  wine_inventory: Omit<WineData, 'id'> & { id: string };
 }
 
 export interface RecommendationResponse {
@@ -43,118 +26,59 @@ export interface RecommendationResponse {
   scores: Record<string, number>;
 }
 
-async function fetchUserRatings(userId: string): Promise<UserRating[]> {
-  try {
-    const { data, error } = await supabase
-      .from('wine_ratings_reviews')
-      .select('wine_id, rating, review, created_at')
-      .eq('user_id', userId);
-
-    if (error) throw error;
-    return data || [];
-  } catch (error) {
-    console.error('Error fetching user ratings:', error);
-    return [];
-  }
-}
-
-async function fetchUserPreferences(userId: string): Promise<UserPreferences | null> {
-  try {
-    const { data, error } = await supabase
-      .from('users')
-      .select('favorite_regions, favorite_styles, average_rating, price_range, primary_region, primary_country')
-      .eq('id', userId)
-      .single();
-
-    if (error) throw error;
-    return data;
-  } catch (error) {
-    console.error('Error fetching user preferences:', error);
-    return null;
-  }
-}
-
 export async function fetchRecommendations(
-  userId: string,
-  filters?: RecommendationFilters
+  userId: string
 ): Promise<RecommendationResponse> {
   try {
-    // Fetch user data in parallel
-    const [userRatings, userPreferences] = await Promise.all([
-      fetchUserRatings(userId),
-      fetchUserPreferences(userId)
-    ]);
+    const { data } = await supabase
+      .from('user_recommendations')
+      .select(`
+        compatibility_score,
+        wine_inventory: wine_id (
+          id, name, producer, region, sub_region, country,
+          varietal, vintage, price, style, image_path, alcohol_perc, metadata
+        )
+      `)
+      .eq('user_id', userId)
+      .order('compatibility_score', { ascending: false })
+      .limit(10)
+      .returns<RecommendationEntry[]>();
 
-    if (!userPreferences) {
-      throw new Error('User preferences not found');
-    }
+    if (!data) return { wines: [], scores: {} };
 
-    // Call recommendations API with user context
-    const response = await fetch('/api/recommendations', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        user_id: userId,
-        filters,
-        context: {
-          ratings: userRatings,
-          preferences: userPreferences
-        }
-      }),
-    });
+    const wines: WineData[] = data.map(entry => ({
+      id: entry.wine_inventory.id,
+      name: entry.wine_inventory.name,
+      producer: entry.wine_inventory.producer,
+      region: entry.wine_inventory.region,
+      sub_region: entry.wine_inventory.sub_region,
+      country: entry.wine_inventory.country,
+      varietal: entry.wine_inventory.varietal,
+      vintage: entry.wine_inventory.vintage,
+      price: entry.wine_inventory.price,
+      style: entry.wine_inventory.style,
+      image_path: entry.wine_inventory.image_path,
+      alcohol_perc: entry.wine_inventory.alcohol_perc,
+      metadata: entry.wine_inventory.metadata || {}
+    }));
 
-    if (!response.ok) {
-      throw new Error(`API request failed: ${response.statusText}`);
-    }
+    const scores = data.reduce((acc, entry) => ({
+      ...acc,
+      [entry.wine_inventory.id]: entry.compatibility_score
+    }), {} as Record<string, number>);
 
-    const data = await response.json();
-
-    // Fetch complete wine data from Supabase for recommended wines
-    const { data: wines, error: winesError } = await supabase
-      .from('wine_inventory')
-      .select('*')
-      .in('id', data.wines.map((w: any) => w.id));
-
-    if (winesError) throw winesError;
-
-    // Combine API recommendation scores with complete wine data
-    return {
-      wines: wines.map((wine: WineData) => ({
-        ...wine,
-        // Ensure all required fields are present
-        name: wine.name || '',
-        producer: wine.producer || '',
-        region: wine.region || '',
-        sub_region: wine.sub_region || '',
-        country: wine.country || '',
-        varietal: wine.varietal || '',
-        vintage: wine.vintage || 0,
-        price: wine.price || 0,
-        style: wine.style || '',
-        image_path: wine.image_path || '/placeholder-wine.png',
-        alcohol_perc: wine.alcohol_perc || 0,
-        metadata: wine.metadata || {}
-      })),
-      scores: data.scores || {}
-    };
+    return { wines, scores };
   } catch (error) {
-    console.error('Error in fetchRecommendations:', error);
-    // Return empty response instead of throwing
-    return {
-      wines: [],
-      scores: {}
-    };
+    console.error('Error fetching recommendations:', error);
+    return { wines: [], scores: {} };
   }
 }
 
-// Helper function to check if a recommendation response is empty
+// Helper Functions
 export function isEmptyRecommendation(response: RecommendationResponse): boolean {
   return response.wines.length === 0;
 }
 
-// Helper function to sort wines by recommendation score
 export function sortWinesByScore(response: RecommendationResponse): WineData[] {
   return [...response.wines].sort((a, b) => 
     (response.scores[b.id] || 0) - (response.scores[a.id] || 0)
