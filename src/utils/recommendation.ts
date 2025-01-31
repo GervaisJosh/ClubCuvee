@@ -1,77 +1,99 @@
-// src/utils/recommendation.ts
-export interface User {
-  favorite_regions: string[];
-  favorite_styles: string[];
-  average_rating: number;
+import { SentimentIntensityAnalyzer } from 'vader-sentiment';
+
+const analyzer = new SentimentIntensityAnalyzer();
+
+export interface WineRating {
+  region: string;
+  style: string;
+  rating: number;
+  review: string;
 }
 
-export interface RegionWeights {
-  [key: string]: number;
+export interface EnhancedUser {
+  id: string;
+  ratings: WineRating[];
 }
 
-export interface StyleWeights {
-  [key: string]: number;
-}
-
-export const cosineSimilarity = (vec1: number[], vec2: number[]): number => {
-  const dotProduct = vec1.reduce((sum, v, i) => sum + v * vec2[i], 0);
-  const magnitude1 = Math.sqrt(vec1.reduce((sum, v) => sum + v * v, 0));
-  const magnitude2 = Math.sqrt(vec2.reduce((sum, v) => sum + v * v, 0));
-  return magnitude1 && magnitude2 ? dotProduct / (magnitude1 * magnitude2) : 0;
+const EXPECTED_USER_VECTOR_LENGTH = 6; // 3 regions + 2 styles + 1 rating
+const REGION_WEIGHTS: Record<string, number> = {
+  'Italy': 1.0,
+  'France': 0.9,
+  'Spain': 0.8,
+  'USA': 0.7,
+  'Argentina': 0.6,
+  'Germany': 0.5,
+  'Portugal': 0.4,
+  'Other': 0.3
 };
 
-export const createUserVector = (user: User): number[] => {
-  const favoriteRegions = user.favorite_regions || [];
-  const favoriteStyles = user.favorite_styles || [];
-  const averageRating = user.average_rating || 0;
+const STYLE_WEIGHTS: Record<string, number> = {
+  'Red': 1.0,
+  'White': 0.9,
+  'Sparkling': 0.8,
+  'Rosé': 0.7,
+  'Dessert': 0.6,
+  'Fortified': 0.5,
+  'Other': 0.4
+};
 
-  const regionWeights: RegionWeights = {
-    Italy: 1.0,
-    France: 0.9,
-    Spain: 0.8,
-    USA: 0.7,
-    Australia: 0.6,
-    Germany: 0.5,
-    Other: 0.4,
-  };
+export const computeUserVector = (user: EnhancedUser): number[] => {
+  const regionWeights: Record<string, number> = {};
+  const styleWeights: Record<string, number> = {};
+  let totalRating = 0;
 
-  const styleWeights: StyleWeights = {
-    Red: 1.0,
-    White: 0.9,
-    Sparkling: 0.8,
-    Rose: 0.7,
-    Dessert: 0.6,
-    Fortified: 0.5,
-    Other: 0.4,
-  };
+  user.ratings.forEach(({ region, style, rating, review }) => {
+    const sentiment = analyzer.polarityScores(review).compound;
+    const adjustedSentiment = Math.min(Math.max(sentiment + 1, 0.8), 1.2);
+    const weightedRating = rating * adjustedSentiment;
 
-  const regionVector = favoriteRegions.map((region) => regionWeights[region] || regionWeights.Other);
-  const styleVector = favoriteStyles.map((style) => styleWeights[style] || styleWeights.Other);
+    regionWeights[region] = (regionWeights[region] || 0) + weightedRating;
+    styleWeights[style] = (styleWeights[style] || 0) + weightedRating;
+    totalRating += rating;
+  });
 
-  const normalize = (vector: number[]): number[] => {
-    const sum = vector.reduce((acc, val) => acc + val, 0);
-    return sum === 0 ? vector : vector.map((val) => val / sum);
-  };
+  const regions = Object.entries(regionWeights)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3)
+    .map(([region]) => region);
 
-  const normalizedRegionVector = normalize(regionVector);
-  const normalizedStyleVector = normalize(styleVector);
-  const normalizedRating = averageRating / 100;
+  const styles = Object.entries(styleWeights)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 2)
+    .map(([style]) => style);
 
-  return [
-    ...normalizedRegionVector,
-    ...normalizedStyleVector,
-    normalizedRating,
+  const regionVector = regions.map(r => REGION_WEIGHTS[r] || REGION_WEIGHTS.Other);
+  const styleVector = styles.map(s => STYLE_WEIGHTS[s] || STYLE_WEIGHTS.Other);
+
+  const finalVector = [
+    ...regionVector,
+    ...styleVector,
+    (totalRating / user.ratings.length) / 100
   ];
+
+  if (finalVector.length !== EXPECTED_USER_VECTOR_LENGTH) {
+    throw new Error(`User vector dimension mismatch: Expected ${EXPECTED_USER_VECTOR_LENGTH} elements, got ${finalVector.length}`);
+  }
+
+  return finalVector;
+};
+
+export const cosineSimilarity = (vec1: number[], vec2: number[]): number => {
+  const dotProduct = vec1.reduce((sum, v, i) => sum + v * (vec2[i] || 0), 0);
+  const mag1 = Math.sqrt(vec1.reduce((sum, v) => sum + v * v, 0));
+  const mag2 = Math.sqrt(vec2.reduce((sum, v) => sum + v * v, 0));
+  return mag1 && mag2 ? dotProduct / (mag1 * mag2) : 0;
 };
 
 export const calculateCompatibility = (
-  user: User, 
-  wineVector: number[], 
-  wineTheory: number[]
+  user: EnhancedUser,
+  wineVector: number[],
+  wineTheory: number[] = []
 ): number => {
-  const userVector = createUserVector(user);
-  const similarity = cosineSimilarity(userVector, wineVector);
-  const theoryAdjustment = cosineSimilarity(userVector, wineTheory);
-  const rawScore = similarity + 0.5 * theoryAdjustment;
-  return Math.min(Math.max(rawScore * 100, 0), 100);
+  const userVector = computeUserVector(user);
+  const baseSimilarity = cosineSimilarity(userVector, wineVector);
+  const theoryBonus = wineTheory.length > 0 
+    ? 0.5 * cosineSimilarity(userVector, wineTheory)
+    : 0;
+  
+  return Math.min(Math.max((baseSimilarity + theoryBonus) * 100, 0), 100);
 };

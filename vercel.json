@@ -2,8 +2,7 @@
     "crons": [
       {
         "path": "/api/batch-recommendations",
-        "schedule": "0 5 * * *",
-        "timeZone": "UTC"
+        "schedule": "0 5 * * *"
       }
     ]
   }
