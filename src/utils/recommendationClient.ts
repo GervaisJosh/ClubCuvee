@@ -1,3 +1,4 @@
+// recommendationClient.ts
 import { supabase } from '../supabase';
 
 interface WineData {
@@ -46,7 +47,6 @@ export async function fetchRecommendations(
   userId: string
 ): Promise<RecommendationResponse> {
   try {
-    // Use the plain .select() string without a generic type and then override the response type using .returns()
     const { data, error } = await supabase
       .from('user_recommendations')
       .select(`
@@ -89,7 +89,6 @@ export async function fetchRecommendations(
     }, {} as Record<string, number>);
 
     return { wines, scores, lastUpdated };
-
   } catch (error) {
     console.error('Error fetching recommendations:', error);
     return { wines: [], scores: {}, lastUpdated: null };
@@ -101,7 +100,5 @@ export function isEmptyRecommendation(response: RecommendationResponse): boolean
 }
 
 export function sortWinesByScore(response: RecommendationResponse): WineData[] {
-  return [...response.wines].sort((a, b) => 
-    (response.scores[b.id] || 0) - (response.scores[a.id] || 0)
-  );
+  return [...response.wines].sort((a, b) => (response.scores[b.id] || 0) - (response.scores[a.id] || 0));
 }
