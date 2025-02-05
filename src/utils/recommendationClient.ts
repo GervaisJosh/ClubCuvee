@@ -1,5 +1,5 @@
 // recommendationClient.ts
-import { supabase } from '../supabase';
+import { supabase } from '../supabase.js';
 
 interface WineData {
   id: string;

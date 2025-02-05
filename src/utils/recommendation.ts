@@ -14,7 +14,7 @@
 // ------------------------
 // Imports & External Dependencies
 // ------------------------
-import { getOpenAIEmbedding } from "./embeddingService";
+import { getOpenAIEmbedding } from "./embeddingService.js";
 
 // ------------------------
 // Constants & Group Definitions
