@@ -1,14 +1,15 @@
 import type { VercelRequest } from '@vercel/node';
 import { supabase } from '../src/supabase.js';
 import { processUserRecommendations } from '../src/utils/recommendation.js';
-import type { EnhancedUser, WineRating } from '../src/utils/recommendation.js';
+import type { EnhancedUser } from '../src/utils/recommendation.js';
+import { Pinecone } from '@pinecone-database/pinecone';
 
 interface WineRatingsReviewRow {
   user_id: string;
   wine_id: string;
+  rating: number;
   region: string | null;
   style: string | null;
-  rating: number;
   review: string | null;
   wine_inventory: {
     country: string;
@@ -18,13 +19,12 @@ interface WineRatingsReviewRow {
   } | null;
 }
 
-interface BatchData {
-  batch_id: number;
-  vector_cache: [string, number[]][];
-}
+const PINECONE_VECTOR_DIM = 1536;
+const PINECONE_BATCH_SIZE = 200;
+const USER_BATCH_SIZE = 50;
 
 export const config = {
-  maxDuration: 300 // 5 minutes per batch
+  maxDuration: 300,
 };
 
 export default async function handler(req: VercelRequest) {
@@ -34,130 +34,201 @@ export default async function handler(req: VercelRequest) {
   }
 
   const { batchId } = req.query;
-  console.log(`[BATCH ${batchId}] Processing started`);
+  const batchTag = `[BATCH ${batchId}]`;
+  console.time(`${batchTag} Total processing`);
+  console.log(`${batchTag} Started at ${new Date().toISOString()}`);
 
   try {
-    // 1. Get batch data with vector cache
-    const { data: batchData, error: batchError } = await supabase
-      .from('recommendation_batches')
-      .select('*')
-      .eq('batch_id', batchId)
-      .single();
+    const baseUrl = process.env.VERCEL_URL 
+      ? `https://${process.env.VERCEL_URL}`
+      : process.env.BASE_URL || 'http://localhost:3000';
 
-    if (batchError || !batchData) throw new Error('Batch data not found');
-    
-    const vectorCache = new Map<string, number[]>(batchData.vector_cache);
-    const CURRENT_YEAR = new Date().getFullYear();
+    // Initialize Pinecone with updated 2025 format
+    console.time(`${batchTag} Pinecone init`);
+    const pc = new Pinecone({ 
+      apiKey: process.env.VITE_PINECONE_API_KEY!,
+    });
+    const wineIndex = pc.Index('wine-knowledgebase', process.env.VITE_PINECONE_HOST!);
+    console.timeEnd(`${batchTag} Pinecone init`);
 
-    // 2. Get users for this batch
-    const { data: users } = await supabase
+    // Fetch all wine IDs with pagination
+    console.time(`${batchTag} Wine ID fetch`);
+    let allWines: { id: string }[] = [];
+    let page = 0;
+    while (true) {
+      const { data, error } = await supabase
+        .from('wine_inventory')
+        .select('id')
+        .range(page * 1000, (page + 1) * 1000 - 1);
+      
+      if (error) throw error;
+      if (!data?.length) break;
+      
+      allWines = [...allWines, ...data];
+      page++;
+    }
+    console.timeEnd(`${batchTag} Wine ID fetch`);
+
+    // Build vector cache with batched Pinecone fetches
+    console.time(`${batchTag} Vector fetch`);
+    const vectorCache = new Map<string, number[]>();
+    for (let i = 0; i < allWines.length; i += PINECONE_BATCH_SIZE) {
+      const batchIds = allWines.slice(i, i + PINECONE_BATCH_SIZE).map(w => w.id);
+      const { records } = await wineIndex.namespace('wine_inventory').fetch(batchIds);
+      
+      Object.entries(records).forEach(([id, record]) => {
+        if (record.values?.length === PINECONE_VECTOR_DIM) {
+          vectorCache.set(id, record.values);
+        }
+      });
+    }
+    console.timeEnd(`${batchTag} Vector fetch`);
+    console.log(`${batchTag} Cached ${vectorCache.size}/${allWines.length} vectors`);
+
+    // Fetch users using the unified preferences field
+    console.time(`${batchTag} User fetch`);
+    const { data: users, error: usersError } = await supabase
       .from('users')
-      .select('id')
-      .range(Number(batchId) * 50, (Number(batchId) + 1) * 50 - 1);
-
+      .select(`id, preferences, price_range`)
+      .range(Number(batchId) * USER_BATCH_SIZE, (Number(batchId) + 1) * USER_BATCH_SIZE - 1);
+    
+    if (usersError) throw usersError;
     if (!users?.length) {
-      console.log(`[BATCH ${batchId}] No users in batch`);
+      console.log(`${batchTag} No users in batch`);
+      await supabase.from('recommendation_batches').update({ status: 'complete' }).eq('batch_id', batchId);
       return new Response(JSON.stringify({ success: true }), { status: 200 });
     }
+    console.timeEnd(`${batchTag} User fetch`);
 
-    // 3. Process users in parallel
+    // Process users with comprehensive preference handling
+    const processingMetrics = {
+      totalUsers: users.length,
+      processedUsers: 0,
+      errors: 0,
+      timings: [] as number[],
+    };
+
     await Promise.all(users.map(async (user) => {
+      const userTag = `[USER ${user.id}]`;
+      const startTime = Date.now();
+
       try {
-        // Get user ratings
+        console.time(`${userTag} Total`);
+        
+        // Fetch ratings with inventory data
+        console.time(`${userTag} Ratings fetch`);
         const { data: ratings } = await supabase
           .from('wine_ratings_reviews')
           .select(`
             user_id,
             wine_id,
+            rating,
             region,
             style,
-            rating,
             review,
             wine_inventory: wine_id (country, vintage, alcohol_perc, price)
           `)
           .eq('user_id', user.id)
           .returns<WineRatingsReviewRow[]>();
+        console.timeEnd(`${userTag} Ratings fetch`);
 
-        if (!ratings?.length) return;
+        // Filter valid ratings with vectors
+        const validRatings = (ratings || [])
+          .filter(r => vectorCache.has(r.wine_id) && r.wine_inventory)
+          .map(r => ({
+            user_id: r.user_id,
+            wine_id: r.wine_id,
+            country: r.wine_inventory!.country,
+            region: r.region ?? '',
+            style: r.style ?? '',
+            vintage: r.wine_inventory!.vintage,
+            alcohol_perc: r.wine_inventory!.alcohol_perc,
+            price: r.wine_inventory!.price,
+            rating: r.rating,
+            review: r.review ?? ''
+          }));
 
-        // Build EnhancedUser object
+        // Build enhanced user profile using the unified preferences JSON
+        const userPrefs = user.preferences || {};
         const enhancedUser: EnhancedUser = {
           id: user.id,
-          ratings: ratings.map(rating => ({
-            user_id: rating.user_id,
-            wine_id: rating.wine_id,
-            country: rating.wine_inventory?.country || 'Unknown',
-            region: rating.region || 'Other',
-            style: rating.style || 'Other',
-            vintage: rating.wine_inventory?.vintage || CURRENT_YEAR - 1,
-            alcohol_perc: rating.wine_inventory?.alcohol_perc || 13.5,
-            price: rating.wine_inventory?.price || 50,
-            rating: rating.rating,
-            review: rating.review || ''
-          }))
+          ratings: validRatings,
+          primary_region: (userPrefs.regions && userPrefs.regions.length > 0) ? userPrefs.regions[0] : null,
+          primary_style: (userPrefs.styles && userPrefs.styles.length > 0) ? userPrefs.styles[0] : null,
+          primary_country: (userPrefs.countries && userPrefs.countries.length > 0) ? userPrefs.countries[0] : null,
+          price_range: user.price_range,
+          preferences: {
+            regions: userPrefs.regions || [],
+            styles: userPrefs.styles || [],
+            countries: userPrefs.countries || []
+          }
         };
 
-        // Get user preferences
-        const { data: preferences } = await supabase
-          .from('users')
-          .select('primary_region, primary_style, primary_country')
-          .eq('id', user.id)
-          .single();
-
-        if (preferences) {
-          enhancedUser.primary_region = preferences.primary_region;
-          enhancedUser.primary_style = preferences.primary_style;
-          enhancedUser.primary_country = preferences.primary_country;
+        if (enhancedUser.ratings.length === 0) {
+          console.log(`${userTag} No valid ratings with vectors - using preferences`);
+          // Add logic here to handle new users with preferences if needed
         }
 
-        // Generate recommendations
+        // Generate recommendations with fallback preferences
+        console.time(`${userTag} Processing`);
         const recommendations = await processUserRecommendations(enhancedUser, vectorCache);
-        
-        // Upsert recommendations
-        if (recommendations.length > 0) {
-          await supabase
-            .from('user_recommendations')
-            .upsert(recommendations, { onConflict: 'user_id, wine_id' });
-        }
+        console.timeEnd(`${userTag} Processing`);
 
+        if (recommendations.length > 0) {
+          console.time(`${userTag} Upsert`);
+          await supabase.from('user_recommendations').upsert(recommendations, {
+            onConflict: 'user_id, wine_id'
+          });
+          console.timeEnd(`${userTag} Upsert`);
+          processingMetrics.processedUsers++;
+        }
       } catch (error) {
-        console.error(`[BATCH ${batchId}] Error processing user ${user.id}:`, error);
+        console.error(`${userTag} Error:`, error instanceof Error ? error.message : 'Unknown error');
+        processingMetrics.errors++;
+      } finally {
+        processingMetrics.timings.push(Date.now() - startTime);
+        console.timeEnd(`${userTag} Total`);
       }
     }));
 
-    // 4. Update batch status and trigger next batch
+    // Update batch status and trigger next
+    console.time(`${batchTag} Status update`);
     await supabase
       .from('recommendation_batches')
       .update({ status: 'complete' })
       .eq('batch_id', batchId);
+    console.timeEnd(`${batchTag} Status update`);
 
-    // Trigger next batch if exists
     const nextBatchId = Number(batchId) + 1;
-    const { count } = await supabase
+    const { count: pendingCount } = await supabase
       .from('recommendation_batches')
       .select('*', { count: 'exact', head: true })
       .eq('status', 'pending');
 
-    if (count && nextBatchId <= count) {
-      const nextUrl = `${process.env.VERCEL_URL}/api/process-batch?batchId=${nextBatchId}`;
-      await fetch(nextUrl, {
-        headers: { Authorization: `Bearer ${process.env.CRON_SECRET}` }
+    if (pendingCount && nextBatchId < pendingCount) {
+      console.log(`${batchTag} Triggering next batch ${nextBatchId}`);
+      await fetch(`${baseUrl}/api/process-batch?batchId=${nextBatchId}`, {
+        headers: { Authorization: `Bearer ${process.env.CRON_SECRET}` },
       });
     }
 
-    console.log(`[BATCH ${batchId}] Completed successfully`);
+    console.log(`${batchTag} Completed`, {
+      ...processingMetrics,
+      avgTime: Math.round(processingMetrics.timings.reduce((a, b) => a + b, 0) / processingMetrics.timings.length)
+    });
+    
+    console.timeEnd(`${batchTag} Total processing`);
     return new Response(JSON.stringify({ success: true }), { status: 200 });
-
   } catch (error) {
-    console.error(`[BATCH ${batchId} ERROR]`, error);
+    console.error(`${batchTag} Failed:`, error);
     await supabase
       .from('recommendation_batches')
       .update({ status: 'failed' })
       .eq('batch_id', batchId);
-      
-    return new Response(JSON.stringify({ 
+    console.timeEnd(`${batchTag} Total processing`);
+    return new Response(JSON.stringify({
       error: 'Batch processing failed',
-      details: error instanceof Error ? error.message : 'Unknown error'
+      details: error instanceof Error ? error.message : 'Unknown error',
     }), { status: 500 });
   }
 }

@@ -7,7 +7,7 @@
  *   • Similarity weights between groups are defined in a matrix.
  * The resulting 7-dimensional vector (capturing country, region, style, vintage, alcohol, price, and rating)
  * is then converted into a detailed text summary and sent to OpenAI’s embedding API (via getOpenAIEmbedding)
- * to obtain a 768-dimensional user embedding. This embedding is compared (via cosine similarity)
+ * to obtain a 1536-dimensional user embedding. This embedding is compared (via cosine similarity)
  * against pre-computed wine embeddings (stored in Pinecone) to generate compatibility scores.
  */
 
@@ -19,7 +19,7 @@ import { getOpenAIEmbedding } from "./embeddingService.js";
 // ------------------------
 // Constants & Group Definitions
 // ------------------------
-export const FINAL_VECTOR_DIMENSIONS = 768; // Final embedding dimension for both users and wines
+export const FINAL_VECTOR_DIMENSIONS = 1536; // Final embedding dimension for both users and wines
 const CURRENT_YEAR = new Date().getFullYear();
 
 // --- Define temporary region groups ---
@@ -568,10 +568,15 @@ export interface WineRating {
 export interface EnhancedUser {
   id: string;
   ratings: WineRating[];
-  // Explicit preferences from the users table (stored with high specificity)
-  primary_region?: string;  // e.g., "Bordeaux"
-  primary_style?: string;   // e.g., "Italian Amarone"
-  primary_country?: string; // e.g., "Italy"
+  primary_region?: string | null;
+  primary_style?: string | null;
+  primary_country?: string | null;
+  price_range?: number | null;
+  preferences: {
+    regions: string[];
+    styles: string[];
+    countries: string[];
+  };
 }
 
 export interface RecommendationEntry {
@@ -688,25 +693,36 @@ export const computeUserVector7D = (user: EnhancedUser): number[] => {
 };
 
 // ------------------------
-// Upgrade 7D Vector to 768D via OpenAI's Embedding API
+// Upgrade 7D Vector to 1536D via OpenAI's Embedding API
 // ------------------------
 export async function computeUserEmbedding(user: EnhancedUser): Promise<number[]> {
-  const vector7D = computeUserVector7D(user);
-  const summary = `User Preferences:
-    Country score: ${vector7D[0].toFixed(2)},
-    Region score: ${vector7D[1].toFixed(2)} (Primary: ${user.primary_region || 'N/A'}),
-    Style score: ${vector7D[2].toFixed(2)} (Primary: ${user.primary_style || 'N/A'}),
-    Average vintage: ${vector7D[3].toFixed(2)},
-    Alcohol level: ${vector7D[4].toFixed(2)},
-    Price: ${vector7D[5].toFixed(2)},
-    Overall rating: ${vector7D[6].toFixed(2)}.`;
+  const embeddingTimerLabel = `[EMBEDDING] computeUserEmbedding for ${user.id}`;
+  console.time(embeddingTimerLabel);
+  try {
+    const vector7D = computeUserVector7D(user);
+    const summary = `User Preferences:
+      Country score: ${vector7D[0].toFixed(2)},
+      Region score: ${vector7D[1].toFixed(2)} (Primary: ${user.primary_region || 'N/A'}),
+      Style score: ${vector7D[2].toFixed(2)} (Primary: ${user.primary_style || 'N/A'}),
+      Average vintage: ${vector7D[3].toFixed(2)},
+      Alcohol level: ${vector7D[4].toFixed(2)},
+      Price: ${vector7D[5].toFixed(2)},
+      Overall rating: ${vector7D[6].toFixed(2)}.`;
+      
+    const openAITimerLabel = `[OPENAI] Embedding request for ${user.id}`;
+    console.time(openAITimerLabel);
+    const embedding = await getOpenAIEmbedding(summary);
+    console.timeEnd(openAITimerLabel);
 
-  const embedding = await getOpenAIEmbedding(summary);
-  if (embedding.length !== FINAL_VECTOR_DIMENSIONS) {
-    throw new Error(`Expected embedding length of ${FINAL_VECTOR_DIMENSIONS}, but got ${embedding.length}`);
+    if (embedding.length !== FINAL_VECTOR_DIMENSIONS) {
+      throw new Error(`Expected embedding length of ${FINAL_VECTOR_DIMENSIONS}, but got ${embedding.length}`);
+    }
+    return embedding;
+  } finally {
+    console.timeEnd(embeddingTimerLabel);
   }
-  return embedding;
 }
+
 
 // ------------------------
 // Cosine Similarity & Compatibility Calculation
@@ -742,7 +758,7 @@ export const calculateCompatibility = (
 /**
  * processUserRecommendations:
  * - Accepts an EnhancedUser and a Map of wine embeddings (from Pinecone).
- * - Computes the user's 768D embedding via OpenAI's API.
+ * - Computes the user's 1536D embedding via OpenAI's API.
  * - Iterates over each wine to compute a compatibility score.
  * - Returns the top recommendations as an array of RecommendationEntry.
  */
@@ -750,9 +766,12 @@ export async function processUserRecommendations(
   user: EnhancedUser,
   wineVectorCache: Map<string, number[]>
 ): Promise<RecommendationEntry[]> {
+  console.time(`[PROCESSING] Recommendations for ${user.id}`);
+  try{
   const userEmbedding = await computeUserEmbedding(user);
   const scores: Array<{ wine_id: string; score: number }> = [];
 
+  console.time(`[PROCESSING] Similarity calculations for ${user.id}`);
   wineVectorCache.forEach((wineEmbedding, wineId) => {
     if (wineEmbedding.length !== FINAL_VECTOR_DIMENSIONS) {
       console.error(`Dimension mismatch for wine ${wineId}`);
@@ -761,6 +780,7 @@ export async function processUserRecommendations(
     const score = calculateCompatibility(userEmbedding, wineEmbedding);
     scores.push({ wine_id: wineId, score });
   });
+  console.timeEnd(`[PROCESSING] Similarity calculations for ${user.id}`);
 
   const topRecommendations = scores
     .sort((a, b) => b.score - a.score)
@@ -773,4 +793,7 @@ export async function processUserRecommendations(
     }));
 
   return topRecommendations;
+} finally {
+  console.timeEnd(`[PROCESSING] Recommendations for ${user.id}`);
+  }
 }

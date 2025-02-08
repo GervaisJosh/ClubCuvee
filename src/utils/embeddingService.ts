@@ -1,5 +1,4 @@
-// src/utils/embeddingService.ts
-
+// embeddingService.ts
 import { OpenAI } from "openai";
 
 // Initialize the OpenAI client with your API key.
@@ -8,7 +7,7 @@ const openai = new OpenAI({
 });
 
 /**
- * Retrieves a 768-dimensional embedding for a given text summary.
+ * Retrieves a 1536-dimensional embedding for a given text summary.
  *
  * @param text - The text summary to be embedded.
  * @returns A Promise that resolves to an array of numbers representing the embedding.
@@ -19,16 +18,14 @@ export async function getOpenAIEmbedding(text: string): Promise<number[]> {
   }
 
   try {
-    // Call the OpenAI Embeddings API using the updated client interface.
-    // In OpenAI Node.js client v4, the response is returned as an array of embedding objects.
     const response = await openai.embeddings.create({
-      model: "text-embedding-ada-002",
+      model: "text-embedding-ada-002", // Use the ada-002 model
       input: text,
     });
 
-    // Since the response is an array, check the first element for the embedding.
-    if (Array.isArray(response) && response.length > 0 && response[0].embedding) {
-      return response[0].embedding;
+    // Access the embedding from the response's data property.
+    if (response.data && response.data.length > 0 && response.data[0].embedding) {
+      return response.data[0].embedding;
     } else {
       throw new Error("No embedding data returned from OpenAI API.");
     }
