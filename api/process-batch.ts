@@ -39,13 +39,13 @@ export default async function handler(req: VercelRequest) {
   console.log(`${batchTag} Started at ${new Date().toISOString()}`);
 
   try {
-    const baseUrl = process.env.VERCEL_URL 
+    const baseUrl = process.env.VERCEL_URL
       ? `https://${process.env.VERCEL_URL}`
       : process.env.BASE_URL || 'http://localhost:3000';
 
     // Initialize Pinecone with updated 2025 format
     console.time(`${batchTag} Pinecone init`);
-    const pc = new Pinecone({ 
+    const pc = new Pinecone({
       apiKey: process.env.VITE_PINECONE_API_KEY!,
     });
     const wineIndex = pc.Index('wine-knowledgebase', process.env.VITE_PINECONE_HOST!);
@@ -60,10 +60,10 @@ export default async function handler(req: VercelRequest) {
         .from('wine_inventory')
         .select('id')
         .range(page * 1000, (page + 1) * 1000 - 1);
-      
+
       if (error) throw error;
       if (!data?.length) break;
-      
+
       allWines = [...allWines, ...data];
       page++;
     }
@@ -75,7 +75,7 @@ export default async function handler(req: VercelRequest) {
     for (let i = 0; i < allWines.length; i += PINECONE_BATCH_SIZE) {
       const batchIds = allWines.slice(i, i + PINECONE_BATCH_SIZE).map(w => w.id);
       const { records } = await wineIndex.namespace('wine_inventory').fetch(batchIds);
-      
+
       Object.entries(records).forEach(([id, record]) => {
         if (record.values?.length === PINECONE_VECTOR_DIM) {
           vectorCache.set(id, record.values);
@@ -91,7 +91,7 @@ export default async function handler(req: VercelRequest) {
       .from('users')
       .select(`id, preferences, price_range`)
       .range(Number(batchId) * USER_BATCH_SIZE, (Number(batchId) + 1) * USER_BATCH_SIZE - 1);
-    
+
     if (usersError) throw usersError;
     if (!users?.length) {
       console.log(`${batchTag} No users in batch`);
@@ -114,7 +114,10 @@ export default async function handler(req: VercelRequest) {
 
       try {
         console.time(`${userTag} Total`);
-        
+
+        // Remove any existing recommendations for this user
+        await supabase.from('user_recommendations').delete().eq('user_id', user.id);
+
         // Fetch ratings with inventory data
         console.time(`${userTag} Ratings fetch`);
         const { data: ratings } = await supabase
@@ -148,8 +151,15 @@ export default async function handler(req: VercelRequest) {
             review: r.review ?? ''
           }));
 
-        // Build enhanced user profile using the unified preferences JSON
+        // Check for empty preferences (only skip if no data in the unified preferences field)
         const userPrefs = user.preferences || {};
+        const hasPreferences = Object.keys(userPrefs).length > 0;
+        if (!hasPreferences) {
+          console.log(`${userTag} Skipped - No preferences data`);
+          return;
+        }
+
+        // Build enhanced user profile using the unified preferences JSON
         const enhancedUser: EnhancedUser = {
           id: user.id,
           ratings: validRatings,
@@ -163,11 +173,6 @@ export default async function handler(req: VercelRequest) {
             countries: userPrefs.countries || []
           }
         };
-
-        if (enhancedUser.ratings.length === 0) {
-          console.log(`${userTag} No valid ratings with vectors - using preferences`);
-          // Add logic here to handle new users with preferences if needed
-        }
 
         // Generate recommendations with fallback preferences
         console.time(`${userTag} Processing`);
@@ -216,7 +221,7 @@ export default async function handler(req: VercelRequest) {
       ...processingMetrics,
       avgTime: Math.round(processingMetrics.timings.reduce((a, b) => a + b, 0) / processingMetrics.timings.length)
     });
-    
+
     console.timeEnd(`${batchTag} Total processing`);
     return new Response(JSON.stringify({ success: true }), { status: 200 });
   } catch (error) {
