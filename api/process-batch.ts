@@ -60,10 +60,8 @@ export default async function handler(req: VercelRequest) {
         .from('wine_inventory')
         .select('id')
         .range(page * 1000, (page + 1) * 1000 - 1);
-
       if (error) throw error;
       if (!data?.length) break;
-
       allWines = [...allWines, ...data];
       page++;
     }
@@ -75,7 +73,6 @@ export default async function handler(req: VercelRequest) {
     for (let i = 0; i < allWines.length; i += PINECONE_BATCH_SIZE) {
       const batchIds = allWines.slice(i, i + PINECONE_BATCH_SIZE).map(w => w.id);
       const { records } = await wineIndex.namespace('wine_inventory').fetch(batchIds);
-
       Object.entries(records).forEach(([id, record]) => {
         if (record.values?.length === PINECONE_VECTOR_DIM) {
           vectorCache.set(id, record.values);
@@ -91,7 +88,6 @@ export default async function handler(req: VercelRequest) {
       .from('users')
       .select(`id, preferences, price_range`)
       .range(Number(batchId) * USER_BATCH_SIZE, (Number(batchId) + 1) * USER_BATCH_SIZE - 1);
-
     if (usersError) throw usersError;
     if (!users?.length) {
       console.log(`${batchTag} No users in batch`);
@@ -111,7 +107,6 @@ export default async function handler(req: VercelRequest) {
     await Promise.all(users.map(async (user) => {
       const userTag = `[USER ${user.id}]`;
       const startTime = Date.now();
-
       try {
         console.time(`${userTag} Total`);
 
@@ -196,7 +191,7 @@ export default async function handler(req: VercelRequest) {
       }
     }));
 
-    // Update batch status and trigger next
+    // Update batch status
     console.time(`${batchTag} Status update`);
     await supabase
       .from('recommendation_batches')
@@ -204,25 +199,27 @@ export default async function handler(req: VercelRequest) {
       .eq('batch_id', batchId);
     console.timeEnd(`${batchTag} Status update`);
 
+    // Determine if there is a next batch. If so, trigger it without awaiting.
     const nextBatchId = Number(batchId) + 1;
     const { count: pendingCount } = await supabase
       .from('recommendation_batches')
       .select('*', { count: 'exact', head: true })
       .eq('status', 'pending');
-
     if (pendingCount && nextBatchId < pendingCount) {
       console.log(`${batchTag} Triggering next batch ${nextBatchId}`);
-      await fetch(`${baseUrl}/api/process-batch?batchId=${nextBatchId}`, {
+      // Trigger next batch and don't await its response so that we can exit gracefully.
+      fetch(`${baseUrl}/api/process-batch?batchId=${nextBatchId}`, {
         headers: { Authorization: `Bearer ${process.env.CRON_SECRET}` },
-      });
+      }).catch((err) => console.error('Next batch trigger error:', err));
     }
 
     console.log(`${batchTag} Completed`, {
       ...processingMetrics,
       avgTime: Math.round(processingMetrics.timings.reduce((a, b) => a + b, 0) / processingMetrics.timings.length)
     });
-
     console.timeEnd(`${batchTag} Total processing`);
+
+    // Return success immediately. This will end the current function without waiting for the next batch.
     return new Response(JSON.stringify({ success: true }), { status: 200 });
   } catch (error) {
     console.error(`${batchTag} Failed:`, error);
@@ -237,3 +234,4 @@ export default async function handler(req: VercelRequest) {
     }), { status: 500 });
   }
 }
+
