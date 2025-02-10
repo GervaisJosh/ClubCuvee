@@ -1,3 +1,6 @@
+/* If using Google Fonts, for example: */
+@import url('https://fonts.googleapis.com/css2?family=Libre+Baskerville:wght@400;700&display=swap');
+
 /* Tailwind imports */
 @import 'tailwindcss/base';
 @import 'tailwindcss/components';
@@ -20,25 +23,30 @@
 
 /* Base styling */
 @layer base {
+  /* Use Libre Baskerville for the base body text */
   body {
-    font-family: 'Helvetica', 'Arial', 'sans-serif';
+    font-family: 'Libre Baskerville', 'serif';
     background-color: var(--bg-color, #ffffff);
     color: var(--text-color, #000000);
   }
 
+  /* Keep HV Florentino for headings */
   h1, h2, h3 {
     font-family: 'HV Florentino', serif;
   }
 
+  /* Override paragraph, span, link, list, footer, etc. to Libre Baskerville */
   p, span, a, li, footer {
-    font-family: 'Helvetica', 'Arial', 'sans-serif';
+    font-family: 'Libre Baskerville', 'serif';
   }
 
+  /* Keep TayBasal for button text */
   button, .button-text {
     font-family: 'TayBasal', sans-serif;
   }
 
+  /* If you want inputs to match paragraphs, switch them too */
   input, select, textarea {
-    font-family: 'Helvetica', 'Arial', 'sans-serif';
+    font-family: 'Libre Baskerville', 'serif';
   }
 }

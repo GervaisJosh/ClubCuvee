@@ -69,7 +69,7 @@ const Landing = () => {
                 A Personal Wine Club for Your Customers
               </h1>
               
-              <p className={`mt-8 text-xl ${isDark ? 'text-gray-300' : 'text-black'}`} style={{ fontFamily: 'Helvetica' }}>
+              <p className={`mt-8 text-xl ${isDark ? 'text-gray-300' : 'text-black'}`} style={{ fontFamily: 'Libre Baskerville' }}>
                 Cuvee Club uses AI and advanced algorithms to digitize your wine inventory, allowing for data-driven experiences for your members based on their personal reviews, ratings, and wine history—not only increasing brand connection but also generating additional revenue through sales of existing inventory. 
               </p>
 

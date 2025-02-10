@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { useTheme } from '../contexts/ThemeContext';
+import '../styles/no-drag.css';
 
 interface CarouselImage {
   url: string;
@@ -77,7 +78,7 @@ const ImageCarousel: React.FC = () => {
             <img
               src={image.url}
               alt={image.alt}
-              className="w-full h-full object-contain"
+              className="w-full h-full object-contain no-drag-img"
             />
           </div>
         ))}
