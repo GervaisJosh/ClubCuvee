@@ -81,7 +81,7 @@ const SignUp = () => {
       <div className={`${isDark ? 'bg-gray-900' : 'bg-white'} shadow-2xl rounded-lg px-8 py-10 border ${isDark ? 'border-gray-800' : 'border-gray-200'}`}>
         <div className="flex flex-col items-center mb-8">
           <Wine className="h-16 w-16 text-green-500 mb-4" />
-          <h3 className={`text-3xl font-bold text-center ${isDark ? 'text-white' : 'text-gray-900'}`}>Cuvee Club</h3>
+          <h3 className={`text-3xl font-bold text-center ${isDark ? 'text-white' : 'text-gray-900'}`}>Club Cuvee</h3>
           <h4 className={`text-2xl font-semibold text-center ${isDark ? 'text-white' : 'text-gray-900'} mt-4`}>Create an account</h4>
         </div>
 

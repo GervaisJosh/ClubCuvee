@@ -17,7 +17,7 @@ const AuthHeader = () => {
             <Link to="/" className="flex items-center">
               <Wine className="h-8 w-8" style={{ color: burgundy }} />
               <span className={`text-xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`} style={{ fontFamily: 'TayBasal' }}>
-                Cuvee Club
+                 Club Cuvee
               </span>
             </Link>
             

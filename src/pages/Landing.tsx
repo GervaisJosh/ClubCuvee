@@ -19,7 +19,7 @@ const Landing = () => {
               <Link to="/" className="flex items-center">
                 <Wine className="h-8 w-8" style={{ color: burgundy }} />
                 <span className={`text-xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`} style={{ fontFamily: 'TayBasal' }}>
-                  Cuvee Club
+                  Club Cuvee
                 </span>
               </Link>
               
@@ -70,7 +70,7 @@ const Landing = () => {
               </h1>
               
               <p className={`mt-8 text-xl ${isDark ? 'text-gray-300' : 'text-black'}`} style={{ fontFamily: 'Libre Baskerville' }}>
-                Cuvee Club uses AI and advanced algorithms to digitize your wine inventory, allowing for data-driven experiences for your members based on their personal reviews, ratings, and wine history—not only increasing brand connection but also generating additional revenue through sales of existing inventory. 
+                Club Cuvee uses AI and advanced algorithms to digitize your wine inventory, allowing for data-driven experiences for your members based on their personal reviews, ratings, and wine history—not only increasing brand connection but also generating additional revenue through sales of existing inventory. 
               </p>
 
               <div className="mt-10">

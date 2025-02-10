@@ -14,7 +14,7 @@ const AuthFooter: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
         <div className="flex flex-col items-center justify-center text-center relative">
           <p className={`text-xs max-w-md ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-            By continuing, you agree to Cuvee Club's{' '}
+            By continuing, you agree to Club Cuvee's{' '}
             <Link to="/terms" className={`${isDark ? `text-[${burgundy}] hover:text-[#b3002d]` : `text-[${burgundy}] hover:text-[#b3002d]`}`}>
               Terms of Service
             </Link>

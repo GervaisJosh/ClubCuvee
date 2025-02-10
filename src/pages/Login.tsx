@@ -76,7 +76,7 @@ const Login = () => {
       <div className={`${isDark ? 'bg-gray-900' : 'bg-white'} shadow-2xl rounded-lg px-8 py-10 border ${isDark ? 'border-gray-800' : 'border-gray-200'} w-full max-w-lg mx-auto`}>
         <div className="flex flex-col items-center mb-8">
           <Wine className="h-16 w-16 text-[#800020] mb-4" />
-          <h3 className={`text-3xl font-bold text-center ${isDark ? 'text-white' : 'text-gray-900'}`} style={{ fontFamily: 'HV Florentino' }}>Cuvee Club</h3>
+          <h3 className={`text-3xl font-bold text-center ${isDark ? 'text-white' : 'text-gray-900'}`} style={{ fontFamily: 'HV Florentino' }}>Club Cuvee</h3>
           <h4 className={`text-2xl font-semibold text-center ${isDark ? 'text-gray-300' : 'text-gray-700'} mt-4`}>Welcome Back</h4>
           <p className={`${isDark ? 'text-gray-400' : 'text-gray-500'} mt-2`}>Sign in to your account</p>
         </div>
