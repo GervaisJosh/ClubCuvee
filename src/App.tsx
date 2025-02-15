@@ -8,6 +8,7 @@ import Layout from './components/Layout';
 import Login from './pages/Login';
 import SignUp from './pages/SignUp';
 import Landing from './pages/Landing';
+import GetStarted from './pages/GetStarted';
 import Dashboard from './pages/Dashboard';
 import AdminViewReal from './pages/AdminViewReal';
 import CustomerDashboard from './pages/customer/CustomerDashboard';
@@ -73,8 +74,6 @@ const AuthenticatedApp = () => {
         <Route path="/wishlist" element={<Wishlist />} />
         <Route path="/customer-calendar" element={<CustomerCalendar />} />
         <Route path="/notifications" element={<Notifications />} />
-        
-        
       </Routes>
     </Layout>
   );
@@ -85,17 +84,16 @@ const App = () => {
     <ErrorBoundary>
       <ThemeProvider>
         <AuthProvider>
-          <CalendarProvider>
             <Router>
               <Routes>
                 <Route path="/login" element={<Login />} />
                 <Route path="/signup" element={<SignUp />} />
                 <Route path="/landing" element={<Landing />} />
+                <Route path="/get-started" element={<GetStarted />} />
                 <Route path="/dashboard/*" element={<AuthenticatedApp />} />
                 <Route path="/" element={<Navigate to="/landing" replace />} />
               </Routes>
             </Router>
-          </CalendarProvider>
         </AuthProvider>
       </ThemeProvider>
     </ErrorBoundary>

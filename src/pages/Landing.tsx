@@ -1,9 +1,9 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Wine } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import Footer from '../components/Footer';
 import ImageCarousel from '../components/ImageCarousel';
+import Header from '../components/Header';
 
 const Landing = () => {
   const { theme } = useTheme();
@@ -12,51 +12,7 @@ const Landing = () => {
 
   return (
     <div className={`min-h-screen ${isDark ? 'bg-black' : 'bg-white'}`}>
-      <header className={`fixed top-0 w-full z-50 ${isDark ? 'bg-black/90' : 'bg-white/90'} backdrop-blur-sm border-b ${isDark ? 'border-gray-800' : 'border-gray-200'}`}>
-        <div className="max-w-[1920px] mx-auto px-4">
-          <div className="flex justify-between items-center py-4">
-            <div className="flex items-center">
-              <Link to="/" className="flex items-center">
-                <Wine className="h-8 w-8" style={{ color: burgundy }} />
-                <span className={`text-xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`} style={{ fontFamily: 'TayBasal' }}>
-                  Club Cuvee
-                </span>
-              </Link>
-              
-              <nav className="hidden md:flex items-center ml-10 space-x-16">
-                <Link to="/features" className={`${isDark ? 'text-gray-300 hover:text-white' : 'text-black hover:text-gray-900'}`} style={{ fontFamily: 'TayBasal' }}>
-                  Features
-                </Link>
-                <Link to="/integrations" className={`${isDark ? 'text-gray-300 hover:text-white' : 'text-black hover:text-gray-900'}`} style={{ fontFamily: 'TayBasal' }}>
-                  Integrations
-                </Link>
-                <Link to="/pricing" className={`${isDark ? 'text-gray-300 hover:text-white' : 'text-black hover:text-gray-900'}`} style={{ fontFamily: 'TayBasal' }}>
-                  Pricing
-                </Link>
-              </nav>
-            </div>
-
-            <div className="flex items-center space-x-4">
-              <Link 
-                to="/login" 
-                className={`${isDark ? 'text-white hover:text-gray-300' : 'text-black hover:text-gray-900'}`} 
-                style={{ fontFamily: 'TayBasal' }}
-              >
-                Sign in
-              </Link>
-              <Link 
-                to="/pages/SignUp"
-                className="text-white px-4 py-2 rounded-md transition-colors duration-200"
-                style={{ backgroundColor: burgundy, fontFamily: 'TayBasal' }}
-                onMouseEnter={(e) => e.currentTarget.style.color = 'black'}
-                onMouseLeave={(e) => e.currentTarget.style.color = 'white'}
-              >
-                Get Started
-              </Link>
-            </div>
-          </div>
-        </div>
-      </header>
+      <Header />
 
       <main className="pt-32">
         <div className="max-w-[1920px] mx-auto px-4 flex flex-col lg:flex-row items-center lg:items-start mb-32">
@@ -75,11 +31,9 @@ const Landing = () => {
 
               <div className="mt-10">
                 <Link 
-                  to="/pages/SignUp" 
-                  className="text-white px-8 py-4 rounded-md transition-colors duration-200 text-lg"
+                  to="/get-started"
+                  className="text-white px-8 py-4 rounded-md transition-colors duration-200 text-lg hover:opacity-80"
                   style={{ backgroundColor: burgundy, fontFamily: 'TayBasal' }}
-                  onMouseEnter={(e) => e.currentTarget.style.color = 'black'}
-                  onMouseLeave={(e) => e.currentTarget.style.color = 'white'}
                 >
                   Get Started
                 </Link>
