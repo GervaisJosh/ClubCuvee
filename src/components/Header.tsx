@@ -1,4 +1,3 @@
-// File: src/components/Header.tsx
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useTheme } from '../contexts/ThemeContext';
@@ -21,11 +20,11 @@ const Header: React.FC = () => {
               </span>
             </Link>
             <nav className="hidden md:flex items-center ml-10 space-x-16">
-              <Link to="/features" className={`${isDark ? 'text-gray-300 hover:text-white' : 'text-black hover:text-gray-900'}`} style={{ fontFamily: 'TayBasal' }}>
-                Features
+              <Link to="/how-it-works" className={`${isDark ? 'text-gray-300 hover:text-white' : 'text-black hover:text-gray-900'}`} style={{ fontFamily: 'TayBasal' }}>
+                How It Works
               </Link>
               <Link to="/integrations" className={`${isDark ? 'text-gray-300 hover:text-white' : 'text-black hover:text-gray-900'}`} style={{ fontFamily: 'TayBasal' }}>
-                Integrations
+                About
               </Link>
               <Link to="/pricing" className={`${isDark ? 'text-gray-300 hover:text-white' : 'text-black hover:text-gray-900'}`} style={{ fontFamily: 'TayBasal' }}>
                 Pricing

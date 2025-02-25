@@ -26,7 +26,7 @@ const AuthHeader = () => {
                 Features
               </Link>
               <Link to="/integrations" className={`${isDark ? 'text-gray-300 hover:text-white' : 'text-black hover:text-gray-900'}`} style={{ fontFamily: 'TayBasal' }}>
-                Integrations
+                About
               </Link>
               <Link to="/pricing" className={`${isDark ? 'text-gray-300 hover:text-white' : 'text-black hover:text-gray-900'}`} style={{ fontFamily: 'TayBasal' }}>
                 Pricing
