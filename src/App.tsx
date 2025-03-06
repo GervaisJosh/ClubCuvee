@@ -10,6 +10,7 @@ import SignUp from './pages/SignUp';
 import Landing from './pages/Landing';
 import GetStarted from './pages/GetStarted';
 import HowItWorks from './pages/HowItWorks';
+import About from './pages/About';
 import Pricing from './pages/Pricing';
 import Dashboard from './pages/Dashboard';
 import AdminViewReal from './pages/AdminViewReal';
@@ -93,6 +94,7 @@ const App = () => {
                 <Route path="/landing" element={<Landing />} />
                 <Route path="/get-started" element={<GetStarted />} />
                 <Route path="/how-it-works" element={<HowItWorks />} />
+                <Route path="/about" element={<About />} />
                 <Route path="/pricing" element={<Pricing />} />
                 <Route path="/dashboard/*" element={<AuthenticatedApp />} />
                 <Route path="/" element={<Navigate to="/landing" replace />} />

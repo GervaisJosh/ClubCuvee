@@ -1,4 +1,3 @@
-// AuthHeader.js
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Wine } from 'lucide-react';
@@ -21,11 +20,11 @@ const AuthHeader = () => {
               </span>
             </Link>
             
-            <nav className="flex items-center ml-10 space-x-16"> {/* Increased spacing */}
+            <nav className="flex items-center ml-10 space-x-16">
               <Link to="/features" className={`${isDark ? 'text-gray-300 hover:text-white' : 'text-black hover:text-gray-900'}`} style={{ fontFamily: 'TayBasal' }}>
                 Features
               </Link>
-              <Link to="/integrations" className={`${isDark ? 'text-gray-300 hover:text-white' : 'text-black hover:text-gray-900'}`} style={{ fontFamily: 'TayBasal' }}>
+              <Link to="/about" className={`${isDark ? 'text-gray-300 hover:text-white' : 'text-black hover:text-gray-900'}`} style={{ fontFamily: 'TayBasal' }}>
                 About
               </Link>
               <Link to="/pricing" className={`${isDark ? 'text-gray-300 hover:text-white' : 'text-black hover:text-gray-900'}`} style={{ fontFamily: 'TayBasal' }}>

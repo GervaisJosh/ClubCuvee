@@ -94,8 +94,8 @@ const Landing = () => {
                 </div>
                 <div className="relative h-[400px] lg:h-[600px] rounded-2xl overflow-hidden group">
                   <img 
-                    src="https://github.com/GervaisJosh/Maestro/blob/3ef1db9dc6da84c2d0fa0892109ca6fedec52be4/80eafb90-950e-4f0e-8404-ee1096509a83.jpg?raw=true"
-                    alt="Revenue Generation"
+                    src="images/champagne-orange.jpg"
+                    alt="Orange Wine Cellar"
                     className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-700"
                   />
                   <div className="absolute inset-0 bg-gradient-to-r from-black/40 via-black/20 to-transparent"></div>
@@ -128,8 +128,8 @@ const Landing = () => {
                 </div>
                 <div className="relative h-[400px] lg:h-[600px] rounded-2xl overflow-hidden group">
                   <img 
-                    src="https://github.com/GervaisJosh/Maestro/blob/3ef1db9dc6da84c2d0fa0892109ca6fedec52be4/12de785a-1c95-4c6a-ae84-4215c7143b00.jpg?raw=true"
-                    alt="Rating System"
+                    src="images/red-wine-glass.jpg"
+                    alt="Red Wine in a glass"
                     className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-700"
                   />
                   <div className="absolute inset-0 bg-gradient-to-r from-black/40 via-black/20 to-transparent"></div>

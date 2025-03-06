@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { LogIn, Wine } from 'lucide-react';
+import { Wine } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { signIn, signInWithGoogle, resendConfirmationEmail } from '../api/supabaseQueries';
+import { signIn, resendConfirmationEmail } from '../api/supabaseQueries';
 import { useTheme } from '../contexts/ThemeContext';
 import AuthLayout from '../components/AuthLayout';
 
@@ -16,6 +16,7 @@ const Login = () => {
   const { setUser } = useAuth();
   const { theme } = useTheme();
   const isDark = theme === 'dark';
+  const burgundy = "#800020";
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,24 +44,6 @@ const Login = () => {
     }
   };
 
-  const handleGoogleSignIn = async () => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const { data, error } = await signInWithGoogle();
-      if (error) throw error;
-      if (data.url) {
-        window.location.href = data.url;
-      }
-    } catch (err: any) {
-      console.error('Google Sign-In Error:', err);
-      setError(err.message || 'Failed to sign in with Google');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleResendConfirmation = async () => {
     try {
       await resendConfirmationEmail(email);
@@ -73,17 +56,41 @@ const Login = () => {
 
   return (
     <AuthLayout>
-      <div className={`${isDark ? 'bg-gray-900' : 'bg-white'} shadow-2xl rounded-lg px-8 py-10 border ${isDark ? 'border-gray-800' : 'border-gray-200'} w-full max-w-lg mx-auto`}>
+      <div className={`${isDark ? 'bg-gray-800' : 'bg-white'} shadow-2xl rounded-lg px-8 py-10 border ${isDark ? 'border-gray-700' : 'border-gray-200'} w-full max-w-lg mx-auto`}>
         <div className="flex flex-col items-center mb-8">
-          <Wine className="h-16 w-16 text-[#800020] mb-4" />
-          <h3 className={`text-3xl font-bold text-center ${isDark ? 'text-white' : 'text-gray-900'}`} style={{ fontFamily: 'HV Florentino' }}>Club Cuvee</h3>
-          <h4 className={`text-2xl font-semibold text-center ${isDark ? 'text-gray-300' : 'text-gray-700'} mt-4`}>Welcome Back</h4>
-          <p className={`${isDark ? 'text-gray-400' : 'text-gray-500'} mt-2`}>Sign in to your account</p>
+          <img 
+            src="/icons/wine-bottle.svg" 
+            alt="Wine Bottle" 
+            className="h-16 w-16 mb-4" 
+            style={{ filter: isDark ? 'invert(1)' : 'none' }}
+          />
+          <h3 
+            className={`text-3xl font-bold text-center ${isDark ? 'text-white' : 'text-gray-900'}`} 
+            style={{ fontFamily: 'HV Florentino' }}
+          >
+            Club Cuvee
+          </h3>
+          <h4 
+            className={`text-2xl font-semibold text-center ${isDark ? 'text-gray-300' : 'text-gray-700'} mt-4`}
+            style={{ fontFamily: 'HV Florentino' }}
+          >
+            Welcome Back
+          </h4>
+          <p 
+            className={`${isDark ? 'text-gray-400' : 'text-gray-500'} mt-2`}
+            style={{ fontFamily: 'Libre Baskerville' }}
+          >
+            Sign in to your account
+          </p>
         </div>
 
         <form onSubmit={handleLogin} className="space-y-6">
           <div>
-            <label className={`block text-sm font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'}`} htmlFor="email">
+            <label 
+              className={`block text-sm font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'}`} 
+              htmlFor="email"
+              style={{ fontFamily: 'Libre Baskerville' }}
+            >
               Email
             </label>
             <input
@@ -93,7 +100,7 @@ const Login = () => {
               onChange={(e) => setEmail(e.target.value)}
               className={`mt-1 block w-full px-4 py-3 rounded-md ${
                 isDark 
-                  ? 'bg-gray-800 border-gray-700 text-white focus:ring-[#800020]' 
+                  ? 'bg-gray-700 border-gray-600 text-white focus:ring-[#800020]' 
                   : 'bg-white border-gray-300 text-gray-900 focus:ring-[#800020]'
               } focus:outline-none focus:ring-2 focus:border-transparent`}
               required
@@ -102,10 +109,17 @@ const Login = () => {
 
           <div>
             <div className="flex justify-between">
-              <label className={`block text-sm font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+              <label 
+                className={`block text-sm font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'}`}
+                style={{ fontFamily: 'Libre Baskerville' }}
+              >
                 Password
               </label>
-              <Link to="/forgot-password" className="text-sm text-[#800020] hover:text-black focus:text-black">
+              <Link 
+                to="/forgot-password" 
+                className="text-sm text-[#800020] hover:text-black focus:text-black"
+                style={{ fontFamily: 'Libre Baskerville' }}
+              >
                 Forgot Password?
               </Link>
             </div>
@@ -115,7 +129,7 @@ const Login = () => {
               onChange={(e) => setPassword(e.target.value)}
               className={`mt-1 block w-full px-4 py-3 rounded-md ${
                 isDark 
-                  ? 'bg-gray-800 border-gray-700 text-white focus:ring-[#800020]' 
+                  ? 'bg-gray-700 border-gray-600 text-white focus:ring-[#800020]' 
                   : 'bg-white border-gray-300 text-gray-900 focus:ring-[#800020]'
               } focus:outline-none focus:ring-2 focus:border-transparent`}
               required
@@ -125,29 +139,18 @@ const Login = () => {
           <button
             type="submit"
             disabled={loading}
-            className="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[#800020] hover:bg-[#a00028] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#800020] transition duration-150 ease-in-out"
+            className="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-white bg-[#800020] hover:bg-[#a00028] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#800020] transition duration-150 ease-in-out"
+            style={{ fontFamily: 'HV Florentino' }}
           >
             {loading ? 'Signing In...' : 'Sign In'}
           </button>
         </form>
 
-        <div className="mt-6">
-          <button
-            onClick={handleGoogleSignIn}
-            disabled={loading}
-            className={`w-full flex justify-center py-3 px-4 border rounded-md shadow-sm text-sm font-medium ${
-              isDark
-                ? 'border-gray-700 text-white hover:bg-gray-800'
-                : 'border-gray-300 text-gray-700 hover:bg-gray-50'
-            } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#800020] transition duration-150 ease-in-out`}
-          >
-            <LogIn className="mr-2" size={18} />
-            Sign in with Google
-          </button>
-        </div>
-
         <div className="mt-6 text-center">
-          <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+          <p 
+            className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}
+            style={{ fontFamily: 'Libre Baskerville' }}
+          >
             Don't have an account?{' '}
             <Link to="/register" className="font-medium text-[#800020] hover:text-black focus:text-black">
               Sign Up Now
@@ -155,12 +158,13 @@ const Login = () => {
           </p>
         </div>
 
-        {error && <p className="mt-4 text-sm text-red-500 text-center">{error}</p>}
+        {error && <p className="mt-4 text-sm text-red-500 text-center" style={{ fontFamily: 'Libre Baskerville' }}>{error}</p>}
         
         {showResendConfirmation && (
           <button
             onClick={handleResendConfirmation}
             className="mt-4 w-full px-6 py-3 text-sm font-medium text-white bg-yellow-600 rounded-md hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 transition duration-150 ease-in-out"
+            style={{ fontFamily: 'HV Florentino' }}
           >
             Resend Confirmation Email
           </button>
