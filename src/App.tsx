@@ -28,6 +28,7 @@ import Events from './pages/Events';
 import WineInventoryUpload from './pages/WineInventoryUpload';
 import APIConnection from './pages/APIConnection';
 import AccountSettings from './pages/AccountSettings';
+import RestaurantRegistration from './pages/restaurant-registration-test';
 
 // Customer pages
 import MyWines from './pages/customer/MyWines';
@@ -96,6 +97,7 @@ const App = () => {
                 <Route path="/how-it-works" element={<HowItWorks />} />
                 <Route path="/about" element={<About />} />
                 <Route path="/pricing" element={<Pricing />} />
+                <Route path="/restaurant-registration-test" element={<RestaurantRegistration />} />
                 <Route path="/dashboard/*" element={<AuthenticatedApp />} />
                 <Route path="/" element={<Navigate to="/landing" replace />} />
               </Routes>

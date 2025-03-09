@@ -16,6 +16,8 @@
   "dependencies": {
     "@emailjs/browser": "^4.4.1",
     "@pinecone-database/pinecone": "4.0.0",
+    "@stripe/react-stripe-js": "^3.3.0",
+    "@stripe/stripe-js": "^5.10.0",
     "@supabase/supabase-js": "2.47.8",
     "@vercel/node": "^4.0.0",
     "axios": "1.7.8",
