@@ -18,6 +18,7 @@ export async function createCheckoutSession(req: VercelRequest, res: VercelRespo
       cancelUrl,      // Redirect URL on cancel
       createPrice,    // Whether to create a new price (rare)
       tierData,       // Data for creating a new price (rare)
+      metadata,       // Additional metadata for the session
     } = req.body;
     
     // Validation - either tierId or priceId is required
@@ -111,6 +112,14 @@ export async function createCheckoutSession(req: VercelRequest, res: VercelRespo
     }
     
     // Create the checkout session
+    const sessionMetadata = {
+      restaurant_id: restaurantId,
+      customer_id: customerId,
+      tier_id: tierId || 'custom',
+      created_price: createdPrice ? 'true' : 'false',
+      ...(metadata || {}) // Spread any additional metadata from the request
+    };
+
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       line_items: [
@@ -123,17 +132,13 @@ export async function createCheckoutSession(req: VercelRequest, res: VercelRespo
       success_url: successUrl,
       cancel_url: cancelUrl,
       customer_email: customerEmail,
-      metadata: {
-        restaurant_id: restaurantId,
-        customer_id: customerId,
-        tier_id: tierId || 'custom',
-        created_price: createdPrice ? 'true' : 'false'
-      },
+      metadata: sessionMetadata,
       subscription_data: {
         metadata: {
           restaurant_id: restaurantId,
           customer_id: customerId,
-          tier_id: tierId || 'custom'
+          tier_id: tierId || 'custom',
+          ...(metadata || {}) // Also add metadata to subscription
         }
       }
     });

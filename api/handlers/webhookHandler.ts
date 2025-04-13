@@ -28,10 +28,15 @@ export async function handleWebhook(req: VercelRequest, res: VercelResponse) {
     const signature = req.headers['stripe-signature'] as string;
 
     // 2. Construct event with Stripe
+    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+    if (!webhookSecret) {
+      throw new Error('Missing STRIPE_WEBHOOK_SECRET environment variable');
+    }
+    
     event = stripe.webhooks.constructEvent(
       rawBody,
       signature,
-      process.env.STRIPE_WEBHOOK_SECRET as string
+      webhookSecret
     );
   } catch (err: any) {
     console.error('❌ Error verifying Stripe webhook signature:', err.message);
@@ -91,20 +96,40 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
     return;
   }
 
-  // Update customer record in Supabase
-  const { error: updateError } = await supabaseAdmin
-    .from('customers')
-    .update({
-      stripe_customer_id: session.customer,
-      stripe_subscription_id: session.subscription,
-      subscription_status: 'active',
-      updated_at: new Date().toISOString(),
-    })
-    .eq('id', customer_id);
+  // Check session type - could be a restaurant onboarding payment or customer subscription
+  const isRestaurantOnboarding = session.metadata?.type === 'restaurant_onboarding';
+  
+  if (isRestaurantOnboarding) {
+    // Update restaurant record if this is an onboarding payment
+    const { error: restaurantError } = await supabaseAdmin
+      .from('restaurants')
+      .update({
+        payment_session_id: session.id,
+        payment_completed: true,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', restaurant_id);
+      
+    if (restaurantError) {
+      console.error('Error updating restaurant after checkout:', restaurantError);
+      throw restaurantError;
+    }
+  } else {
+    // Regular customer subscription payment
+    const { error: updateError } = await supabaseAdmin
+      .from('customers')
+      .update({
+        stripe_customer_id: session.customer,
+        stripe_subscription_id: session.subscription,
+        subscription_status: 'active',
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', customer_id);
 
-  if (updateError) {
-    console.error('Error updating customer after checkout:', updateError);
-    throw updateError;
+    if (updateError) {
+      console.error('Error updating customer after checkout:', updateError);
+      throw updateError;
+    }
   }
 }
 

@@ -261,7 +261,10 @@ const CustomerSignup: React.FC = () => {
         customerEmail: formData.email,
         restaurantId,
         successUrl: `${window.location.origin}/join/${restaurantId}?session_id={CHECKOUT_SESSION_ID}&status=success`,
-        cancelUrl: `${window.location.origin}/join/${restaurantId}`
+        cancelUrl: `${window.location.origin}/join/${restaurantId}`,
+        metadata: {
+          type: 'customer_subscription'
+        }
       };
 
       if (selectedTier.stripe_price_id) {

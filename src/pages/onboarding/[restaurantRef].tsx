@@ -126,7 +126,12 @@ const RestaurantOnboarding: React.FC = () => {
           customerEmail: data.email,
           restaurantId: 'pending',
           successUrl: `${window.location.origin}/onboarding/${restaurantRef || 'new'}?session_id={CHECKOUT_SESSION_ID}&status=success`,
-          cancelUrl: `${window.location.origin}/onboarding/${restaurantRef || 'new'}`
+          cancelUrl: `${window.location.origin}/onboarding/${restaurantRef || 'new'}`,
+          metadata: {
+            type: 'restaurant_onboarding',
+            email: data.email,
+            restaurant_name: data.restaurantName
+          }
         };
         
         const sessionId = await stripeService.createCheckoutSession(checkoutData);
