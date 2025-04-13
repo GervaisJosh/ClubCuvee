@@ -29,6 +29,12 @@ import WineInventoryUpload from './pages/WineInventoryUpload';
 import APIConnection from './pages/APIConnection';
 import AccountSettings from './pages/AccountSettings';
 import RestaurantRegistration from './pages/restaurant-registration-test';
+import SofiesWineBarRegistration from './pages/sofies-wine-bar';
+
+// Import your new CustomerSignup page
+import CustomerSignup from './pages/CustomerSignup';
+// Import restaurant onboarding page with lazy loading
+const RestaurantOnboarding = React.lazy(() => import('./pages/onboarding/[restaurantRef]'));
 
 // Customer pages
 import MyWines from './pages/customer/MyWines';
@@ -50,11 +56,18 @@ const AuthenticatedApp = () => {
   return (
     <Layout userRole={viewMode} setViewMode={setViewMode}>
       <Routes>
-        <Route path="/" element={
-          viewMode === 'admin-real' ? <AdminViewReal /> :
-          viewMode === 'admin' ? <Dashboard userRole="admin" /> :
-          <CustomerDashboard />
-        } />
+        <Route
+          path="/"
+          element={
+            viewMode === 'admin-real' ? (
+              <AdminViewReal />
+            ) : viewMode === 'admin' ? (
+              <Dashboard userRole="admin" />
+            ) : (
+              <CustomerDashboard />
+            )
+          }
+        />
         <Route path="/admin-real" element={<AdminViewReal />} />
         <Route path="/revenue-insights" element={<RevenueInsights />} />
         <Route path="/wines" element={<Wines />} />
@@ -88,20 +101,35 @@ const App = () => {
     <ErrorBoundary>
       <ThemeProvider>
         <AuthProvider>
-            <Router>
-              <Routes>
-                <Route path="/login" element={<Login />} />
-                <Route path="/signup" element={<SignUp />} />
-                <Route path="/landing" element={<Landing />} />
-                <Route path="/get-started" element={<GetStarted />} />
-                <Route path="/how-it-works" element={<HowItWorks />} />
-                <Route path="/about" element={<About />} />
-                <Route path="/pricing" element={<Pricing />} />
-                <Route path="/restaurant-registration-test" element={<RestaurantRegistration />} />
-                <Route path="/dashboard/*" element={<AuthenticatedApp />} />
-                <Route path="/" element={<Navigate to="/landing" replace />} />
-              </Routes>
-            </Router>
+          <Router>
+            <Routes>
+              <Route path="/login" element={<Login />} />
+              <Route path="/signup" element={<SignUp />} />
+              <Route path="/landing" element={<Landing />} />
+              <Route path="/get-started" element={<GetStarted />} />
+              <Route path="/how-it-works" element={<HowItWorks />} />
+              <Route path="/about" element={<About />} />
+              <Route path="/pricing" element={<Pricing />} />
+              <Route path="/restaurant-registration-test" element={<RestaurantRegistration />} />
+              <Route path="/sofies-wine-bar" element={<SofiesWineBarRegistration />} />
+
+              {/* Use CustomerSignup for the restaurant membership page */}
+              <Route path="/join/:restaurantId" element={<CustomerSignup />} />
+              
+              {/* Restaurant onboarding flow */}
+              <Route path="/onboarding/:restaurantRef" element={
+                <React.Suspense fallback={<div>Loading...</div>}>
+                  <RestaurantOnboarding />
+                </React.Suspense>
+              } />
+
+              {/* Authenticated routes */}
+              <Route path="/dashboard/*" element={<AuthenticatedApp />} />
+
+              {/* Default redirect */}
+              <Route path="/" element={<Navigate to="/landing" replace />} />
+            </Routes>
+          </Router>
         </AuthProvider>
       </ThemeProvider>
     </ErrorBoundary>
