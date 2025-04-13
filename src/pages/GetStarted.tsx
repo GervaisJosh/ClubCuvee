@@ -1,197 +1,75 @@
-import React, { useState, useEffect } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import React, { useState, useRef } from 'react';
 import { useTheme } from '../contexts/ThemeContext';
-import { CheckCircle } from 'lucide-react';
+import { CheckCircle, Mail, User, Briefcase, Send } from 'lucide-react';
 import Footer from '../components/Footer';
 import Header from '../components/Header';
-import RegistrationSteps from '../components/registration/RegistrationSteps';
-import { LoadingSpinner, ErrorDisplay } from '../components/shared/LoadingStates';
-import { restaurantService } from '../services/restaurantService';
-import { membershipService } from '../services/membershipService';
-import { authService } from '../services/authService';
-import { stripeService } from '../services/stripeService';
-import type { RestaurantFormData, MembershipTier, FormErrors } from '../types';
+import emailjs from '@emailjs/browser';
 
 const GetStarted: React.FC = () => {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
-  const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const refCode = searchParams.get('ref');
-  const sessionId = searchParams.get('session_id');
-  const status = searchParams.get('status');
-
-  // State
-  const [loading, setLoading] = useState(true);
-  const [verifyingPayment, setVerifyingPayment] = useState(false);
-  const [paymentVerified, setPaymentVerified] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [errors, setErrors] = useState<{
-    restaurant?: FormErrors;
-    tiers?: string;
-    general?: string;
-  }>({});
-  const [restaurantId, setRestaurantId] = useState<string | undefined>();
-  const [registrationComplete, setRegistrationComplete] = useState(false);
-  const [customerSignupURL, setCustomerSignupURL] = useState('');
-
-  // Initialize referral data if provided
-  const [initialRestaurantData, setInitialRestaurantData] = useState<RestaurantFormData>({
-    restaurantName: '',
-    adminName: '',
-    email: '',
-    website: '',
-    logo: null,
-    password: '',
-    confirmPassword: '',
-    sessionId: sessionId || undefined,
+  const formRef = useRef<HTMLFormElement>(null);
+  
+  // Form state
+  const [formData, setFormData] = useState({
+    user_name: '',
+    business_name: '',
+    user_email: '',
+    message: ''
   });
-
-  // Check payment status when component loads
-  useEffect(() => {
-    const verifyPayment = async () => {
-      setVerifyingPayment(true);
-      
-      try {
-        // If we have a session ID and success status, verify with Stripe
-        if (sessionId && status === 'success') {
-          const isValid = await stripeService.verifyPaymentSession(sessionId);
-          setPaymentVerified(isValid);
-          
-          if (isValid) {
-            // Optional: record payment in your own DB
-            await stripeService.recordPayment(sessionId, {
-              tier: 'basic',
-              amount: 0.60, // Or whatever your subscription amount is
-            });
-          }
-        } else {
-          // For development, you might want an option to bypass payment
-          const devMode = import.meta.env.VITE_DEV_MODE === 'true';
-          setPaymentVerified(devMode);
-        }
-      } catch (error) {
-        console.error('Error verifying payment:', error);
-        setPaymentVerified(false);
-      } finally {
-        setVerifyingPayment(false);
-        setLoading(false);
-      }
-    };
-
-    // Process referral code if present
-    const processReferral = async () => {
-      if (refCode) {
-        try {
-          // Here you would typically load the restaurant details based on the ref code
-          // For now, we'll just pre-fill the restaurant name
-          setInitialRestaurantData(prevData => ({
-            ...prevData,
-            restaurantName: `${refCode}'s Restaurant`
-          }));
-        } catch (error) {
-          console.error('Error processing referral:', error);
-        }
-      }
-      
-      if (!sessionId) {
-        setLoading(false);
-      }
-    };
-
-    processReferral();
-    if (sessionId) {
-      verifyPayment();
+  
+  // UI states
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  
+  // Update form data on input changes
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+    
+    // Clear error when user types
+    if (error) setError(null);
+  };
+  
+  // Handle form submission
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // Basic validation
+    if (!formData.user_name || !formData.business_name || !formData.user_email) {
+      setError('Please fill in all required fields');
+      return;
     }
-  }, [refCode, sessionId, status]);
-
-  // Handle the complete registration process
-  const handleRegistrationComplete = async (data: {
-    restaurant: RestaurantFormData;
-    tiers: MembershipTier[];
-    restaurantId?: string;
-  }) => {
+    
     setIsSubmitting(true);
-    setErrors({});
-
+    setError(null);
+    
     try {
-      // If we already have a restaurant ID (rare, usually from a previous step)
-      // we'll use it, otherwise create a new restaurant
-      let newRestaurantId = data.restaurantId;
+      // Send email via EmailJS
+      const result = await emailjs.sendForm(
+        'service_lvxm3yd', // Replace with your EmailJS service ID
+        'template_2qf5jws', // Replace with your EmailJS template ID
+        formRef.current!,
+        'tJ5Euu7UBYqeJ26yO' // Replace with your EmailJS public key
+      );
       
-      if (!newRestaurantId) {
-        // Step 1: Create the restaurant
-        const restaurant = await restaurantService.createRestaurant({
-          ...data.restaurant,
-          tier: 'basic', // or whatever tier they paid for
-          sessionId: sessionId || undefined,
-        });
-        
-        newRestaurantId = restaurant.id;
-        setRestaurantId(newRestaurantId);
-        
-        // Step 2: Upload logo if provided
-        if (data.restaurant.logo) {
-          try {
-            await restaurantService.uploadLogo(newRestaurantId, data.restaurant.logo);
-          } catch (logoError) {
-            console.error('Logo upload error:', logoError);
-            // Continue with registration even if logo upload fails
-          }
-        }
-        
-        // Step 3: Create admin user
-        const { user, error: authError } = await authService.restaurantSignUp(
-          data.restaurant,
-          newRestaurantId
-        );
-        
-        if (authError) {
-          // If auth fails, we should delete the restaurant we just created
-          // This would require an API endpoint with admin permissions
-          throw authError;
-        }
-      }
-      
-      // Step 4: Save membership tiers
-      if (newRestaurantId) {
-        // Process all tiers in parallel
-        const tierPromises = data.tiers.map(tier => 
-          membershipService.createMembershipTier(tier, newRestaurantId!)
-        );
-        
-        await Promise.all(tierPromises);
-      }
-      
-      // Everything succeeded - show success UI
-      setCustomerSignupURL(`${window.location.origin}/join/${newRestaurantId}`);
-      setRegistrationComplete(true);
-      
+      console.log('Email sent successfully:', result.text);
+      setSubmitted(true);
     } catch (error: any) {
-      console.error('Registration error:', error);
-      setErrors({
-        general: error.message || 'An unexpected error occurred during registration'
-      });
+      console.error('Email send error:', error);
+      setError(error.text || 'Failed to send your inquiry. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
   };
   
-  // Show loading spinner while initializing
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <LoadingSpinner size="lg" />
-          <p className="mt-4 text-gray-600">Initializing registration...</p>
-        </div>
-      </div>
-    );
-  }
-  
   return (
     <div
-      className={`min-h-screen ${isDark ? 'bg-black' : 'bg-white'} transition-colors duration-200`}
+      className={`min-h-screen ${isDark ? 'bg-black text-white' : 'bg-white text-gray-900'} transition-colors duration-200`}
     >
       <Header />
 
@@ -212,64 +90,175 @@ const GetStarted: React.FC = () => {
               className="text-4xl lg:text-5xl font-bold text-white text-center"
               style={{ fontFamily: 'HV Florentino' }}
             >
-              Join Club Cuvée Today
+              Start Your Wine Club Journey
             </h1>
             <p
               className="mt-4 text-xl text-white text-center max-w-2xl"
               style={{ fontFamily: 'Libre Baskerville' }}
             >
-              Transform your wine program with our innovative platform. Leverage your existing
-              inventory, and pair your loyal customers with their perfect bottles.
+              Transform your wine program with our innovative platform. Get in touch and we'll help you get started.
             </p>
           </div>
         </div>
 
-        {/* Registration Content */}
-        {registrationComplete ? (
-          <div className="min-h-[calc(100vh-500px)] flex items-center justify-center p-4">
-            <div className="max-w-md w-full text-center">
+        {/* Contact Form Section */}
+        <div className="max-w-4xl mx-auto px-4 py-12">
+          {submitted ? (
+            // Success message
+            <div className="bg-white p-8 rounded-lg shadow-lg text-center">
               <div className="mb-6 p-4 bg-green-100 rounded-full inline-flex items-center justify-center">
                 <CheckCircle className="w-16 h-16 text-green-500" />
               </div>
-              <h1
-                className="text-3xl font-bold mb-4 text-[#872657]"
-                style={{ fontFamily: 'HV Florentino' }}
-              >
-                Registration Complete!
-              </h1>
-              <p className="text-lg mb-8" style={{ fontFamily: 'Libre Baskerville' }}>
-                Your Club Cuvée account has been successfully created.
+              <h2 className="text-2xl font-bold mb-4 text-[#872657]">Inquiry Received!</h2>
+              <p className="text-lg mb-6">
+                Thank you for your interest in Club Cuvée. We've received your message and will be in touch shortly.
               </p>
-
-              <div className="bg-gray-100 p-4 rounded-lg mb-8">
-                <p className="text-sm mb-2 text-gray-700">Your customer signup URL:</p>
-                <p className="font-mono text-sm mb-4 break-all">{customerSignupURL}</p>
+              <p className="text-gray-600">
+                Our team will review your inquiry and contact you with more information about getting started with Club Cuvée.
+              </p>
+            </div>
+          ) : (
+            // Contact form
+            <div className="bg-white p-8 rounded-lg shadow-lg">
+              <h2 className="text-2xl font-bold mb-2 text-[#872657]">Get in Touch</h2>
+              <p className="text-gray-600 mb-6">
+                Interested in offering a personalized wine club to your customers? Fill out the form below and we'll be in touch.
+              </p>
+              
+              {error && (
+                <div className="mb-6 p-4 bg-red-100 text-red-700 rounded-md">
+                  {error}
+                </div>
+              )}
+              
+              <form ref={formRef} onSubmit={handleSubmit} className="space-y-6">
+                {/* Name input */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Your Name *
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <User className="h-5 w-5 text-gray-400" />
+                    </div>
+                    <input
+                      type="text"
+                      name="user_name"
+                      value={formData.user_name}
+                      onChange={handleInputChange}
+                      required
+                      className="pl-10 w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#872657] focus:border-transparent"
+                      placeholder="Jane Smith"
+                    />
+                  </div>
+                </div>
+                
+                {/* Business name input */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Business Name *
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <Briefcase className="h-5 w-5 text-gray-400" />
+                    </div>
+                    <input
+                      type="text"
+                      name="business_name"
+                      value={formData.business_name}
+                      onChange={handleInputChange}
+                      required
+                      className="pl-10 w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#872657] focus:border-transparent"
+                      placeholder="Your Restaurant or Wine Shop"
+                    />
+                  </div>
+                </div>
+                
+                {/* Email input */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Email Address *
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <Mail className="h-5 w-5 text-gray-400" />
+                    </div>
+                    <input
+                      type="email"
+                      name="user_email"
+                      value={formData.user_email}
+                      onChange={handleInputChange}
+                      required
+                      className="pl-10 w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#872657] focus:border-transparent"
+                      placeholder="jane@yourrestaurant.com"
+                    />
+                  </div>
+                </div>
+                
+                {/* Message textarea */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Message (Optional)
+                  </label>
+                  <textarea
+                    name="message"
+                    value={formData.message}
+                    onChange={handleInputChange}
+                    rows={4}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#872657] focus:border-transparent"
+                    placeholder="Tell us a bit about your business and what you're looking for..."
+                  ></textarea>
+                </div>
+                
+                {/* Submit button */}
                 <button
-                  onClick={() => navigator.clipboard.writeText(customerSignupURL)}
-                  className="text-sm bg-[#2A3D45] text-white px-4 py-2 rounded-md hover:bg-opacity-90"
+                  type="submit"
+                  disabled={isSubmitting}
+                  className={`w-full py-3 bg-[#872657] text-white rounded-md hover:bg-opacity-90 font-bold flex items-center justify-center ${
+                    isSubmitting ? 'opacity-70 cursor-not-allowed' : ''
+                  }`}
                 >
-                  Copy URL
+                  {isSubmitting ? (
+                    <>
+                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Sending...
+                    </>
+                  ) : (
+                    <>
+                      <Send className="mr-2 h-5 w-5" />
+                      Send Inquiry
+                    </>
+                  )}
                 </button>
-              </div>
-
-              <button
-                onClick={() => navigate('/dashboard')}
-                className="w-full bg-[#872657] text-white py-3 rounded-md hover:bg-opacity-90 font-bold"
-              >
-                Go to Dashboard
-              </button>
+              </form>
+            </div>
+          )}
+          
+          {/* Additional information */}
+          <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="bg-white p-6 rounded-lg shadow-md">
+              <h3 className="text-xl font-semibold mb-2 text-[#2A3D45]">Personalized Wine Programs</h3>
+              <p className="text-gray-600">
+                Create custom wine subscriptions that match your customers' preferences with your existing inventory.
+              </p>
+            </div>
+            <div className="bg-white p-6 rounded-lg shadow-md">
+              <h3 className="text-xl font-semibold mb-2 text-[#2A3D45]">Easy Management</h3>
+              <p className="text-gray-600">
+                Simple dashboard to manage subscriptions, view analytics, and track customer preferences.
+              </p>
+            </div>
+            <div className="bg-white p-6 rounded-lg shadow-md">
+              <h3 className="text-xl font-semibold mb-2 text-[#2A3D45]">Recurring Revenue</h3>
+              <p className="text-gray-600">
+                Build a stable income stream while deepening relationships with your best customers.
+              </p>
             </div>
           </div>
-        ) : (
-          <RegistrationSteps
-            initialRestaurantData={initialRestaurantData}
-            onComplete={handleRegistrationComplete}
-            isSubmitting={isSubmitting}
-            sessionId={sessionId || undefined}
-            errors={errors}
-            restaurantId={restaurantId}
-          />
-        )}
+        </div>
       </div>
 
       <Footer />

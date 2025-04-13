@@ -1,8 +1,18 @@
 {
-    "crons": [
-      {
-        "path": "/api/batch-recommendations",
-        "schedule": "0 3 * * *"
-      }
-    ]
-  }
+  "crons": [
+    {
+      "path": "/api/batch-recommendations",
+      "schedule": "0 3 * * *"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "/api/$1"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
+    }
+  ]
+}
