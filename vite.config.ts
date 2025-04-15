@@ -1,8 +1,19 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import { viteStaticCopy } from 'vite-plugin-static-copy';
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react(),
+    viteStaticCopy({
+      targets: [
+        {
+          src: 'api',
+          dest: './'
+        }
+      ]
+    }),
+  ],
   build: {
     outDir: 'dist',
     assetsDir: 'assets',
@@ -16,11 +27,12 @@ export default defineConfig({
   },
   server: {
     port: 3000,
+    // During development, proxy API requests to Vercel or a local API server
     proxy: {
       '/api': {
-        target: 'http://localhost:3000',
+        target: process.env.VERCEL_URL || 'http://localhost:3000',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, ''),
+        secure: false
       },
     },
   },
