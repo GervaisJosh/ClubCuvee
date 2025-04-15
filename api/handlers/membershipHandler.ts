@@ -1,8 +1,28 @@
-import { stripe } from '../utils/stripeClient';
-import { supabaseAdmin } from '../utils/supabaseAdmin';
-import { validateRequest, validatePrice } from '../utils/validation';
+import { stripe } from '../utils/stripeClient.js';
+import { supabaseAdmin } from '../utils/supabaseAdmin.js';
+import { validateRequest, validatePrice } from '../utils/validation.js';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { randomUUID } from 'crypto';
+
+// Type definitions for clarity and safety
+interface MembershipTierData {
+  name: string;
+  price: number | string;
+  description?: string;
+  restaurant_id: string;
+  stripe_product_id?: string;
+  stripe_price_id?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+interface InvitationData {
+  email: string;
+  restaurant_name: string;
+  website?: string;
+  admin_name?: string;
+  tier?: string;
+}
 
 /**
  * Create a membership tier with Stripe product/price
@@ -37,9 +57,9 @@ export async function createMembershipTier(req: VercelRequest, res: VercelRespon
       .eq('id', restaurant_id)
       .single();
       
-    if (restaurantError) {
+    if (restaurantError || !restaurant) {
       return res.status(404).json({
-        error: `Restaurant not found: ${restaurantError.message}`,
+        error: `Restaurant not found: ${restaurantError?.message || "Unknown error"}`,
       });
     }
     
@@ -55,7 +75,7 @@ export async function createMembershipTier(req: VercelRequest, res: VercelRespon
     // Create price for the product
     const stripePrice = await stripe.prices.create({
       product: product.id,
-      unit_amount: Math.round(parseFloat(price) * 100),
+      unit_amount: Math.round(parseFloat(price as string) * 100),
       currency: 'usd',
       recurring: { interval: 'month' },
       metadata: { 
@@ -64,18 +84,20 @@ export async function createMembershipTier(req: VercelRequest, res: VercelRespon
     });
     
     // Store in Supabase
+    const tierData: MembershipTierData = {
+      name,
+      price: parseFloat(price as string),
+      description: description || '',
+      restaurant_id,
+      stripe_product_id: product.id,
+      stripe_price_id: stripePrice.id,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+    
     const { data: tier, error } = await supabaseAdmin
       .from('membership_tiers')
-      .insert([{
-        name,
-        price: parseFloat(price),
-        description: description || '',
-        restaurant_id,
-        stripe_product_id: product.id,
-        stripe_price_id: stripePrice.id,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      }])
+      .insert([tierData])
       .select()
       .single();
       
@@ -150,15 +172,15 @@ export async function updateMembershipTier(req: VercelRequest, res: VercelRespon
       .eq('restaurant_id', restaurant_id)
       .single();
       
-    if (fetchError) {
+    if (fetchError || !existingTier) {
       return res.status(404).json({
-        error: `Tier not found: ${fetchError.message}`,
+        error: `Tier not found: ${fetchError?.message || "Unknown error"}`,
       });
     }
     
     // Prepare tier data for update
-    const priceNumber = parseFloat(price);
-    const updateData = {
+    const priceNumber = parseFloat(price as string);
+    const updateData: Partial<MembershipTierData> = {
       name,
       price: priceNumber,
       description: description || '',
@@ -170,7 +192,7 @@ export async function updateMembershipTier(req: VercelRequest, res: VercelRespon
       // Check what needs to be updated in Stripe
       const hasNameChanged = existingTier.name !== name;
       const hasDescriptionChanged = existingTier.description !== description;
-      const hasPriceChanged = parseFloat(existingTier.price) !== priceNumber;
+      const hasPriceChanged = parseFloat(existingTier.price as string) !== priceNumber;
       
       try {
         // 1. Update product if name or description changed
@@ -182,10 +204,12 @@ export async function updateMembershipTier(req: VercelRequest, res: VercelRespon
             .eq('id', restaurant_id)
             .single();
           
-          await stripe.products.update(stripe_product_id, {
-            name: `${restaurant.name} - ${name}`,
-            description: description || `${name} membership tier`,
-          });
+          if (restaurant) {
+            await stripe.products.update(stripe_product_id, {
+              name: `${restaurant.name} - ${name}`,
+              description: description || `${name} membership tier`,
+            });
+          }
         }
         
         // 2. Handle price update if needed
@@ -251,7 +275,7 @@ export async function updateMembershipTier(req: VercelRequest, res: VercelRespon
  */
 export async function createInvitationLink(req: VercelRequest, res: VercelResponse) {
   try {
-    const { email, restaurant_name, website, admin_name, tier = 'standard' } = req.body;
+    const { email, restaurant_name, website, admin_name, tier = 'standard' } = req.body as InvitationData;
     
     // Validate request
     const validation = validateRequest(
@@ -292,20 +316,23 @@ export async function createInvitationLink(req: VercelRequest, res: VercelRespon
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 7); // Token valid for 7 days
     
-    // Store invitation
+    // Create invitation data
+    const invitationData = {
+      token,
+      email,
+      restaurant_name,
+      website: website || '',
+      admin_name: admin_name || '',
+      tier,
+      created_at: new Date().toISOString(),
+      expires_at: expiresAt.toISOString(),
+      status: 'pending'
+    };
+    
+    // Store invitation in the database
     const { data: invitation, error: inviteError } = await supabaseAdmin
       .from('restaurant_invitations')
-      .insert([{
-        token,
-        email,
-        restaurant_name,
-        website: website || '',
-        admin_name: admin_name || '',
-        tier,
-        created_at: new Date().toISOString(),
-        expires_at: expiresAt.toISOString(),
-        status: 'pending'
-      }])
+      .insert([invitationData])
       .select()
       .single();
     
@@ -315,20 +342,78 @@ export async function createInvitationLink(req: VercelRequest, res: VercelRespon
       });
     }
     
-    // Generate invitation URL from environment
-    const baseUrl = process.env.FRONTEND_URL || 'https://your-domain.com';
+    // Generate invitation URL using the deployment URL from Vercel
+    // Or fallback to the FRONTEND_URL environment variable
+    const deployUrl = process.env.VERCEL_URL || process.env.FRONTEND_URL;
+    const baseUrl = deployUrl 
+      ? (deployUrl.startsWith('http') ? deployUrl : `https://${deployUrl}`) 
+      : 'https://your-deployment-url.vercel.app';
+    
     const invitationUrl = `${baseUrl}/onboarding/${token}`;
     
-    // In a production app, you'd send an email with this link here...
+    // Here's where you'd send an email with the invitation link
+    // Commented out for future implementation
     
+    /*
+    // Example implementation with SendGrid or similar email service
+    const sendInvitationEmail = async (recipient: string, restaurantName: string, inviteUrl: string) => {
+      try {
+        // Using SendGrid (would require @sendgrid/mail package)
+        // const sgMail = require('@sendgrid/mail');
+        // sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+        
+        // const msg = {
+        //   to: recipient,
+        //   from: 'noreply@clubcuvee.com',
+        //   subject: `Join Club Cuvee - ${restaurantName} Restaurant Invitation`,
+        //   text: `You've been invited to set up ${restaurantName} on Club Cuvee. Click this link to get started: ${inviteUrl}`,
+        //   html: `
+        //     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        //       <h2>Welcome to Club Cuvee</h2>
+        //       <p>You've been invited to set up <strong>${restaurantName}</strong> on Club Cuvee's wine membership platform.</p>
+        //       <p>Click the button below to start your onboarding:</p>
+        //       <div style="text-align: center; margin: 30px 0;">
+        //         <a href="${inviteUrl}" style="background-color: #872657; color: white; padding: 12px 20px; text-decoration: none; border-radius: 4px; font-weight: bold;">
+        //           Set Up Your Restaurant
+        //         </a>
+        //       </div>
+        //       <p>This invitation link will expire in 7 days.</p>
+        //     </div>
+        //   `,
+        // };
+        
+        // await sgMail.send(msg);
+        return true;
+      } catch (error) {
+        console.error('Error sending invitation email:', error);
+        return false;
+      }
+    };
+    
+    // Send the email
+    const emailSent = await sendInvitationEmail(email, restaurant_name, invitationUrl);
+    */
+    
+    // Return invitation data and URL
     return res.status(200).json({
-      invitation,
+      success: true,
+      invitation: {
+        id: invitation.id,
+        token: invitation.token,
+        email: invitation.email,
+        restaurant_name: invitation.restaurant_name,
+        status: invitation.status,
+        expires_at: invitation.expires_at,
+        created_at: invitation.created_at
+      },
       invitation_url: invitationUrl,
+      // email_sent: emailSent || false, // Would be included if email sending was implemented
       message: 'Invitation created successfully'
     });
   } catch (error: any) {
     console.error('Error creating invitation:', error);
     return res.status(500).json({
+      success: false,
       error: error.message || 'Internal server error',
     });
   }
