@@ -67,44 +67,98 @@ const RestaurantOnboarding: React.FC = () => {
           
           // Optionally: verify the session with Stripe
           // const isValid = await stripeService.verifyPaymentSession(sessionId);
-          
-          // If there was a partially completed registration, we could fetch it here
-          // and pre-populate the form
-          // const { data } = await supabase.from('temp_registrations')
-          //  .select('*').eq('payment_session_id', sessionId).single();
         }
         
         // If we have a restaurant reference token, try to load data
         if (restaurantRef && restaurantRef !== 'new') {
-          // Check if this is a valid token for resuming registration
-          const { data: tokenData, error: tokenError } = await supabase
-            .from('registration_tokens')
-            .select('*')
-            .eq('token', restaurantRef)
-            .single();
-            
-          if (!tokenError && tokenData) {
-            // Found valid registration data to resume
-            if (tokenData.restaurant_data) {
-              setRestaurantData(tokenData.restaurant_data as RestaurantFormData);
+          // First check if it's an invitation token
+          const invitation = await restaurantService.getInvitationByToken(restaurantRef);
+          
+          if (invitation) {
+            // If invitation is expired, show error
+            if (invitation.status === 'expired') {
+              setErrors({
+                general: 'This invitation link has expired. Please request a new invitation.'
+              });
+              setIsLoading(false);
+              return;
             }
             
-            if (tokenData.tiers) {
-              setTiers(tokenData.tiers as MembershipTier[]);
-            }
+            // Pre-fill data from invitation
+            setRestaurantData({
+              restaurantName: invitation.restaurant_name,
+              adminName: invitation.admin_name || '',
+              email: invitation.email,
+              website: invitation.website || '',
+              password: '',
+              confirmPassword: '',
+              tier: invitation.tier,
+              invitationToken: invitation.token
+            });
             
-            if (tokenData.restaurant_id) {
-              setRestaurantId(tokenData.restaurant_id);
-              setCurrentStep(2); // Skip to membership tiers step
-            }
-            
-            if (tokenData.payment_session_id) {
+            // If invitation has payment verified, set payment verified
+            if (invitation.status === 'paid' || invitation.payment_session_id) {
               setPaymentVerified(true);
+            }
+            
+            // If invitation already has a restaurant ID, set it and skip to membership tiers
+            if (invitation.restaurant_id) {
+              setRestaurantId(invitation.restaurant_id);
+              setCurrentStep(2); // Skip to membership tiers step
+              
+              // Also fetch existing tiers
+              try {
+                const { data: existingTiers, error: tiersError } = await supabase
+                  .from('membership_tiers')
+                  .select('*')
+                  .eq('restaurant_id', invitation.restaurant_id);
+                  
+                if (!tiersError && existingTiers && existingTiers.length > 0) {
+                  setTiers(existingTiers);
+                }
+              } catch (err) {
+                console.error('Error fetching existing tiers:', err);
+              }
+            }
+            
+            // Mark invitation as accepted if it's still pending
+            if (invitation.status === 'pending') {
+              await restaurantService.updateInvitationStatus(invitation.token, 'accepted');
+            }
+          } else {
+            // Check if this is a valid token for resuming registration in the legacy format
+            const { data: tokenData, error: tokenError } = await supabase
+              .from('registration_tokens')
+              .select('*')
+              .eq('token', restaurantRef)
+              .single();
+              
+            if (!tokenError && tokenData) {
+              // Found valid registration data to resume
+              if (tokenData.restaurant_data) {
+                setRestaurantData(tokenData.restaurant_data as RestaurantFormData);
+              }
+              
+              if (tokenData.tiers) {
+                setTiers(tokenData.tiers as MembershipTier[]);
+              }
+              
+              if (tokenData.restaurant_id) {
+                setRestaurantId(tokenData.restaurant_id);
+                setCurrentStep(2); // Skip to membership tiers step
+              }
+              
+              if (tokenData.payment_session_id) {
+                setPaymentVerified(true);
+              }
             }
           }
         }
       } catch (error) {
         console.error('Error checking registration status:', error);
+        setErrors({
+          general: 'Error loading registration data. Please try again or contact support.'
+        });
       } finally {
         setIsLoading(false);
       }
@@ -121,7 +175,7 @@ const RestaurantOnboarding: React.FC = () => {
     try {
       // If we need to collect payment first, create a checkout session
       if (!paymentVerified && !data.sessionId) {
-        const checkoutData = {
+        const checkoutData: CheckoutSessionData = {
           customerId: 'pending', // Will be updated after account creation
           customerEmail: data.email,
           restaurantId: 'pending',
@@ -131,8 +185,18 @@ const RestaurantOnboarding: React.FC = () => {
             type: 'restaurant_onboarding',
             email: data.email,
             restaurant_name: data.restaurantName
-          }
+          },
+          type: 'restaurant_onboarding'
         };
+        
+        // If this is from an invitation, include the token in metadata
+        if (data.invitationToken) {
+          checkoutData.invitationToken = data.invitationToken;
+          checkoutData.metadata = {
+            ...checkoutData.metadata,
+            invitation_token: data.invitationToken
+          };
+        }
         
         const sessionId = await stripeService.createCheckoutSession(checkoutData);
         await stripeService.redirectToCheckout(sessionId);
@@ -142,7 +206,7 @@ const RestaurantOnboarding: React.FC = () => {
       // Otherwise, create the restaurant account
       const createdRestaurant = await restaurantService.createRestaurant({
         ...data,
-        tier: 'standard', // Default tier
+        tier: data.tier || 'standard', // Use specified tier or default
         sessionId: sessionId || undefined,
       });
       
@@ -156,8 +220,16 @@ const RestaurantOnboarding: React.FC = () => {
       // Store updated restaurant data
       setRestaurantData(data);
       
-      // If we're resuming with a token, also save progress
-      if (restaurantRef && restaurantRef !== 'new') {
+      // Handle invitation token if present
+      if (data.invitationToken) {
+        await restaurantService.updateInvitationStatus(
+          data.invitationToken, 
+          sessionId ? 'paid' : 'accepted', 
+          createdRestaurant.id
+        );
+      } 
+      // Otherwise use legacy registration tokens
+      else if (restaurantRef && restaurantRef !== 'new') {
         await supabase
           .from('registration_tokens')
           .update({

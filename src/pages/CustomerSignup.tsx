@@ -256,15 +256,19 @@ const CustomerSignup: React.FC = () => {
       const stripe = await stripePromise;
       if (!stripe) throw new Error('Failed to load Stripe');
 
-      const checkoutData: any = {
+      const checkoutData: CheckoutSessionData = {
         customerId: customerData.id,
         customerEmail: formData.email,
         restaurantId,
         successUrl: `${window.location.origin}/join/${restaurantId}?session_id={CHECKOUT_SESSION_ID}&status=success`,
         cancelUrl: `${window.location.origin}/join/${restaurantId}`,
         metadata: {
-          type: 'customer_subscription'
-        }
+          type: 'customer_subscription',
+          customer_id: customerData.id,
+          restaurant_id: restaurantId,
+          tier_id: selectedTier.id
+        },
+        type: 'customer_subscription'
       };
 
       if (selectedTier.stripe_price_id) {

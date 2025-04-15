@@ -8,6 +8,8 @@ export interface Restaurant {
   admin_email: string;
   subscription_tier: string;
   payment_session_id?: string;
+  payment_completed?: boolean;
+  payment_date?: string;
   created_at: string;
   updated_at?: string;
   registration_complete?: boolean;
@@ -23,6 +25,23 @@ export interface RestaurantFormData {
   confirmPassword: string;
   tier?: string;
   sessionId?: string;
+  invitationToken?: string;
+}
+
+export interface RestaurantInvitation {
+  id: string;
+  token: string;
+  email: string;
+  restaurant_name: string;
+  website?: string;
+  admin_name?: string;
+  tier: string;
+  payment_session_id?: string;
+  created_at: string;
+  expires_at: string;
+  updated_at?: string;
+  status: 'pending' | 'accepted' | 'paid' | 'completed' | 'expired';
+  restaurant_id?: string;
 }
 
 export interface MembershipTier {
@@ -59,6 +78,9 @@ export interface CheckoutSessionData {
     description: string;
     price: number | string;
   };
+  metadata?: Record<string, string>;
+  type?: 'restaurant_onboarding' | 'customer_subscription';
+  invitationToken?: string;
 }
 
 export interface FormErrors {

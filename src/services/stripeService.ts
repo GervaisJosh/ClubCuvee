@@ -8,10 +8,19 @@ const stripePromise = loadStripe(stripePublicKey);
 export const stripeService = {
   async createCheckoutSession(data: CheckoutSessionData): Promise<string> {
     try {
+      // Make sure to include metadata about the type of checkout
+      const finalData = {
+        ...data,
+        metadata: {
+          ...(data.metadata || {}),
+          type: data.type || 'customer_subscription'
+        }
+      };
+      
       const response = await fetch('/api/create-checkout-session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
+        body: JSON.stringify(finalData),
       });
       
       const result = await response.json();
@@ -77,6 +86,32 @@ export const stripeService = {
     } catch (error) {
       console.error('Error recording payment:', error);
       // Don't throw, as this is non-critical
+    }
+  },
+  
+  // Verify Stripe configuration
+  async verifyStripeSetup(): Promise<{
+    status: string;
+    livemode?: boolean;
+    config?: Record<string, string>;
+    balance?: any;
+    error?: string;
+  }> {
+    try {
+      const response = await fetch('/api/verify-stripe', {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Failed to verify Stripe configuration');
+      return result;
+    } catch (error: any) {
+      console.error('Error verifying Stripe:', error);
+      return {
+        status: 'error',
+        error: error.message || 'Failed to verify Stripe configuration'
+      };
     }
   }
 };

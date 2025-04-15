@@ -45,6 +45,8 @@ export async function handleWebhook(req: VercelRequest, res: VercelResponse) {
 
   // 3. Handle the event
   try {
+    console.log(`Processing webhook event: ${event.type}`);
+    
     switch (event.type) {
       case 'checkout.session.completed': {
         await handleCheckoutCompleted(event.data.object as Stripe.Checkout.Session);
@@ -89,7 +91,7 @@ export async function handleWebhook(req: VercelRequest, res: VercelResponse) {
  */
 async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
   // Extract metadata
-  const { customer_id, restaurant_id } = session.metadata || {};
+  const { customer_id, restaurant_id, type } = session.metadata || {};
 
   if (!customer_id || !restaurant_id) {
     console.error('Missing metadata (customer_id or restaurant_id) in session');
@@ -97,15 +99,18 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
   }
 
   // Check session type - could be a restaurant onboarding payment or customer subscription
-  const isRestaurantOnboarding = session.metadata?.type === 'restaurant_onboarding';
+  const isRestaurantOnboarding = type === 'restaurant_onboarding';
   
   if (isRestaurantOnboarding) {
+    console.log(`Processing restaurant onboarding payment for restaurant_id: ${restaurant_id}`);
+    
     // Update restaurant record if this is an onboarding payment
     const { error: restaurantError } = await supabaseAdmin
       .from('restaurants')
       .update({
         payment_session_id: session.id,
         payment_completed: true,
+        payment_date: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       })
       .eq('id', restaurant_id);
@@ -114,14 +119,44 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
       console.error('Error updating restaurant after checkout:', restaurantError);
       throw restaurantError;
     }
+    
+    // Check for pending invitation token and update
+    if (session.metadata?.invitation_token) {
+      await supabaseAdmin
+        .from('restaurant_invitations')
+        .update({
+          status: 'paid',
+          payment_session_id: session.id,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('token', session.metadata.invitation_token);
+    }
   } else {
+    console.log(`Processing customer subscription for customer_id: ${customer_id}`);
+    
+    // Create a new Stripe customer if one doesn't exist yet
+    let stripeCustomerId = session.customer as string;
+    
+    if (!stripeCustomerId && session.customer_email) {
+      // Create a new Stripe customer from the email
+      const newCustomer = await stripe.customers.create({
+        email: session.customer_email,
+        metadata: {
+          customer_id,
+          restaurant_id,
+        }
+      });
+      stripeCustomerId = newCustomer.id;
+    }
+    
     // Regular customer subscription payment
     const { error: updateError } = await supabaseAdmin
       .from('customers')
       .update({
-        stripe_customer_id: session.customer,
-        stripe_subscription_id: session.subscription,
+        stripe_customer_id: stripeCustomerId,
+        stripe_subscription_id: session.subscription as string,
         subscription_status: 'active',
+        subscription_start_date: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       })
       .eq('id', customer_id);
@@ -137,18 +172,42 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
  * Handle customer.subscription.updated event
  */
 async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
-  const { customer_id } = subscription.metadata || {};
+  const { customer_id, restaurant_id } = subscription.metadata || {};
   
   if (!customer_id) {
+    // Try to get metadata from the Stripe customer
+    const customerId = subscription.customer as string;
+    try {
+      const customer = await stripe.customers.retrieve(customerId);
+      const metadata = (customer as Stripe.Customer).metadata;
+      
+      if (metadata.customer_id) {
+        await updateSubscriptionByCustomerId(metadata.customer_id, subscription);
+        return;
+      }
+    } catch (err) {
+      console.error('Error fetching Stripe customer:', err);
+    }
+    
     console.error('Missing customer_id in subscription metadata');
     return;
   }
 
+  await updateSubscriptionByCustomerId(customer_id, subscription);
+}
+
+/**
+ * Update subscription status by customer ID
+ */
+async function updateSubscriptionByCustomerId(customerId: string, subscription: Stripe.Subscription) {
   // First try updating by subscription ID
   const { error: subIdError, count } = await supabaseAdmin
     .from('customers')
     .update({
       subscription_status: subscription.status,
+      current_period_end: subscription.current_period_end 
+        ? new Date(subscription.current_period_end * 1000).toISOString() 
+        : null,
       updated_at: new Date().toISOString(),
     })
     .eq('stripe_subscription_id', subscription.id)
@@ -165,9 +224,12 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
       .update({
         stripe_subscription_id: subscription.id,
         subscription_status: subscription.status,
+        current_period_end: subscription.current_period_end 
+          ? new Date(subscription.current_period_end * 1000).toISOString() 
+          : null,
         updated_at: new Date().toISOString(),
       })
-      .eq('id', customer_id);
+      .eq('id', customerId);
 
     if (custIdError) {
       console.error('Error updating subscription by customer ID:', custIdError);
@@ -183,10 +245,31 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
   const { customer_id } = subscription.metadata || {};
   
   if (!customer_id) {
+    // Try to get metadata from the Stripe customer
+    const customerId = subscription.customer as string;
+    try {
+      const customer = await stripe.customers.retrieve(customerId);
+      const metadata = (customer as Stripe.Customer).metadata;
+      
+      if (metadata.customer_id) {
+        await updateSubscriptionCancellation(metadata.customer_id, subscription);
+        return;
+      }
+    } catch (err) {
+      console.error('Error fetching Stripe customer:', err);
+    }
+    
     console.error('Missing customer_id in subscription metadata');
     return;
   }
 
+  await updateSubscriptionCancellation(customer_id, subscription);
+}
+
+/**
+ * Update subscription cancellation by customer ID
+ */
+async function updateSubscriptionCancellation(customerId: string, subscription: Stripe.Subscription) {
   const canceledAt = subscription.canceled_at
     ? new Date(subscription.canceled_at * 1000).toISOString()
     : new Date().toISOString();

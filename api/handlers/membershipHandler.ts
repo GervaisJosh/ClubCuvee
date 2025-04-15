@@ -2,7 +2,11 @@ import { stripe } from '../utils/stripeClient';
 import { supabaseAdmin } from '../utils/supabaseAdmin';
 import { validateRequest, validatePrice } from '../utils/validation';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { randomUUID } from 'crypto';
 
+/**
+ * Create a membership tier with Stripe product/price
+ */
 export async function createMembershipTier(req: VercelRequest, res: VercelResponse) {
   try {
     const { name, price, description, restaurant_id } = req.body;
@@ -112,6 +116,9 @@ export async function createMembershipTier(req: VercelRequest, res: VercelRespon
   }
 }
 
+/**
+ * Update a membership tier, potentially creating a new Stripe price
+ */
 export async function updateMembershipTier(req: VercelRequest, res: VercelResponse) {
   try {
     const { id, name, price, description, restaurant_id, stripe_product_id, stripe_price_id } = req.body;
@@ -239,11 +246,152 @@ export async function updateMembershipTier(req: VercelRequest, res: VercelRespon
   }
 }
 
+/**
+ * Generate a secure invitation link for a restaurant
+ */
+export async function createInvitationLink(req: VercelRequest, res: VercelResponse) {
+  try {
+    const { email, restaurant_name, website, admin_name, tier = 'standard' } = req.body;
+    
+    // Validate request
+    const validation = validateRequest(
+      req.body,
+      ['email', 'restaurant_name'],
+      {
+        email: (value) => {
+          const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+          return emailRegex.test(value) 
+            ? null 
+            : { field: 'email', message: 'Invalid email format' };
+        },
+      }
+    );
+    
+    if (!validation.isValid) {
+      return res.status(400).json({
+        error: 'Validation failed',
+        details: validation.errors,
+      });
+    }
+    
+    // Check if email is already registered
+    const { data: existingUser, error: userError } = await supabaseAdmin
+      .from('restaurants')
+      .select('id')
+      .eq('admin_email', email)
+      .maybeSingle();
+    
+    if (existingUser) {
+      return res.status(400).json({
+        error: 'This email is already associated with a restaurant account'
+      });
+    }
+    
+    // Generate a secure token
+    const token = randomUUID();
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 7); // Token valid for 7 days
+    
+    // Store invitation
+    const { data: invitation, error: inviteError } = await supabaseAdmin
+      .from('restaurant_invitations')
+      .insert([{
+        token,
+        email,
+        restaurant_name,
+        website: website || '',
+        admin_name: admin_name || '',
+        tier,
+        created_at: new Date().toISOString(),
+        expires_at: expiresAt.toISOString(),
+        status: 'pending'
+      }])
+      .select()
+      .single();
+    
+    if (inviteError) {
+      return res.status(500).json({
+        error: `Failed to create invitation: ${inviteError.message}`
+      });
+    }
+    
+    // Generate invitation URL from environment
+    const baseUrl = process.env.FRONTEND_URL || 'https://your-domain.com';
+    const invitationUrl = `${baseUrl}/onboarding/${token}`;
+    
+    // In a production app, you'd send an email with this link here...
+    
+    return res.status(200).json({
+      invitation,
+      invitation_url: invitationUrl,
+      message: 'Invitation created successfully'
+    });
+  } catch (error: any) {
+    console.error('Error creating invitation:', error);
+    return res.status(500).json({
+      error: error.message || 'Internal server error',
+    });
+  }
+}
+
+/**
+ * Verify Stripe configuration and connectivity
+ */
+export async function verifyStripeSetup(req: VercelRequest, res: VercelResponse) {
+  try {
+    // Verify we can connect to Stripe API
+    const balance = await stripe.balance.retrieve();
+    
+    // Check for required environment variables
+    const configStatus = {
+      STRIPE_SECRET_KEY: !!process.env.STRIPE_SECRET_KEY ? 'configured' : 'missing',
+      STRIPE_WEBHOOK_SECRET: !!process.env.STRIPE_WEBHOOK_SECRET ? 'configured' : 'missing',
+      STRIPE_PUBLIC_KEY: !!process.env.STRIPE_PUBLIC_KEY ? 'configured' : 'missing',
+    };
+    
+    return res.status(200).json({
+      status: 'success',
+      message: 'Stripe API connection successful',
+      livemode: balance.livemode,
+      config: configStatus,
+      balance: {
+        available: balance.available.map(b => ({ 
+          amount: (b.amount / 100).toFixed(2),
+          currency: b.currency 
+        })),
+        pending: balance.pending.map(b => ({ 
+          amount: (b.amount / 100).toFixed(2),
+          currency: b.currency 
+        })),
+      }
+    });
+  } catch (error: any) {
+    // Check if it's a Stripe authentication error
+    if (error.type === 'StripeAuthenticationError') {
+      return res.status(401).json({
+        status: 'error',
+        error: 'Invalid Stripe API key. Please check your STRIPE_SECRET_KEY environment variable.',
+        details: error.message
+      });
+    }
+    
+    console.error('Error verifying Stripe setup:', error);
+    return res.status(500).json({
+      status: 'error',
+      error: error.message || 'Internal server error'
+    });
+  }
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  if (req.method === 'POST') {
+  if (req.method === 'POST' && req.url?.includes('/invite')) {
+    return createInvitationLink(req, res);
+  } else if (req.method === 'POST') {
     return createMembershipTier(req, res);
   } else if (req.method === 'PUT') {
     return updateMembershipTier(req, res);
+  } else if (req.method === 'GET' && req.url?.includes('/verify-stripe')) {
+    return verifyStripeSetup(req, res);
   } else {
     return res.status(405).json({ error: 'Method not allowed' });
   }

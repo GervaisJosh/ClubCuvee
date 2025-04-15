@@ -1,262 +1,336 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import { useTheme } from '../contexts/ThemeContext';
-import { CheckCircle, Mail, User, Briefcase, Send } from 'lucide-react';
 import Footer from '../components/Footer';
 import Header from '../components/Header';
 import emailjs from '@emailjs/browser';
 
+interface FormData {
+  restaurantName: string;
+  name: string;
+  email: string;
+  message: string;
+}
+
 const GetStarted: React.FC = () => {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
-  const formRef = useRef<HTMLFormElement>(null);
-  
-  // Form state
-  const [formData, setFormData] = useState({
-    user_name: '',
-    business_name: '',
-    user_email: '',
+
+  // Form data state
+  const [formData, setFormData] = useState<FormData>({
+    restaurantName: '',
+    name: '',
+    email: '',
     message: ''
   });
-  
-  // UI states
-  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Error state for validation
+  const [errors, setErrors] = useState<Partial<FormData>>({});
+
+  // Tracks if submission was successful
   const [submitted, setSubmitted] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  
-  // Update form data on input changes
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+
+  // EmailJS credentials (replace with your own)
+  const serviceID = 'service_ClubCuvee';
+  const templateID = 'template_5bsmunr';
+  const publicKey = 'P83AFq75aatLIuGHP';
+
+  // Validate form inputs
+  const validateForm = (): boolean => {
+    const newErrors: Partial<FormData> = {};
+
+    if (!formData.restaurantName.trim()) {
+      newErrors.restaurantName = 'Business name is required';
+    }
+    if (!formData.name.trim()) {
+      newErrors.name = 'Your name is required';
+    }
+    if (!formData.email.trim()) {
+      newErrors.email = 'Email is required';
+    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+      newErrors.email = 'Invalid email format';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  // Handle form submission
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!validateForm()) return;
+
+    // Send the email via EmailJS
+    emailjs
+      .send(
+        serviceID,
+        templateID,
+        {
+          restaurantName: formData.restaurantName,
+          name: formData.name,
+          email: formData.email,
+          message: formData.message
+        },
+        publicKey
+      )
+      .then(
+        (response) => {
+          console.log('SUCCESS!', response.status, response.text);
+          setSubmitted(true);
+        },
+        (error) => {
+          console.error('FAILED...', error);
+          // Optionally handle the error (e.g., show an error message)
+        }
+      );
+  };
+
+  // Update form state and clear errors as user types
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       [name]: value
     }));
-    
-    // Clear error when user types
-    if (error) setError(null);
-  };
-  
-  // Handle form submission
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    // Basic validation
-    if (!formData.user_name || !formData.business_name || !formData.user_email) {
-      setError('Please fill in all required fields');
-      return;
-    }
-    
-    setIsSubmitting(true);
-    setError(null);
-    
-    try {
-      // Send email via EmailJS
-      const result = await emailjs.sendForm(
-        'service_lvxm3yd', // Replace with your EmailJS service ID
-        'template_2qf5jws', // Replace with your EmailJS template ID
-        formRef.current!,
-        'tJ5Euu7UBYqeJ26yO' // Replace with your EmailJS public key
-      );
-      
-      console.log('Email sent successfully:', result.text);
-      setSubmitted(true);
-    } catch (error: any) {
-      console.error('Email send error:', error);
-      setError(error.text || 'Failed to send your inquiry. Please try again.');
-    } finally {
-      setIsSubmitting(false);
+    if (errors[name as keyof FormData]) {
+      setErrors((prev) => ({
+        ...prev,
+        [name]: undefined
+      }));
     }
   };
-  
+
   return (
     <div
-      className={`min-h-screen ${isDark ? 'bg-black text-white' : 'bg-white text-gray-900'} transition-colors duration-200`}
+      className={`min-h-screen ${isDark ? 'bg-black' : 'bg-white'} transition-colors duration-200`}
     >
       <Header />
 
-      <div className="pt-16">
-        {/* Hero Section */}
-        <div className="relative h-[300px] bg-[#2A3D45]">
-          <div
-            className="absolute inset-0 opacity-20"
-            style={{
-              backgroundImage: `url('/images/wine-cellar-how.jpg')`,
-              backgroundSize: 'cover',
-              backgroundPosition: 'center',
-              filter: 'blur(4px)'
-            }}
-          ></div>
-          <div className="absolute inset-0 flex flex-col items-center justify-center p-4">
-            <h1
-              className="text-4xl lg:text-5xl font-bold text-white text-center"
-              style={{ fontFamily: 'HV Florentino' }}
-            >
-              Start Your Wine Club Journey
-            </h1>
-            <p
-              className="mt-4 text-xl text-white text-center max-w-2xl"
-              style={{ fontFamily: 'Libre Baskerville' }}
-            >
-              Transform your wine program with our innovative platform. Get in touch and we'll help you get started.
-            </p>
+      <div className="pt-16 flex flex-col lg:flex-row min-h-[calc(100vh-4rem)]">
+        {/* Hero Section with GIF */}
+        <div className="w-full lg:w-3/5 p-5 lg:p-8">
+          <div className="relative w-full h-[600px] lg:h-[calc(100vh-8rem)] rounded-xl shadow-xl overflow-hidden">
+            <img
+              src="https://github.com/GervaisJosh/ClubCuvee/raw/f25924c7818b87901f28cbea878411ead30250a0/public/images/IMG_8712.gif?raw=true"
+              alt="Wine Service Animation"
+              className="w-full h-full object-cover object-top"
+              loading="eager"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/50 to-black/30"></div>
+
+            {/* Text Overlay */}
+            <div className="absolute inset-0 flex flex-col justify-center px-8 lg:px-12">
+              <h1
+                className="text-4xl lg:text-5xl font-bold text-white mb-6"
+                style={{ fontFamily: 'HV Florentino' }}
+              >
+                Try Club Cuvee Today
+              </h1>
+              <div className="max-w-2xl">
+                <p
+                  className="text-lg lg:text-xl text-white/90 leading-relaxed"
+                  style={{ fontFamily: 'HV Florentino' }}
+                >
+                  Transform your wine program with our innovative platform. Leverage your existing
+                  inventory, and pair your loyal customers with their perfect bottles.
+                </p>
+                <p
+                  className="text-lg lg:text-xl text-white/90 leading-relaxed mt-4"
+                  style={{ fontFamily: 'HV Florentino' }}
+                >
+                  They get a personalized, sommelier-level experience at their fingertips; your
+                  business gains additional revenue with our AI-enhanced tools for your specific
+                  needs.
+                </p>
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Contact Form Section */}
-        <div className="max-w-4xl mx-auto px-4 py-12">
-          {submitted ? (
-            // Success message
-            <div className="bg-white p-8 rounded-lg shadow-lg text-center">
-              <div className="mb-6 p-4 bg-green-100 rounded-full inline-flex items-center justify-center">
-                <CheckCircle className="w-16 h-16 text-green-500" />
+        {/* Form Section */}
+        <div className="w-full lg:w-2/5 flex items-center justify-center p-6 lg:p-12">
+          <div
+            className={`w-full max-w-xl rounded-2xl p-8 ${
+              isDark ? 'bg-gray-800 text-gray-100' : 'bg-gray-100 text-gray-900'
+            } shadow-2xl transition-all duration-300`}
+          >
+            {submitted ? (
+              // If the form is successfully submitted, show a confirmation message
+              <div className="text-center">
+                <h2
+                  className={`text-2xl font-semibold mb-2 ${isDark ? 'text-white' : 'text-gray-900'}`}
+                  style={{ fontFamily: 'HV Florentino' }}
+                >
+                  Thank You!
+                </h2>
+                <p
+                  className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'} mb-6`}
+                  style={{ fontFamily: 'TayBasal' }}
+                >
+                  Your inquiry has been received. We will reach out to you shortly. Cheers!
+                </p>
               </div>
-              <h2 className="text-2xl font-bold mb-4 text-[#872657]">Inquiry Received!</h2>
-              <p className="text-lg mb-6">
-                Thank you for your interest in Club Cuvée. We've received your message and will be in touch shortly.
-              </p>
-              <p className="text-gray-600">
-                Our team will review your inquiry and contact you with more information about getting started with Club Cuvée.
-              </p>
-            </div>
-          ) : (
-            // Contact form
-            <div className="bg-white p-8 rounded-lg shadow-lg">
-              <h2 className="text-2xl font-bold mb-2 text-[#872657]">Get in Touch</h2>
-              <p className="text-gray-600 mb-6">
-                Interested in offering a personalized wine club to your customers? Fill out the form below and we'll be in touch.
-              </p>
-              
-              {error && (
-                <div className="mb-6 p-4 bg-red-100 text-red-700 rounded-md">
-                  {error}
+            ) : (
+              // Otherwise, display the form
+              <form onSubmit={handleSubmit} className="space-y-6">
+                <div className="text-center">
+                  <h2
+                    className={`text-2xl font-semibold mb-2 ${
+                      isDark ? 'text-white' : 'text-gray-900'
+                    }`}
+                    style={{ fontFamily: 'HV Florentino' }}
+                  >
+                    Curious?
+                  </h2>
+                  <p
+                    className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'} mb-6`}
+                    style={{ fontFamily: 'TayBasal' }}
+                  >
+                    Reach out and see how the future of hospitality begins with your business
+                  </p>
                 </div>
-              )}
-              
-              <form ref={formRef} onSubmit={handleSubmit} className="space-y-6">
-                {/* Name input */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Your Name *
-                  </label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <User className="h-5 w-5 text-gray-400" />
-                    </div>
+
+                <div className="space-y-5">
+                  {/* Business Name Field */}
+                  <div>
+                    <label
+                      className={`block text-sm font-medium mb-2 ${
+                        isDark ? 'text-gray-300' : 'text-gray-700'
+                      }`}
+                      style={{ fontFamily: 'TayBasal' }}
+                    >
+                      Business Name
+                    </label>
                     <input
                       type="text"
-                      name="user_name"
-                      value={formData.user_name}
-                      onChange={handleInputChange}
-                      required
-                      className="pl-10 w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#872657] focus:border-transparent"
-                      placeholder="Jane Smith"
+                      name="restaurantName"
+                      value={formData.restaurantName}
+                      onChange={handleChange}
+                      className={`w-full px-4 py-3 rounded-lg ${
+                        isDark
+                          ? 'bg-gray-700 border border-gray-600 text-white'
+                          : 'bg-white border border-gray-200 text-gray-900'
+                      } focus:ring-2 focus:ring-[#800020] focus:border-transparent transition-all`}
                     />
+                    {errors.restaurantName && (
+                      <p className="mt-1 text-sm text-red-500 text-left">
+                        {errors.restaurantName}
+                      </p>
+                    )}
                   </div>
-                </div>
-                
-                {/* Business name input */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Business Name *
-                  </label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <Briefcase className="h-5 w-5 text-gray-400" />
-                    </div>
+
+                  {/* Your Name Field */}
+                  <div>
+                    <label
+                      className={`block text-sm font-medium mb-2 ${
+                        isDark ? 'text-gray-300' : 'text-gray-700'
+                      }`}
+                      style={{ fontFamily: 'TayBasal' }}
+                    >
+                      Your Name
+                    </label>
                     <input
                       type="text"
-                      name="business_name"
-                      value={formData.business_name}
-                      onChange={handleInputChange}
-                      required
-                      className="pl-10 w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#872657] focus:border-transparent"
-                      placeholder="Your Restaurant or Wine Shop"
+                      name="name"
+                      value={formData.name}
+                      onChange={handleChange}
+                      className={`w-full px-4 py-3 rounded-lg ${
+                        isDark
+                          ? 'bg-gray-700 border border-gray-600 text-white'
+                          : 'bg-white border border-gray-200 text-gray-900'
+                      } focus:ring-2 focus:ring-[#800020] focus:border-transparent transition-all`}
                     />
+                    {errors.name && (
+                      <p className="mt-1 text-sm text-red-500 text-left">{errors.name}</p>
+                    )}
                   </div>
-                </div>
-                
-                {/* Email input */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Email Address *
-                  </label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <Mail className="h-5 w-5 text-gray-400" />
-                    </div>
+
+                  {/* Email Field */}
+                  <div>
+                    <label
+                      className={`block text-sm font-medium mb-2 ${
+                        isDark ? 'text-gray-300' : 'text-gray-700'
+                      }`}
+                      style={{ fontFamily: 'TayBasal' }}
+                    >
+                      Email
+                    </label>
                     <input
                       type="email"
-                      name="user_email"
-                      value={formData.user_email}
-                      onChange={handleInputChange}
-                      required
-                      className="pl-10 w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#872657] focus:border-transparent"
-                      placeholder="jane@yourrestaurant.com"
+                      name="email"
+                      value={formData.email}
+                      onChange={handleChange}
+                      className={`w-full px-4 py-3 rounded-lg ${
+                        isDark
+                          ? 'bg-gray-700 border border-gray-600 text-white'
+                          : 'bg-white border border-gray-200 text-gray-900'
+                      } focus:ring-2 focus:ring-[#800020] focus:border-transparent transition-all`}
                     />
+                    {errors.email && (
+                      <p className="mt-1 text-sm text-red-500 text-left">{errors.email}</p>
+                    )}
                   </div>
+
+                  {/* Message Field with Character Counter */}
+                  <div>
+                    <label
+                      className={`block text-sm font-medium mb-2 ${
+                        isDark ? 'text-gray-300' : 'text-gray-700'
+                      }`}
+                      style={{ fontFamily: 'TayBasal' }}
+                    >
+                      Message (Optional)
+                    </label>
+                    <div className="relative">
+                      <textarea
+                        name="message"
+                        value={formData.message}
+                        onChange={handleChange}
+                        maxLength={500}
+                        rows={3}
+                        className={`w-full px-4 py-3 pr-16 rounded-lg ${
+                          isDark
+                            ? 'bg-gray-700 border border-gray-600 text-white'
+                            : 'bg-white border border-gray-200 text-gray-900'
+                        } focus:ring-2 focus:ring-[#800020] focus:border-transparent transition-all`}
+                      />
+                      <span
+                        className={`absolute bottom-3 right-3 text-xs ${
+                          isDark ? 'text-gray-400' : 'text-gray-500'
+                        }`}
+                        style={{ fontFamily: 'TayBasal' }}
+                      >
+                        {formData.message.length}/500
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Submit Button */}
+                  <button
+                    type="submit"
+                    style={{ fontFamily: 'TayBasal' }}
+                    className="w-full py-3.5 bg-[#800020] text-white rounded-lg hover:bg-[#600018] transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-[#800020] focus:ring-offset-2"
+                  >
+                    Submit
+                  </button>
                 </div>
-                
-                {/* Message textarea */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Message (Optional)
-                  </label>
-                  <textarea
-                    name="message"
-                    value={formData.message}
-                    onChange={handleInputChange}
-                    rows={4}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#872657] focus:border-transparent"
-                    placeholder="Tell us a bit about your business and what you're looking for..."
-                  ></textarea>
-                </div>
-                
-                {/* Submit button */}
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className={`w-full py-3 bg-[#872657] text-white rounded-md hover:bg-opacity-90 font-bold flex items-center justify-center ${
-                    isSubmitting ? 'opacity-70 cursor-not-allowed' : ''
-                  }`}
-                >
-                  {isSubmitting ? (
-                    <>
-                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      Sending...
-                    </>
-                  ) : (
-                    <>
-                      <Send className="mr-2 h-5 w-5" />
-                      Send Inquiry
-                    </>
-                  )}
-                </button>
+
+                <p className={`text-center text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                  By continuing, you agree to our{' '}
+                  <a
+                    href="/terms"
+                    className={`${
+                      isDark
+                        ? 'text-[#800020] hover:text-[#600018]'
+                        : 'text-[#800020] hover:text-[#600018]'
+                    } underline`}
+                  >
+                    Terms of Service
+                  </a>
+                </p>
               </form>
-            </div>
-          )}
-          
-          {/* Additional information */}
-          <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="bg-white p-6 rounded-lg shadow-md">
-              <h3 className="text-xl font-semibold mb-2 text-[#2A3D45]">Personalized Wine Programs</h3>
-              <p className="text-gray-600">
-                Create custom wine subscriptions that match your customers' preferences with your existing inventory.
-              </p>
-            </div>
-            <div className="bg-white p-6 rounded-lg shadow-md">
-              <h3 className="text-xl font-semibold mb-2 text-[#2A3D45]">Easy Management</h3>
-              <p className="text-gray-600">
-                Simple dashboard to manage subscriptions, view analytics, and track customer preferences.
-              </p>
-            </div>
-            <div className="bg-white p-6 rounded-lg shadow-md">
-              <h3 className="text-xl font-semibold mb-2 text-[#2A3D45]">Recurring Revenue</h3>
-              <p className="text-gray-600">
-                Build a stable income stream while deepening relationships with your best customers.
-              </p>
-            </div>
+            )}
           </div>
         </div>
       </div>
