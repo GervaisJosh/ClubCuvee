@@ -431,7 +431,7 @@ export async function verifyStripeSetup(req: VercelRequest, res: VercelResponse)
     const configStatus = {
       STRIPE_SECRET_KEY: !!process.env.STRIPE_SECRET_KEY ? 'configured' : 'missing',
       STRIPE_WEBHOOK_SECRET: !!process.env.STRIPE_WEBHOOK_SECRET ? 'configured' : 'missing',
-      STRIPE_PUBLIC_KEY: !!process.env.STRIPE_PUBLIC_KEY ? 'configured' : 'missing',
+      VITE_STRIPE_PUBLIC_KEY: !!(process.env.VITE_STRIPE_PUBLIC_KEY || process.env.STRIPE_PUBLIC_KEY) ? 'configured' : 'missing',
     };
     
     return res.status(200).json({
