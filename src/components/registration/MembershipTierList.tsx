@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Edit, Trash2 } from 'lucide-react';
+import { Plus, Edit, Trash2, Wine, Tag, Star, Trophy } from 'lucide-react';
 import type { MembershipTier } from '../../types';
 import MembershipTierModal from '../membership-tier-modal';
 
@@ -12,6 +12,13 @@ interface MembershipTierListProps {
   minTiersRequired?: number;
   error?: string;
 }
+
+// Predefined tier colors and icons for visual variety
+const tierIcons = [
+  { icon: <Wine className="w-6 h-6" />, color: "#9C2755" },
+  { icon: <Trophy className="w-6 h-6" />, color: "#AA7F39" },
+  { icon: <Star className="w-6 h-6" />, color: "#2F4858" }
+];
 
 const MembershipTierList: React.FC<MembershipTierListProps> = ({
   tiers,
@@ -77,15 +84,20 @@ const MembershipTierList: React.FC<MembershipTierListProps> = ({
     }
   };
 
+  // Get a tier icon and color based on index or default
+  const getTierStyle = (index: number) => {
+    return index < tierIcons.length ? tierIcons[index] : tierIcons[0];
+  };
+
   return (
-    <div className="space-y-4">
-      <h2 className="text-xl font-bold mb-4 text-[#872657]">
+    <div className="space-y-6">
+      <h2 className="text-2xl font-bold mb-4 text-[#872657]">
         Membership Tiers
       </h2>
 
       <p className="mb-6 text-gray-700">
-        Define the membership tiers that your customers can subscribe to.
-        Each tier should have a unique name, pricing, and description of benefits.
+        Define 1-3 membership tiers that your guests can subscribe to.
+        Each tier should have a unique name, price, and description of benefits.
       </p>
 
       {error && (
@@ -94,60 +106,101 @@ const MembershipTierList: React.FC<MembershipTierListProps> = ({
         </div>
       )}
 
-      {/* List of tiers */}
+      {/* List of tiers - Bento Box style */}
       {tiers.length > 0 ? (
-        tiers.map((tier) => (
-          <div
-            key={tier.id}
-            className="p-4 border border-gray-200 rounded-lg bg-gray-50 flex justify-between items-center"
-          >
-            <div>
-              <h3 className="font-semibold text-lg text-[#872657]">
-                {tier.name}
-              </h3>
-              <p className="text-sm text-gray-500">
-                ${typeof tier.price === 'string' ? parseFloat(tier.price).toFixed(2) : tier.price.toFixed(2)}/month
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {tiers.map((tier, index) => {
+            const tierStyle = getTierStyle(index);
+            
+            return (
+              <div
+                key={tier.id}
+                className="bg-white rounded-lg shadow-md overflow-hidden border border-gray-100 hover:shadow-lg transition-shadow"
+                style={{ minHeight: '220px' }}
+              >
+                {/* Header with icon */}
+                <div 
+                  className="p-4 text-white flex justify-between items-center"
+                  style={{ backgroundColor: tierStyle.color }}
+                >
+                  <div className="flex items-center">
+                    <div className="w-10 h-10 rounded-full bg-white bg-opacity-20 flex items-center justify-center mr-3">
+                      {tierStyle.icon}
+                    </div>
+                    <h3 className="font-bold text-xl">{tier.name}</h3>
+                  </div>
+                  <div className="flex space-x-1">
+                    <button
+                      type="button"
+                      onClick={() => openEditModal(tier)}
+                      className="p-1.5 bg-white bg-opacity-20 rounded-full hover:bg-opacity-30"
+                      aria-label={`Edit ${tier.name}`}
+                    >
+                      <Edit className="w-4 h-4 text-white" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => confirmDelete(tier)}
+                      className="p-1.5 bg-white bg-opacity-20 rounded-full hover:bg-opacity-30"
+                      aria-label={`Delete ${tier.name}`}
+                    >
+                      <Trash2 className="w-4 h-4 text-white" />
+                    </button>
+                  </div>
+                </div>
+                
+                {/* Price tag */}
+                <div className="px-4 py-3 bg-gray-50 border-b border-gray-100">
+                  <div className="flex items-center">
+                    <Tag className="w-4 h-4 text-gray-500 mr-2" />
+                    <span className="text-2xl font-bold text-gray-800">
+                      ${typeof tier.price === 'string' ? parseFloat(tier.price).toFixed(2) : tier.price.toFixed(2)}
+                    </span>
+                    <span className="text-gray-500 ml-1">/month</span>
+                  </div>
+                </div>
+                
+                {/* Description */}
+                <div className="p-4">
+                  <p className="text-gray-700 text-sm">
+                    {tier.description || "No description provided."}
+                  </p>
+                </div>
+              </div>
+            );
+          })}
+          
+          {/* Add new tier card */}
+          {tiers.length < 3 && (
+            <div 
+              onClick={openAddModal}
+              className="bg-white rounded-lg border-2 border-dashed border-gray-300 flex flex-col items-center justify-center p-6 cursor-pointer hover:border-[#872657] hover:bg-gray-50 transition-colors"
+              style={{ minHeight: '220px' }}
+            >
+              <div className="w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center mb-4">
+                <Plus className="w-8 h-8 text-gray-400" />
+              </div>
+              <p className="text-gray-500 font-medium text-center">Add Another Tier</p>
+              <p className="text-xs text-gray-400 text-center mt-1">
+                {tiers.length === 0 ? 'Add your first membership tier' : 'You can add up to 3 tiers'}
               </p>
-              <p className="text-sm mt-1">{tier.description}</p>
             </div>
-            <div className="flex space-x-2">
-              <button
-                type="button"
-                onClick={() => openEditModal(tier)}
-                className="p-2 text-blue-600 hover:bg-blue-50 rounded-full"
-                aria-label={`Edit ${tier.name}`}
-              >
-                <Edit className="w-5 h-5" />
-              </button>
-              <button
-                type="button"
-                onClick={() => confirmDelete(tier)}
-                className="p-2 text-red-600 hover:bg-red-50 rounded-full"
-                aria-label={`Delete ${tier.name}`}
-              >
-                <Trash2 className="w-5 h-5" />
-              </button>
-            </div>
-          </div>
-        ))
+          )}
+        </div>
       ) : (
-        <div className="text-center py-8 bg-gray-50 rounded-lg border border-dashed border-gray-300 mb-6">
-          <p className="text-gray-500 mb-2">No membership tiers added yet</p>
-          <p className="text-sm text-gray-400">
-            Click the button below to add your first tier
+        <div 
+          onClick={openAddModal}
+          className="bg-white rounded-lg border-2 border-dashed border-gray-300 flex flex-col items-center justify-center p-12 cursor-pointer hover:border-[#872657] hover:bg-gray-50 transition-colors"
+        >
+          <div className="w-20 h-20 rounded-full bg-gray-100 flex items-center justify-center mb-6">
+            <Plus className="w-10 h-10 text-gray-400" />
+          </div>
+          <h3 className="text-xl font-medium text-gray-700 mb-2">Create Your First Tier</h3>
+          <p className="text-gray-500 text-center max-w-md">
+            Define at least one membership tier with a name, price, and description
           </p>
         </div>
       )}
-
-      {/* Add button */}
-      <button
-        type="button"
-        onClick={openAddModal}
-        className="flex items-center justify-center w-full py-3 border-2 border-dashed border-[#872657] text-[#872657] rounded-md hover:bg-[#872657]/5"
-      >
-        <Plus className="w-5 h-5 mr-2" />
-        Add Membership Tier
-      </button>
 
       {/* Modal */}
       <MembershipTierModal

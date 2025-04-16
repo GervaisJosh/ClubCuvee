@@ -1,22 +1,26 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { Loader2, CheckCircle } from 'lucide-react';
+import { Loader2, CheckCircle, Wine } from 'lucide-react';
 import { supabase } from '../../supabase';
 import { restaurantService } from '../../services/restaurantService';
 import { membershipService } from '../../services/membershipService';
-import { stripeService } from '../../services/stripeService';
 import RegistrationSteps from '../../components/registration/RegistrationSteps';
-import Layout from '../../components/Layout';
+import AuthLayout from '../../components/AuthLayout';
 import type { RestaurantFormData, MembershipTier, FormErrors } from '../../types';
 
 /**
- * Restaurant Onboarding Wizard
+ * Restaurant Onboarding Page
  * 
- * This component orchestrates the entire restaurant registration flow:
- * 1. Info collection (restaurant details, admin account)
- * 2. Membership tier configuration
- * 3. Payment processing via Stripe
- * 4. Finalization and dashboard redirect
+ * This component is part of the restaurant registration flow, accessed via:
+ * 1. A secure token URL from an email invitation
+ * 2. Direct navigation to /onboarding/[token]
+ * 
+ * The page guides restaurants through the onboarding process:
+ * - Validating the invitation token
+ * - Collecting restaurant/admin information
+ * - Creating membership tiers
+ * - Setting up Stripe integration
+ * - Completing registration
  */
 const RestaurantOnboarding: React.FC = () => {
   const { restaurantRef } = useParams<{ restaurantRef: string }>();
@@ -52,10 +56,11 @@ const RestaurantOnboarding: React.FC = () => {
   const [tiers, setTiers] = useState<MembershipTier[]>([]);
   const [restaurantId, setRestaurantId] = useState<string>('');
   
-  // For handling Stripe payment verification
-  const [paymentVerified, setPaymentVerified] = useState(false);
+  // For handling Stripe payment verification - defaults to true for simplicity in this version
+  // In a full implementation, you might want to verify payment status with Stripe
+  const [paymentVerified, setPaymentVerified] = useState(true);
 
-  // Check for existing registration or payment status
+  // Check for existing registration or validate invitation token
   useEffect(() => {
     const checkRegistrationStatus = async () => {
       try {
@@ -64,13 +69,10 @@ const RestaurantOnboarding: React.FC = () => {
         // If we have a sessionId and status=success from Stripe redirect
         if (sessionId && paymentStatus === 'success') {
           setPaymentVerified(true);
-          
-          // Optionally: verify the session with Stripe
-          // const isValid = await stripeService.verifyPaymentSession(sessionId);
         }
         
         // If we have a restaurant reference token, try to load data
-        if (restaurantRef && restaurantRef !== 'new') {
+        if (restaurantRef) {
           // First check if it's an invitation token
           const invitation = await restaurantService.getInvitationByToken(restaurantRef);
           
@@ -126,33 +128,16 @@ const RestaurantOnboarding: React.FC = () => {
               await restaurantService.updateInvitationStatus(invitation.token, 'accepted');
             }
           } else {
-            // Check if this is a valid token for resuming registration in the legacy format
-            const { data: tokenData, error: tokenError } = await supabase
-              .from('registration_tokens')
-              .select('*')
-              .eq('token', restaurantRef)
-              .single();
-              
-            if (!tokenError && tokenData) {
-              // Found valid registration data to resume
-              if (tokenData.restaurant_data) {
-                setRestaurantData(tokenData.restaurant_data as RestaurantFormData);
-              }
-              
-              if (tokenData.tiers) {
-                setTiers(tokenData.tiers as MembershipTier[]);
-              }
-              
-              if (tokenData.restaurant_id) {
-                setRestaurantId(tokenData.restaurant_id);
-                setCurrentStep(2); // Skip to membership tiers step
-              }
-              
-              if (tokenData.payment_session_id) {
-                setPaymentVerified(true);
-              }
-            }
+            // Invalid token
+            setErrors({
+              general: 'Invalid invitation token. Please check your invitation email or contact support.'
+            });
           }
+        } else {
+          // No token provided
+          setErrors({
+            general: 'No invitation token provided. Please use the link from your invitation email.'
+          });
         }
       } catch (error) {
         console.error('Error checking registration status:', error);
@@ -173,41 +158,10 @@ const RestaurantOnboarding: React.FC = () => {
     setErrors({});
     
     try {
-      // If we need to collect payment first, create a checkout session
-      if (!paymentVerified && !data.sessionId) {
-        const checkoutData: CheckoutSessionData = {
-          customerId: 'pending', // Will be updated after account creation
-          customerEmail: data.email,
-          restaurantId: 'pending',
-          successUrl: `${window.location.origin}/onboarding/${restaurantRef || 'new'}?session_id={CHECKOUT_SESSION_ID}&status=success`,
-          cancelUrl: `${window.location.origin}/onboarding/${restaurantRef || 'new'}`,
-          metadata: {
-            type: 'restaurant_onboarding',
-            email: data.email,
-            restaurant_name: data.restaurantName
-          },
-          type: 'restaurant_onboarding'
-        };
-        
-        // If this is from an invitation, include the token in metadata
-        if (data.invitationToken) {
-          checkoutData.invitationToken = data.invitationToken;
-          checkoutData.metadata = {
-            ...checkoutData.metadata,
-            invitation_token: data.invitationToken
-          };
-        }
-        
-        const sessionId = await stripeService.createCheckoutSession(checkoutData);
-        await stripeService.redirectToCheckout(sessionId);
-        return; // Redirect in progress, stop execution
-      }
-      
-      // Otherwise, create the restaurant account
+      // Create the restaurant account
       const createdRestaurant = await restaurantService.createRestaurant({
         ...data,
         tier: data.tier || 'standard', // Use specified tier or default
-        sessionId: sessionId || undefined,
       });
       
       setRestaurantId(createdRestaurant.id);
@@ -224,37 +178,9 @@ const RestaurantOnboarding: React.FC = () => {
       if (data.invitationToken) {
         await restaurantService.updateInvitationStatus(
           data.invitationToken, 
-          sessionId ? 'paid' : 'accepted', 
+          'accepted', 
           createdRestaurant.id
         );
-      } 
-      // Otherwise use legacy registration tokens
-      else if (restaurantRef && restaurantRef !== 'new') {
-        await supabase
-          .from('registration_tokens')
-          .update({
-            restaurant_data: data,
-            restaurant_id: createdRestaurant.id,
-            last_updated: new Date().toISOString(),
-          })
-          .eq('token', restaurantRef);
-      } else {
-        // Generate a new token for resuming later if needed
-        const token = crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2);
-        
-        await supabase
-          .from('registration_tokens')
-          .insert([{
-            token,
-            restaurant_data: data,
-            restaurant_id: createdRestaurant.id,
-            payment_session_id: sessionId || null,
-            created_at: new Date().toISOString(),
-            last_updated: new Date().toISOString(),
-          }]);
-          
-        // Update URL with token for bookmark/sharing
-        navigate(`/onboarding/${token}${sessionId ? `?session_id=${sessionId}&status=success` : ''}`, { replace: true });
       }
       
       // Proceed to next step
@@ -321,15 +247,13 @@ const RestaurantOnboarding: React.FC = () => {
         updated_at: new Date().toISOString(),
       });
       
-      // Registration is complete!
-      setRegistrationComplete(true);
-      
-      // Clean up registration token if it exists
-      if (restaurantRef && restaurantRef !== 'new') {
-        await supabase
-          .from('registration_tokens')
-          .delete()
-          .eq('token', restaurantRef);
+      // If invitation token exists, update status to completed
+      if (restaurantData.invitationToken) {
+        await restaurantService.updateInvitationStatus(
+          restaurantData.invitationToken,
+          'completed',
+          finalRestaurantId
+        );
       }
       
       // Create user authentication and link to restaurant
@@ -350,65 +274,104 @@ const RestaurantOnboarding: React.FC = () => {
         // Don't fail the process - we can handle this separately
       }
       
+      // Registration is complete!
+      setRegistrationComplete(true);
+      
     } catch (error: any) {
       console.error('Error completing registration:', error);
       setErrors({
         general: error.message || 'Failed to complete registration'
       });
+    } finally {
       setIsSubmitting(false);
     }
   };
 
-  // State for Layout component props
-  const [viewMode, setViewMode] = useState<string>('registration');
-  const userRole = 'restaurant_admin'; // Default role for registration process
-  
   // Loading state
   if (isLoading) {
     return (
-      <Layout userRole={userRole} setViewMode={setViewMode}>
+      <AuthLayout>
         <div className="min-h-screen flex items-center justify-center">
-          <Loader2 className="h-12 w-12 animate-spin text-[#872657]" />
+          <div className="text-center">
+            <Loader2 className="h-12 w-12 animate-spin text-[#872657] mx-auto mb-4" />
+            <p className="text-gray-600">Loading your restaurant registration...</p>
+          </div>
         </div>
-      </Layout>
+      </AuthLayout>
     );
   }
   
   // Registration complete state
   if (registrationComplete) {
     return (
-      <Layout userRole={userRole} setViewMode={setViewMode}>
-        <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <AuthLayout>
+        <div className="min-h-screen flex items-center justify-center">
           <div className="max-w-md w-full p-8 bg-white rounded-lg shadow-lg text-center">
             <div className="mb-6 p-4 bg-green-100 rounded-full inline-flex items-center justify-center">
               <CheckCircle className="w-16 h-16 text-green-500" />
             </div>
-            <h1 className="text-3xl font-bold mb-4 text-[#872657]">Registration Complete!</h1>
+            <h1 className="text-3xl font-bold mb-4 text-[#872657]">You're All Set!</h1>
             <p className="mb-8 text-gray-700">
-              Your restaurant has been successfully registered with Club Cuvee.
-              You can now access your dashboard to start configuring your wine club.
+              Your restaurant has been registered with Club Cuvee and your membership tiers are ready.
+              You can now access your dashboard to manage your wine club.
+            </p>
+            <div className="flex flex-col space-y-3">
+              <button 
+                onClick={() => navigate('/dashboard')} 
+                className="w-full bg-[#872657] text-white py-3 rounded-md hover:bg-opacity-90 font-bold"
+              >
+                Go to Dashboard
+              </button>
+              <button 
+                onClick={() => navigate('/preview-wine-club')} 
+                className="w-full bg-white border border-[#872657] text-[#872657] py-3 rounded-md hover:bg-gray-50 font-bold"
+              >
+                Preview Your Wine Club
+              </button>
+            </div>
+          </div>
+        </div>
+      </AuthLayout>
+    );
+  }
+  
+  // Error state - invalid or expired token
+  if (errors.general && !restaurantId) {
+    return (
+      <AuthLayout>
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="max-w-md w-full p-8 bg-white rounded-lg shadow-lg text-center">
+            <div className="mb-6 p-4 bg-red-100 rounded-full inline-flex items-center justify-center">
+              <Wine className="w-16 h-16 text-red-500" />
+            </div>
+            <h1 className="text-3xl font-bold mb-4 text-[#872657]">Invitation Error</h1>
+            <p className="mb-4 text-gray-700">
+              {errors.general}
+            </p>
+            <p className="text-sm text-gray-500 mb-8">
+              Please check your email for a valid invitation or contact support for assistance.
             </p>
             <button 
-              onClick={() => navigate('/dashboard')} 
+              onClick={() => window.location.href = "https://clubcuvee.com/contact"} 
               className="w-full bg-[#872657] text-white py-3 rounded-md hover:bg-opacity-90 font-bold"
             >
-              Go to Dashboard
+              Contact Support
             </button>
           </div>
         </div>
-      </Layout>
+      </AuthLayout>
     );
   }
 
   // Main registration UI
   return (
-    <Layout userRole={userRole} setViewMode={setViewMode}>
-      <div className="min-h-screen bg-gray-50 py-6">
+    <AuthLayout>
+      <div className="min-h-screen bg-gray-50 py-12">
         <div className="max-w-5xl mx-auto px-4">
-          <div className="mb-6">
-            <h1 className="text-3xl font-bold text-[#872657]">Register Your Restaurant</h1>
-            <p className="text-gray-600">
-              Set up your membership tiers and begin offering personalized wine clubs to your guests
+          <div className="text-center mb-10">
+            <h1 className="text-4xl font-bold text-[#872657] mb-2">Welcome to Club Cuvee</h1>
+            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+              Set up your custom wine club and start offering personalized wine memberships to your guests
             </p>
           </div>
           
@@ -424,7 +387,7 @@ const RestaurantOnboarding: React.FC = () => {
           />
         </div>
       </div>
-    </Layout>
+    </AuthLayout>
   );
 };
 
