@@ -1,16 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { X, Loader2 } from 'lucide-react';
+import { X, Loader2, Wine, Tag, FileText } from 'lucide-react';
 
 // Type definitions for TypeScript
-export interface MembershipTier {
-  id: string;
-  name: string;
-  price: string;
-  description: string;
-  stripe_price_id?: string;
-  stripe_product_id?: string;
-  restaurant_id?: string;
-}
+// Import the standard MembershipTier type instead of defining it
+import { MembershipTier } from '../types';
 
 interface MembershipTierModalProps {
   isOpen: boolean;
@@ -155,29 +148,30 @@ const MembershipTierModal: React.FC<MembershipTierModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
-        <div className="flex justify-between items-center p-6 border-b">
-          <h2 className="text-xl font-bold text-[#872657]">
+      <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 overflow-hidden">
+        <div className="flex justify-between items-center p-6 border-b border-gray-200 bg-gray-50">
+          <h2 className="text-xl font-bold text-[#800020]" style={{ fontFamily: 'HV Florentino' }}>
             {isEditing ? 'Edit Membership Tier' : 'Add Membership Tier'}
           </h2>
           <button
             onClick={onClose}
-            className="text-gray-500 hover:text-gray-700"
+            className="text-gray-500 hover:text-gray-700 transition-colors duration-200"
             disabled={isSubmitting}
           >
             <X className="w-6 h-6" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="p-6 space-y-5">
           {errors.general && (
-            <div className="p-3 bg-red-100 text-red-700 rounded-md mb-4">
+            <div className="p-4 bg-red-100 text-red-700 rounded-xl border border-red-200 mb-4">
               {errors.general}
             </div>
           )}
           
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="flex items-center text-sm font-medium text-gray-700 mb-2" style={{ fontFamily: 'TayBasal' }}>
+              <Wine className="w-4 h-4 mr-2 text-[#800020]" />
               Tier Name *
             </label>
             <input
@@ -185,9 +179,9 @@ const MembershipTierModal: React.FC<MembershipTierModalProps> = ({
               name="name"
               value={tierData.name}
               onChange={handleChange}
-              className={`w-full px-3 py-2 border ${
+              className={`w-full px-4 py-3 border ${
                 errors.name ? 'border-red-500' : 'border-gray-300'
-              } rounded-md focus:ring-2 focus:ring-[#872657] focus:border-transparent`}
+              } rounded-xl focus:ring-2 focus:ring-[#800020] focus:border-transparent transition-all duration-200`}
               placeholder="e.g., Bronze, Silver, Gold"
               disabled={isSubmitting}
               required
@@ -196,7 +190,8 @@ const MembershipTierModal: React.FC<MembershipTierModalProps> = ({
           </div>
           
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="flex items-center text-sm font-medium text-gray-700 mb-2" style={{ fontFamily: 'TayBasal' }}>
+              <Tag className="w-4 h-4 mr-2 text-[#800020]" />
               Monthly Price ($) *
             </label>
             <input
@@ -204,9 +199,9 @@ const MembershipTierModal: React.FC<MembershipTierModalProps> = ({
               name="price"
               value={tierData.price}
               onChange={handleChange}
-              className={`w-full px-3 py-2 border ${
+              className={`w-full px-4 py-3 border ${
                 errors.price ? 'border-red-500' : 'border-gray-300'
-              } rounded-md focus:ring-2 focus:ring-[#872657] focus:border-transparent`}
+              } rounded-xl focus:ring-2 focus:ring-[#800020] focus:border-transparent transition-all duration-200`}
               placeholder="e.g., 29.99"
               step="0.01"
               min="0.01"
@@ -217,17 +212,19 @@ const MembershipTierModal: React.FC<MembershipTierModalProps> = ({
           </div>
           
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="flex items-center text-sm font-medium text-gray-700 mb-2" style={{ fontFamily: 'TayBasal' }}>
+              <FileText className="w-4 h-4 mr-2 text-[#800020]" />
               Description
             </label>
             <textarea
               name="description"
               value={tierData.description}
               onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#872657] focus:border-transparent"
+              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#800020] focus:border-transparent transition-all duration-200"
               placeholder="Describe what members get with this tier..."
               rows={3}
               disabled={isSubmitting}
+              style={{ fontFamily: 'Libre Baskerville' }}
             />
           </div>
 
@@ -235,15 +232,17 @@ const MembershipTierModal: React.FC<MembershipTierModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+              className="px-5 py-2.5 border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50 transition-colors duration-200"
               disabled={isSubmitting}
+              style={{ fontFamily: 'TayBasal' }}
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-4 py-2 bg-[#872657] text-white rounded-md hover:bg-opacity-90 flex items-center"
+              className="px-5 py-2.5 bg-[#800020] text-white rounded-xl hover:bg-opacity-90 transition-all duration-200 flex items-center"
               disabled={isSubmitting}
+              style={{ fontFamily: 'TayBasal' }}
             >
               {isSubmitting ? (
                 <>

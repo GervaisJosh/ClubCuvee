@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Edit, Trash2, Wine, Tag, Star, Trophy } from 'lucide-react';
+import { Plus, Edit, Trash2, Wine, Tag, Star, Trophy, Grape, GlassWater } from 'lucide-react';
 import type { MembershipTier } from '../../types';
 import MembershipTierModal from '../membership-tier-modal';
 
@@ -15,9 +15,11 @@ interface MembershipTierListProps {
 
 // Predefined tier colors and icons for visual variety
 const tierIcons = [
-  { icon: <Wine className="w-6 h-6" />, color: "#9C2755" },
+  { icon: <Wine className="w-6 h-6" />, color: "#800020" },
   { icon: <Trophy className="w-6 h-6" />, color: "#AA7F39" },
-  { icon: <Star className="w-6 h-6" />, color: "#2F4858" }
+  { icon: <Star className="w-6 h-6" />, color: "#2F4858" },
+  { icon: <Grape className="w-6 h-6" />, color: "#5E2750" },
+  { icon: <GlassWater className="w-6 h-6" />, color: "#2A3D45" }
 ];
 
 const MembershipTierList: React.FC<MembershipTierListProps> = ({
@@ -91,17 +93,17 @@ const MembershipTierList: React.FC<MembershipTierListProps> = ({
 
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold mb-4 text-[#872657]">
+      <h2 className="text-2xl font-bold mb-4 text-[#800020]" style={{ fontFamily: 'HV Florentino' }}>
         Membership Tiers
       </h2>
 
-      <p className="mb-6 text-gray-700">
+      <p className="mb-6 text-gray-700" style={{ fontFamily: 'Libre Baskerville' }}>
         Define 1-3 membership tiers that your guests can subscribe to.
         Each tier should have a unique name, price, and description of benefits.
       </p>
 
       {error && (
-        <div className="p-4 bg-red-100 text-red-700 rounded-md mb-4">
+        <div className="p-4 bg-red-100 text-red-700 rounded-xl border border-red-200 mb-6">
           {error}
         </div>
       )}
@@ -115,7 +117,7 @@ const MembershipTierList: React.FC<MembershipTierListProps> = ({
             return (
               <div
                 key={tier.id}
-                className="bg-white rounded-lg shadow-md overflow-hidden border border-gray-100 hover:shadow-lg transition-shadow"
+                className="bg-white rounded-xl shadow-md overflow-hidden border border-gray-100 hover:shadow-lg transition-all duration-300"
                 style={{ minHeight: '220px' }}
               >
                 {/* Header with icon */}
@@ -127,13 +129,13 @@ const MembershipTierList: React.FC<MembershipTierListProps> = ({
                     <div className="w-10 h-10 rounded-full bg-white bg-opacity-20 flex items-center justify-center mr-3">
                       {tierStyle.icon}
                     </div>
-                    <h3 className="font-bold text-xl">{tier.name}</h3>
+                    <h3 className="font-bold text-xl" style={{ fontFamily: 'HV Florentino' }}>{tier.name}</h3>
                   </div>
-                  <div className="flex space-x-1">
+                  <div className="flex space-x-2">
                     <button
                       type="button"
                       onClick={() => openEditModal(tier)}
-                      className="p-1.5 bg-white bg-opacity-20 rounded-full hover:bg-opacity-30"
+                      className="p-1.5 bg-white bg-opacity-20 rounded-full hover:bg-opacity-30 transition-all duration-200"
                       aria-label={`Edit ${tier.name}`}
                     >
                       <Edit className="w-4 h-4 text-white" />
@@ -141,7 +143,7 @@ const MembershipTierList: React.FC<MembershipTierListProps> = ({
                     <button
                       type="button"
                       onClick={() => confirmDelete(tier)}
-                      className="p-1.5 bg-white bg-opacity-20 rounded-full hover:bg-opacity-30"
+                      className="p-1.5 bg-white bg-opacity-20 rounded-full hover:bg-opacity-30 transition-all duration-200"
                       aria-label={`Delete ${tier.name}`}
                     >
                       <Trash2 className="w-4 h-4 text-white" />
@@ -153,16 +155,16 @@ const MembershipTierList: React.FC<MembershipTierListProps> = ({
                 <div className="px-4 py-3 bg-gray-50 border-b border-gray-100">
                   <div className="flex items-center">
                     <Tag className="w-4 h-4 text-gray-500 mr-2" />
-                    <span className="text-2xl font-bold text-gray-800">
-                      ${typeof tier.price === 'string' ? parseFloat(tier.price).toFixed(2) : tier.price.toFixed(2)}
+                    <span className="text-2xl font-bold text-gray-800" style={{ fontFamily: 'TayBasal' }}>
+                      ${parseFloat(tier.price).toFixed(2)}
                     </span>
-                    <span className="text-gray-500 ml-1">/month</span>
+                    <span className="text-gray-500 ml-1" style={{ fontFamily: 'TayBasal' }}>/month</span>
                   </div>
                 </div>
                 
                 {/* Description */}
                 <div className="p-4">
-                  <p className="text-gray-700 text-sm">
+                  <p className="text-gray-700 text-sm" style={{ fontFamily: 'Libre Baskerville' }}>
                     {tier.description || "No description provided."}
                   </p>
                 </div>
@@ -174,14 +176,14 @@ const MembershipTierList: React.FC<MembershipTierListProps> = ({
           {tiers.length < 3 && (
             <div 
               onClick={openAddModal}
-              className="bg-white rounded-lg border-2 border-dashed border-gray-300 flex flex-col items-center justify-center p-6 cursor-pointer hover:border-[#872657] hover:bg-gray-50 transition-colors"
+              className="bg-white rounded-xl border-2 border-dashed border-gray-300 flex flex-col items-center justify-center p-6 cursor-pointer hover:border-[#800020] hover:bg-gray-50 transition-all duration-300"
               style={{ minHeight: '220px' }}
             >
-              <div className="w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center mb-4">
+              <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mb-4">
                 <Plus className="w-8 h-8 text-gray-400" />
               </div>
-              <p className="text-gray-500 font-medium text-center">Add Another Tier</p>
-              <p className="text-xs text-gray-400 text-center mt-1">
+              <p className="text-gray-500 font-medium text-center" style={{ fontFamily: 'TayBasal' }}>Add Another Tier</p>
+              <p className="text-xs text-gray-400 text-center mt-1" style={{ fontFamily: 'Libre Baskerville' }}>
                 {tiers.length === 0 ? 'Add your first membership tier' : 'You can add up to 3 tiers'}
               </p>
             </div>
@@ -190,13 +192,13 @@ const MembershipTierList: React.FC<MembershipTierListProps> = ({
       ) : (
         <div 
           onClick={openAddModal}
-          className="bg-white rounded-lg border-2 border-dashed border-gray-300 flex flex-col items-center justify-center p-12 cursor-pointer hover:border-[#872657] hover:bg-gray-50 transition-colors"
+          className="bg-white rounded-xl border-2 border-dashed border-gray-300 flex flex-col items-center justify-center p-12 cursor-pointer hover:border-[#800020] hover:bg-gray-50 transition-all duration-300"
         >
           <div className="w-20 h-20 rounded-full bg-gray-100 flex items-center justify-center mb-6">
             <Plus className="w-10 h-10 text-gray-400" />
           </div>
-          <h3 className="text-xl font-medium text-gray-700 mb-2">Create Your First Tier</h3>
-          <p className="text-gray-500 text-center max-w-md">
+          <h3 className="text-xl font-medium text-gray-700 mb-2" style={{ fontFamily: 'HV Florentino' }}>Create Your First Tier</h3>
+          <p className="text-gray-500 text-center max-w-md" style={{ fontFamily: 'Libre Baskerville' }}>
             Define at least one membership tier with a name, price, and description
           </p>
         </div>

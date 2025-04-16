@@ -47,7 +47,7 @@ export interface RestaurantInvitation {
 export interface MembershipTier {
   id: string;
   name: string;
-  price: string | number;
+  price: string; // Always stored as string, convert to number when needed for calculations
   description: string;
   restaurant_id?: string;
   stripe_product_id?: string;
@@ -76,7 +76,7 @@ export interface CheckoutSessionData {
   tierData?: {
     name: string;
     description: string;
-    price: number | string;
+    price: string; // Always string for consistency
   };
   metadata?: Record<string, string>;
   type?: 'restaurant_onboarding' | 'customer_subscription';

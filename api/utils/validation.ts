@@ -29,8 +29,8 @@ export function validateEmail(email: string): boolean {
   return emailRegex.test(email);
 }
 
-export function validatePrice(price: string | number): boolean {
-  const priceNum = typeof price === 'string' ? parseFloat(price) : price;
+export function validatePrice(price: string): boolean {
+  const priceNum = parseFloat(price);
   return !isNaN(priceNum) && priceNum > 0;
 }
 

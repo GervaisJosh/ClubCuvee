@@ -27,15 +27,8 @@ interface Restaurant {
   website?: string;
 }
 
-interface MembershipTier {
-  id: string;
-  name: string;
-  price: number;
-  description: string;
-  restaurant_id: string;
-  stripe_product_id?: string;
-  stripe_price_id?: string;
-}
+// Import the standard MembershipTier type
+import { MembershipTier } from '../types';
 
 interface FormData {
   fullName: string;
@@ -440,7 +433,7 @@ const CustomerSignup: React.FC = () => {
                     <div className="flex justify-between items-center">
                       <div>
                         <h3 className="text-xl font-semibold">{tier.name}</h3>
-                        <p className="text-lg font-bold text-[#872657] mt-1">${tier.price.toFixed(2)}/month</p>
+                        <p className="text-lg font-bold text-[#872657] mt-1">${parseFloat(tier.price).toFixed(2)}/month</p>
                         <p className="text-gray-600 mt-2">{tier.description}</p>
                       </div>
                       <div

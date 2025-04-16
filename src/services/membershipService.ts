@@ -14,7 +14,7 @@ export const membershipService = {
           .from('membership_tiers')
           .insert([{
             name: tierData.name,
-            price: typeof tierData.price === 'string' ? parseFloat(tierData.price) : tierData.price,
+            price: tierData.price,
             description: tierData.description || '',
             restaurant_id: restaurantId,
             stripe_product_id: tierData.stripe_product_id,

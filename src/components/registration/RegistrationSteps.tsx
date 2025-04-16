@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import RestaurantForm from './RestaurantForm';
 import MembershipTierList from './MembershipTierList';
-import { CheckCircle, Loader2 } from 'lucide-react';
+import { CheckCircle, Loader2, Building2, CreditCard, CheckSquare, Wine } from 'lucide-react';
 import { LoadingSpinner } from '../shared/LoadingStates';
 import type { RestaurantFormData, MembershipTier, FormErrors } from '../../types';
 
@@ -88,29 +88,29 @@ const RegistrationSteps: React.FC<RegistrationStepsProps> = ({
       <div className="flex items-center justify-between max-w-3xl mx-auto">
         <div className={`flex flex-col items-center ${currentStep >= 1 ? 'text-[#872657]' : 'text-gray-400'}`}>
           <div
-            className={`w-12 h-12 rounded-full flex items-center justify-center border-2 ${currentStep >= 1 ? 'border-[#872657] bg-[#872657] text-white' : 'border-gray-300 text-gray-400'}`}
+            className={`w-12 h-12 rounded-full flex items-center justify-center border-2 transition-all duration-300 ${currentStep >= 1 ? 'border-[#872657] bg-[#872657] text-white' : 'border-gray-300 text-gray-400'}`}
           >
-            {currentStep > 1 ? <CheckCircle className="w-6 h-6" /> : 1}
+            {currentStep > 1 ? <CheckCircle className="w-6 h-6" /> : <Building2 className="w-6 h-6" />}
           </div>
-          <span className="mt-2 text-sm font-medium">Restaurant Info</span>
+          <span className="mt-2 text-sm font-medium" style={{ fontFamily: 'TayBasal' }}>Restaurant Info</span>
         </div>
-        <div className={`flex-1 h-0.5 mx-4 ${currentStep >= 2 ? 'bg-[#872657]' : 'bg-gray-300'}`}></div>
+        <div className={`flex-1 h-0.5 mx-4 transition-all duration-300 ${currentStep >= 2 ? 'bg-[#872657]' : 'bg-gray-300'}`}></div>
         <div className={`flex flex-col items-center ${currentStep >= 2 ? 'text-[#872657]' : 'text-gray-400'}`}>
           <div
-            className={`w-12 h-12 rounded-full flex items-center justify-center border-2 ${currentStep >= 2 ? 'border-[#872657] bg-[#872657] text-white' : 'border-gray-300 text-gray-400'}`}
+            className={`w-12 h-12 rounded-full flex items-center justify-center border-2 transition-all duration-300 ${currentStep >= 2 ? 'border-[#872657] bg-[#872657] text-white' : 'border-gray-300 text-gray-400'}`}
           >
-            {currentStep > 2 ? <CheckCircle className="w-6 h-6" /> : 2}
+            {currentStep > 2 ? <CheckCircle className="w-6 h-6" /> : <Wine className="w-6 h-6" />}
           </div>
-          <span className="mt-2 text-sm font-medium">Membership Tiers</span>
+          <span className="mt-2 text-sm font-medium" style={{ fontFamily: 'TayBasal' }}>Membership Tiers</span>
         </div>
-        <div className={`flex-1 h-0.5 mx-4 ${currentStep >= 3 ? 'bg-[#872657]' : 'bg-gray-300'}`}></div>
+        <div className={`flex-1 h-0.5 mx-4 transition-all duration-300 ${currentStep >= 3 ? 'bg-[#872657]' : 'bg-gray-300'}`}></div>
         <div className={`flex flex-col items-center ${currentStep >= 3 ? 'text-[#872657]' : 'text-gray-400'}`}>
           <div
-            className={`w-12 h-12 rounded-full flex items-center justify-center border-2 ${currentStep >= 3 ? 'border-[#872657] bg-[#872657] text-white' : 'border-gray-300 text-gray-400'}`}
+            className={`w-12 h-12 rounded-full flex items-center justify-center border-2 transition-all duration-300 ${currentStep >= 3 ? 'border-[#872657] bg-[#872657] text-white' : 'border-gray-300 text-gray-400'}`}
           >
-            3
+            <CheckSquare className="w-6 h-6" />
           </div>
-          <span className="mt-2 text-sm font-medium">Review & Submit</span>
+          <span className="mt-2 text-sm font-medium" style={{ fontFamily: 'TayBasal' }}>Review & Submit</span>
         </div>
       </div>
     </div>
@@ -122,8 +122,8 @@ const RegistrationSteps: React.FC<RegistrationStepsProps> = ({
   switch (currentStep) {
     case 1:
       stepContent = (
-        <div className="bg-white p-8 rounded-lg shadow-lg border border-gray-200">
-          <h2 className="text-2xl font-bold mb-6 text-[#872657]">
+        <div className="bg-white p-6 md:p-10 rounded-2xl shadow-lg border border-gray-200 transition-all duration-300 transform">
+          <h2 className="text-2xl font-bold mb-6 text-[#872657]" style={{ fontFamily: 'HV Florentino' }}>
             Restaurant Details
           </h2>
           <RestaurantForm
@@ -138,7 +138,7 @@ const RegistrationSteps: React.FC<RegistrationStepsProps> = ({
 
     case 2:
       stepContent = (
-        <div className="bg-white p-8 rounded-lg shadow-lg border border-gray-200">
+        <div className="bg-white p-6 md:p-10 rounded-2xl shadow-lg border border-gray-200 transition-all duration-300 transform">
           <MembershipTierList
             tiers={membershipTiers}
             restaurantId={restaurantId}
@@ -151,7 +151,8 @@ const RegistrationSteps: React.FC<RegistrationStepsProps> = ({
             <button
               type="button"
               onClick={() => setCurrentStep(1)}
-              className="flex-1 py-3 bg-gray-100 text-gray-800 rounded-md hover:bg-gray-200 transition-colors"
+              className="flex-1 py-3 px-6 bg-gray-100 text-gray-800 rounded-xl hover:bg-gray-200 transition-colors duration-300"
+              style={{ fontFamily: 'TayBasal' }}
             >
               Back
             </button>
@@ -159,7 +160,8 @@ const RegistrationSteps: React.FC<RegistrationStepsProps> = ({
               type="button"
               onClick={() => setCurrentStep(3)}
               disabled={membershipTiers.length === 0}
-              className={`flex-1 py-3 bg-[#872657] text-white rounded-md hover:bg-opacity-90 font-bold transition-colors ${membershipTiers.length === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
+              className={`flex-1 py-3 px-6 bg-[#800020] text-white rounded-xl hover:bg-opacity-90 font-bold transition-all duration-300 ${membershipTiers.length === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
+              style={{ fontFamily: 'TayBasal' }}
             >
               Continue
             </button>
@@ -170,75 +172,93 @@ const RegistrationSteps: React.FC<RegistrationStepsProps> = ({
 
     case 3:
       stepContent = (
-        <div className="bg-white p-8 rounded-lg shadow-lg border border-gray-200">
-          <h2 className="text-2xl font-bold mb-6 text-[#872657]">
+        <div className="bg-white p-6 md:p-10 rounded-2xl shadow-lg border border-gray-200 transition-all duration-300 transform">
+          <h2 className="text-2xl font-bold mb-6 text-[#800020]" style={{ fontFamily: 'HV Florentino' }}>
             Review Your Registration
           </h2>
 
           {errors?.general && (
-            <div className="mb-6 p-4 bg-red-100 text-red-700 rounded-md">
+            <div className="mb-6 p-4 bg-red-100 text-red-700 rounded-xl border border-red-200">
               {errors.general}
             </div>
           )}
 
           <div className="mb-8 space-y-8">
-            <div className="bg-gray-50 rounded-lg p-6">
-              <h3 className="text-lg font-semibold mb-4 flex items-center text-[#872657]">
-                <span className="w-7 h-7 rounded-full bg-[#872657] text-white flex items-center justify-center mr-2 text-sm">1</span>
+            <div className="bg-gray-50 rounded-xl p-6 shadow-sm border border-gray-100">
+              <h3 className="text-lg font-semibold mb-4 flex items-center text-[#800020]" style={{ fontFamily: 'HV Florentino' }}>
+                <div className="w-8 h-8 rounded-full bg-[#800020] text-white flex items-center justify-center mr-3 text-sm">
+                  <Building2 className="w-4 h-4" />
+                </div>
                 Restaurant Information
               </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm text-gray-600">Restaurant Name</p>
-                  <p className="font-medium">{restaurantData.restaurantName}</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="bg-white p-4 rounded-lg shadow-sm">
+                  <p className="text-sm text-gray-600 mb-1" style={{ fontFamily: 'TayBasal' }}>Restaurant Name</p>
+                  <p className="font-medium" style={{ fontFamily: 'Libre Baskerville' }}>{restaurantData.restaurantName}</p>
                 </div>
-                <div>
-                  <p className="text-sm text-gray-600">Admin Name</p>
-                  <p className="font-medium">{restaurantData.adminName}</p>
+                <div className="bg-white p-4 rounded-lg shadow-sm">
+                  <p className="text-sm text-gray-600 mb-1" style={{ fontFamily: 'TayBasal' }}>Admin Name</p>
+                  <p className="font-medium" style={{ fontFamily: 'Libre Baskerville' }}>{restaurantData.adminName}</p>
                 </div>
-                <div>
-                  <p className="text-sm text-gray-600">Email</p>
-                  <p className="font-medium">{restaurantData.email}</p>
+                <div className="bg-white p-4 rounded-lg shadow-sm">
+                  <p className="text-sm text-gray-600 mb-1" style={{ fontFamily: 'TayBasal' }}>Email</p>
+                  <p className="font-medium" style={{ fontFamily: 'Libre Baskerville' }}>{restaurantData.email}</p>
                 </div>
                 {restaurantData.website && (
-                  <div>
-                    <p className="text-sm text-gray-600">Website</p>
-                    <p className="font-medium">{restaurantData.website}</p>
+                  <div className="bg-white p-4 rounded-lg shadow-sm">
+                    <p className="text-sm text-gray-600 mb-1" style={{ fontFamily: 'TayBasal' }}>Website</p>
+                    <p className="font-medium" style={{ fontFamily: 'Libre Baskerville' }}>{restaurantData.website}</p>
                   </div>
                 )}
                 {restaurantData.logo && (
-                  <div className="col-span-2">
-                    <p className="text-sm text-gray-600">Logo</p>
-                    <p className="font-medium">{restaurantData.logo.name}</p>
+                  <div className="col-span-2 bg-white p-4 rounded-lg shadow-sm">
+                    <p className="text-sm text-gray-600 mb-1" style={{ fontFamily: 'TayBasal' }}>Logo</p>
+                    <div className="flex items-center">
+                      <div className="w-12 h-12 bg-gray-200 rounded-md flex items-center justify-center mr-3">
+                        <img 
+                          src={URL.createObjectURL(restaurantData.logo)} 
+                          alt="Logo Preview" 
+                          className="max-w-full max-h-full object-contain rounded-md"
+                        />
+                      </div>
+                      <p className="font-medium" style={{ fontFamily: 'Libre Baskerville' }}>{restaurantData.logo.name}</p>
+                    </div>
                   </div>
                 )}
               </div>
             </div>
 
-            <div className="bg-gray-50 rounded-lg p-6">
-              <h3 className="text-lg font-semibold mb-4 flex items-center text-[#872657]">
-                <span className="w-7 h-7 rounded-full bg-[#872657] text-white flex items-center justify-center mr-2 text-sm">2</span>
+            <div className="bg-gray-50 rounded-xl p-6 shadow-sm border border-gray-100">
+              <h3 className="text-lg font-semibold mb-4 flex items-center text-[#800020]" style={{ fontFamily: 'HV Florentino' }}>
+                <div className="w-8 h-8 rounded-full bg-[#800020] text-white flex items-center justify-center mr-3 text-sm">
+                  <Wine className="w-4 h-4" />
+                </div>
                 Membership Tiers
               </h3>
               
               {membershipTiers.length > 0 ? (
                 <div className="space-y-4">
                   {membershipTiers.map((tier, index) => (
-                    <div key={tier.id} className="p-4 bg-white rounded-md border border-gray-200">
+                    <div key={tier.id} className="p-5 bg-white rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow duration-300">
                       <div className="flex justify-between items-center">
                         <div>
-                          <p className="font-semibold text-[#872657]">{tier.name}</p>
-                          <p className="text-gray-800 font-bold">
-                            ${typeof tier.price === 'string' ? parseFloat(tier.price).toFixed(2) : tier.price.toFixed(2)}/month
+                          <p className="font-semibold text-[#800020] text-lg" style={{ fontFamily: 'HV Florentino' }}>{tier.name}</p>
+                          <p className="text-gray-800 font-bold text-xl mt-1" style={{ fontFamily: 'TayBasal' }}>
+                            ${parseFloat(tier.price).toFixed(2)}/month
                           </p>
-                          <p className="text-sm text-gray-600 mt-1">{tier.description}</p>
+                          <p className="text-sm text-gray-600 mt-2" style={{ fontFamily: 'Libre Baskerville' }}>{tier.description}</p>
+                        </div>
+                        <div className="w-12 h-12 rounded-full bg-[#800020] bg-opacity-10 flex items-center justify-center">
+                          <Wine className="w-6 h-6 text-[#800020]" />
                         </div>
                       </div>
                     </div>
                   ))}
                 </div>
               ) : (
-                <p className="text-red-500">No membership tiers added. Please go back and add at least one tier.</p>
+                <p className="text-red-500 p-4 bg-red-50 rounded-lg border border-red-100" style={{ fontFamily: 'Libre Baskerville' }}>
+                  No membership tiers added. Please go back and add at least one tier.
+                </p>
               )}
             </div>
           </div>
@@ -247,7 +267,8 @@ const RegistrationSteps: React.FC<RegistrationStepsProps> = ({
             <button
               type="button"
               onClick={() => setCurrentStep(2)}
-              className="flex-1 py-3 bg-gray-100 text-gray-800 rounded-md hover:bg-gray-200 transition-colors"
+              className="flex-1 py-3 px-6 bg-gray-100 text-gray-800 rounded-xl hover:bg-gray-200 transition-colors duration-300"
+              style={{ fontFamily: 'TayBasal' }}
             >
               Back
             </button>
@@ -255,7 +276,8 @@ const RegistrationSteps: React.FC<RegistrationStepsProps> = ({
               type="button"
               onClick={handleFinalSubmit}
               disabled={isSubmitting || membershipTiers.length === 0}
-              className={`flex-1 py-3 bg-[#872657] text-white rounded-md hover:bg-opacity-90 font-bold transition-colors ${(isSubmitting || membershipTiers.length === 0) ? 'opacity-70 cursor-not-allowed' : ''}`}
+              className={`flex-1 py-3 px-6 bg-[#800020] text-white rounded-xl hover:bg-opacity-90 font-bold transition-all duration-300 ${(isSubmitting || membershipTiers.length === 0) ? 'opacity-70 cursor-not-allowed' : ''}`}
+              style={{ fontFamily: 'TayBasal' }}
             >
               {isSubmitting ? (
                 <div className="flex items-center justify-center">
@@ -267,6 +289,12 @@ const RegistrationSteps: React.FC<RegistrationStepsProps> = ({
               )}
             </button>
           </div>
+          
+          <div className="mt-6 text-center">
+            <p className="text-xs text-gray-500" style={{ fontFamily: 'Libre Baskerville' }}>
+              By completing registration, you agree to Club Cuvee's <a href="/terms" className="text-[#800020] hover:underline">Terms of Service</a> and <a href="/privacy" className="text-[#800020] hover:underline">Privacy Policy</a>
+            </p>
+          </div>
         </div>
       );
       break;
@@ -276,9 +304,13 @@ const RegistrationSteps: React.FC<RegistrationStepsProps> = ({
   }
 
   return (
-    <div className="max-w-4xl mx-auto">
-      {renderProgressSteps()}
-      {stepContent}
+    <div className="flex items-center justify-center min-h-screen bg-[#fdfaf7] dark:bg-black py-12 px-4">
+      <div className="max-w-2xl w-full mx-auto">
+        {renderProgressSteps()}
+        <div className="transition-all duration-500 ease-in-out transform">
+          {stepContent}
+        </div>
+      </div>
     </div>
   );
 };

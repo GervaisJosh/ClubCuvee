@@ -7,7 +7,7 @@ import { randomUUID } from 'crypto';
 // Type definitions for clarity and safety
 interface MembershipTierData {
   name: string;
-  price: number | string;
+  price: string; // Always store as string, convert to number when needed for calculations
   description?: string;
   restaurant_id: string;
   stripe_product_id?: string;
@@ -86,7 +86,7 @@ export async function createMembershipTier(req: VercelRequest, res: VercelRespon
     // Store in Supabase
     const tierData: MembershipTierData = {
       name,
-      price: parseFloat(price as string),
+      price: typeof price === 'number' ? price.toString() : price,
       description: description || '',
       restaurant_id,
       stripe_product_id: product.id,

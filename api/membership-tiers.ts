@@ -67,7 +67,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Prepare tier data for database
     const tierData = {
       name,
-      price: priceNumber, // Store as number in database
+      price: priceNumber.toString(), // Store as string in database
       description: description || '',
       restaurant_id,
       updated_at: new Date().toISOString()
