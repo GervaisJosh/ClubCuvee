@@ -85,7 +85,7 @@ const RegistrationSteps: React.FC<RegistrationStepsProps> = ({
   // Render progress steps UI
   const renderProgressSteps = () => (
     <div className="mb-10">
-      <div className="flex items-center justify-between max-w-3xl mx-auto">
+      <div className="flex items-center justify-between max-w-4xl mx-auto">
         <div className={`flex flex-col items-center ${currentStep >= 1 ? 'text-[#872657]' : 'text-gray-400'}`}>
           <div
             className={`w-12 h-12 rounded-full flex items-center justify-center border-2 transition-all duration-300 ${currentStep >= 1 ? 'border-[#872657] bg-[#872657] text-white' : 'border-gray-300 text-gray-400'}`}
@@ -122,7 +122,7 @@ const RegistrationSteps: React.FC<RegistrationStepsProps> = ({
   switch (currentStep) {
     case 1:
       stepContent = (
-        <div className="bg-white p-6 md:p-10 rounded-2xl shadow-lg border border-gray-200 transition-all duration-300 transform">
+        <div className="bg-white p-6 md:p-10 rounded-2xl shadow-lg border border-gray-200 transition-all duration-300 transform max-w-3xl md:max-w-4xl mx-auto">
           <h2 className="text-2xl font-bold mb-6 text-[#872657]" style={{ fontFamily: 'HV Florentino' }}>
             Restaurant Details
           </h2>
@@ -138,7 +138,7 @@ const RegistrationSteps: React.FC<RegistrationStepsProps> = ({
 
     case 2:
       stepContent = (
-        <div className="bg-white p-6 md:p-10 rounded-2xl shadow-lg border border-gray-200 transition-all duration-300 transform">
+        <div className="bg-white p-6 md:p-10 rounded-2xl shadow-lg border border-gray-200 transition-all duration-300 transform max-w-3xl md:max-w-4xl mx-auto">
           <MembershipTierList
             tiers={membershipTiers}
             restaurantId={restaurantId}
@@ -147,7 +147,7 @@ const RegistrationSteps: React.FC<RegistrationStepsProps> = ({
             onTierDeleted={handleTierDeleted}
             error={errors?.tiers}
           />
-          <div className="mt-8 flex gap-4">
+          <div className="mt-10 flex flex-col sm:flex-row gap-4 sm:gap-6">
             <button
               type="button"
               onClick={() => setCurrentStep(1)}
@@ -172,7 +172,7 @@ const RegistrationSteps: React.FC<RegistrationStepsProps> = ({
 
     case 3:
       stepContent = (
-        <div className="bg-white p-6 md:p-10 rounded-2xl shadow-lg border border-gray-200 transition-all duration-300 transform">
+        <div className="bg-white p-6 md:p-10 rounded-2xl shadow-lg border border-gray-200 transition-all duration-300 transform max-w-3xl md:max-w-4xl mx-auto">
           <h2 className="text-2xl font-bold mb-6 text-[#800020]" style={{ fontFamily: 'HV Florentino' }}>
             Review Your Registration
           </h2>
@@ -183,15 +183,15 @@ const RegistrationSteps: React.FC<RegistrationStepsProps> = ({
             </div>
           )}
 
-          <div className="mb-8 space-y-8">
-            <div className="bg-gray-50 rounded-xl p-6 shadow-sm border border-gray-100">
+          <div className="mb-12 space-y-10">
+            <div className="bg-gray-50 rounded-xl p-6 md:p-8 shadow-sm border border-gray-100">
               <h3 className="text-lg font-semibold mb-4 flex items-center text-[#800020]" style={{ fontFamily: 'HV Florentino' }}>
                 <div className="w-8 h-8 rounded-full bg-[#800020] text-white flex items-center justify-center mr-3 text-sm">
                   <Building2 className="w-4 h-4" />
                 </div>
                 Restaurant Information
               </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div className="bg-white p-4 rounded-lg shadow-sm">
                   <p className="text-sm text-gray-600 mb-1" style={{ fontFamily: 'TayBasal' }}>Restaurant Name</p>
                   <p className="font-medium" style={{ fontFamily: 'Libre Baskerville' }}>{restaurantData.restaurantName}</p>
@@ -228,7 +228,7 @@ const RegistrationSteps: React.FC<RegistrationStepsProps> = ({
               </div>
             </div>
 
-            <div className="bg-gray-50 rounded-xl p-6 shadow-sm border border-gray-100">
+            <div className="bg-gray-50 rounded-xl p-6 md:p-8 shadow-sm border border-gray-100">
               <h3 className="text-lg font-semibold mb-4 flex items-center text-[#800020]" style={{ fontFamily: 'HV Florentino' }}>
                 <div className="w-8 h-8 rounded-full bg-[#800020] text-white flex items-center justify-center mr-3 text-sm">
                   <Wine className="w-4 h-4" />
@@ -263,7 +263,7 @@ const RegistrationSteps: React.FC<RegistrationStepsProps> = ({
             </div>
           </div>
 
-          <div className="flex gap-4">
+          <div className="flex flex-col sm:flex-row gap-4 sm:gap-6">
             <button
               type="button"
               onClick={() => setCurrentStep(2)}
@@ -304,8 +304,8 @@ const RegistrationSteps: React.FC<RegistrationStepsProps> = ({
   }
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-[#fdfaf7] dark:bg-black py-12 px-4">
-      <div className="max-w-2xl w-full mx-auto">
+    <div className="flex items-center justify-center min-h-screen bg-[#fdfaf7] dark:bg-black py-12 px-4 md:px-6 lg:px-8">
+      <div className="max-w-3xl md:max-w-4xl lg:max-w-5xl w-full mx-auto">
         {renderProgressSteps()}
         <div className="transition-all duration-500 ease-in-out transform">
           {stepContent}

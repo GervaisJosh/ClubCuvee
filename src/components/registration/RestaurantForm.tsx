@@ -171,7 +171,7 @@ const RestaurantForm: React.FC<RestaurantFormProps> = ({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit} className="space-y-8 md:space-y-10">
       {/* General error message */}
       {localErrors.general && (
         <div className="p-4 bg-red-100 text-red-700 rounded-md border border-red-200">
@@ -179,7 +179,7 @@ const RestaurantForm: React.FC<RestaurantFormProps> = ({
         </div>
       )}
 
-      <div className="space-y-4">
+      <div className="space-y-6 md:space-y-8">
         {/* Restaurant Name */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -318,7 +318,7 @@ const RestaurantForm: React.FC<RestaurantFormProps> = ({
       <button
         type="submit"
         disabled={isSubmitting}
-        className={`w-full mt-6 bg-[#872657] text-white py-4 rounded-md hover:bg-opacity-90 font-bold text-lg flex items-center justify-center ${isSubmitting ? 'opacity-70 cursor-not-allowed' : ''}`}
+        className={`w-full md:w-auto md:px-12 mt-8 bg-[#872657] text-white py-4 rounded-md hover:bg-opacity-90 font-bold text-lg flex items-center justify-center ${isSubmitting ? 'opacity-70 cursor-not-allowed' : ''}`}
       >
         {isSubmitting ? (
           <>

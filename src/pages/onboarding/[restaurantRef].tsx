@@ -291,10 +291,10 @@ const RestaurantOnboarding: React.FC = () => {
   if (isLoading) {
     return (
       <AuthLayout>
-        <div className="min-h-screen flex items-center justify-center">
-          <div className="text-center">
-            <Loader2 className="h-12 w-12 animate-spin text-[#872657] mx-auto mb-4" />
-            <p className="text-gray-600">Loading your restaurant registration...</p>
+        <div className="min-h-screen flex items-center justify-center py-16 px-4 md:px-6 lg:px-8">
+          <div className="text-center max-w-lg mx-auto">
+            <Loader2 className="h-12 w-12 animate-spin text-[#872657] mx-auto mb-6" />
+            <p className="text-gray-600 text-lg">Loading your restaurant registration...</p>
           </div>
         </div>
       </AuthLayout>
@@ -305,8 +305,8 @@ const RestaurantOnboarding: React.FC = () => {
   if (registrationComplete) {
     return (
       <AuthLayout>
-        <div className="min-h-screen flex items-center justify-center">
-          <div className="max-w-md w-full p-8 bg-white rounded-lg shadow-lg text-center">
+        <div className="min-h-screen flex items-center justify-center py-16 px-4 md:px-6 lg:px-8">
+          <div className="max-w-xl w-full p-8 md:p-10 bg-white rounded-xl shadow-lg text-center">
             <div className="mb-6 p-4 bg-green-100 rounded-full inline-flex items-center justify-center">
               <CheckCircle className="w-16 h-16 text-green-500" />
             </div>
@@ -315,16 +315,16 @@ const RestaurantOnboarding: React.FC = () => {
               Your restaurant has been registered with Club Cuvee and your membership tiers are ready.
               You can now access your dashboard to manage your wine club.
             </p>
-            <div className="flex flex-col space-y-3">
+            <div className="flex flex-col sm:flex-row sm:justify-center space-y-3 sm:space-y-0 sm:space-x-4">
               <button 
                 onClick={() => navigate('/dashboard')} 
-                className="w-full bg-[#872657] text-white py-3 rounded-md hover:bg-opacity-90 font-bold"
+                className="w-full sm:w-auto sm:px-8 bg-[#872657] text-white py-3 rounded-md hover:bg-opacity-90 font-bold"
               >
                 Go to Dashboard
               </button>
               <button 
                 onClick={() => navigate('/preview-wine-club')} 
-                className="w-full bg-white border border-[#872657] text-[#872657] py-3 rounded-md hover:bg-gray-50 font-bold"
+                className="w-full sm:w-auto sm:px-8 bg-white border border-[#872657] text-[#872657] py-3 rounded-md hover:bg-gray-50 font-bold"
               >
                 Preview Your Wine Club
               </button>
@@ -339,8 +339,8 @@ const RestaurantOnboarding: React.FC = () => {
   if (errors.general && !restaurantId) {
     return (
       <AuthLayout>
-        <div className="min-h-screen flex items-center justify-center">
-          <div className="max-w-md w-full p-8 bg-white rounded-lg shadow-lg text-center">
+        <div className="min-h-screen flex items-center justify-center py-16 px-4 md:px-6 lg:px-8">
+          <div className="max-w-xl w-full p-8 md:p-10 bg-white rounded-xl shadow-lg text-center">
             <div className="mb-6 p-4 bg-red-100 rounded-full inline-flex items-center justify-center">
               <Wine className="w-16 h-16 text-red-500" />
             </div>
@@ -353,7 +353,7 @@ const RestaurantOnboarding: React.FC = () => {
             </p>
             <button 
               onClick={() => window.location.href = "https://clubcuvee.com/contact"} 
-              className="w-full bg-[#872657] text-white py-3 rounded-md hover:bg-opacity-90 font-bold"
+              className="w-full sm:w-auto sm:px-8 bg-[#872657] text-white py-3 rounded-md hover:bg-opacity-90 font-bold mx-auto"
             >
               Contact Support
             </button>
@@ -366,11 +366,11 @@ const RestaurantOnboarding: React.FC = () => {
   // Main registration UI
   return (
     <AuthLayout>
-      <div className="min-h-screen bg-gray-50 py-12">
-        <div className="max-w-5xl mx-auto px-4">
-          <div className="text-center mb-10">
-            <h1 className="text-4xl font-bold text-[#872657] mb-2">Welcome to Club Cuvee</h1>
-            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+      <div className="min-h-screen bg-gray-50 py-16 px-4 md:px-6 lg:px-8">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-12 md:mb-16">
+            <h1 className="text-4xl md:text-5xl font-bold text-[#872657] mb-4">Welcome to Club Cuvee</h1>
+            <p className="text-xl text-gray-600 max-w-3xl mx-auto px-4">
               Set up your custom wine club and start offering personalized wine memberships to your guests
             </p>
           </div>
