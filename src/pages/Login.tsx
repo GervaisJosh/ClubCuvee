@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { Wine } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { signIn, resendConfirmationEmail } from '../api/supabaseQueries';
 import { useTheme } from '../contexts/ThemeContext';
 import AuthLayout from '../components/AuthLayout';
+import { redirectBasedOnRole } from '../utils/authRedirects';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -13,10 +14,14 @@ const Login = () => {
   const [error, setError] = useState<string | null>(null);
   const [showResendConfirmation, setShowResendConfirmation] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
   const { setUser } = useAuth();
   const { theme } = useTheme();
   const isDark = theme === 'dark';
   const burgundy = "#800020";
+  
+  // Get redirect path from location state (if it exists)
+  const from = location.state?.from || '/dashboard';
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,9 +32,12 @@ const Login = () => {
     try {
       const { user, error } = await signIn(email, password);
       if (error) throw error;
+      
       if (user) {
         setUser(user);
-        navigate('/dashboard');
+        
+        // Redirect based on user role, considering the original target path
+        await redirectBasedOnRole(user.id, navigate, '/dashboard', from);
       } else {
         throw new Error('No user returned from signIn');
       }

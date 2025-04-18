@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Wine, Star, ShoppingCart, Calendar, Gift, Heart, Home, Bell, Settings, Upload, Icon } from 'lucide-react';
+import { Wine, Star, ShoppingCart, Calendar, Gift, Heart, Home, Bell, Settings, Upload, Icon, ShieldCheck } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
+import { useAuth } from '../contexts/AuthContext';
 
 interface MenuItem {
   icon: Icon;
@@ -19,6 +20,7 @@ const Sidebar: React.FC<SidebarProps> = ({ userRole, setViewMode }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { theme } = useTheme();
+  const { isAdmin } = useAuth();
   const isDark = theme === 'dark';
 
   const adminMenuItems: MenuItem[] = [
@@ -120,6 +122,19 @@ const Sidebar: React.FC<SidebarProps> = ({ userRole, setViewMode }) => {
         <ToggleButton view="customer" label="Customer View" />
         <ToggleButton view="admin" label="Admin View" />
         <ToggleButton view="admin-real" label="Admin View Real" />
+        
+        {/* Admin Dashboard Link - only shown for admin users */}
+        {isAdmin && (
+          <button
+            onClick={() => navigate('/admin/dashboard')}
+            className={`w-full flex items-center py-2 px-4 mt-4 rounded font-TayBasal transition-all duration-200 ${
+              isDark ? 'bg-purple-900 text-white hover:bg-purple-800' : 'bg-purple-100 text-purple-800 hover:bg-purple-200'
+            }`}
+          >
+            <ShieldCheck className="h-5 w-5 mr-2" />
+            Admin Portal
+          </button>
+        )}
       </div>
     </div>
   );

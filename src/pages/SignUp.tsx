@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../supabase';
 import { useTheme } from '../contexts/ThemeContext';
 import AuthLayout from '../components/AuthLayout';
+import { redirectBasedOnRole } from '../utils/authRedirects';
 
 const SignUp = () => {
   const [email, setEmail] = useState('');
@@ -66,7 +67,9 @@ const SignUp = () => {
       if (userError) throw userError;
 
       setUser(authData.user);
-      navigate('/dashboard');
+      
+      // Redirect based on user role
+      await redirectBasedOnRole(authData.user.id, navigate);
 
     } catch (err: any) {
       console.error('Sign-up error:', err);

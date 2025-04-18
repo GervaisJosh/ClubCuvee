@@ -36,6 +36,10 @@ import CustomerSignup from './pages/CustomerSignup';
 // Import restaurant onboarding page with lazy loading
 const RestaurantOnboarding = React.lazy(() => import('./pages/onboarding/[restaurantRef]'));
 
+// Auth guards
+import AuthGuard from './components/AuthGuard';
+import AdminRoutes from './components/admin/AdminRoutes';
+
 // Customer pages
 import MyWines from './pages/customer/MyWines';
 import RateWines from './pages/customer/RateWines';
@@ -48,10 +52,6 @@ import Notifications from './pages/customer/Notifications';
 const AuthenticatedApp = () => {
   const { user } = useAuth();
   const [viewMode, setViewMode] = React.useState('customer');
-
-  if (!user) {
-    return <Navigate to="/login" replace />;
-  }
 
   return (
     <Layout userRole={viewMode} setViewMode={setViewMode}>
@@ -116,16 +116,26 @@ const App = () => {
               {/* Use CustomerSignup for the restaurant membership page */}
               <Route path="/join/:restaurantId" element={<CustomerSignup />} />
               
-              {/* Restaurant onboarding flow */}
+              {/* Restaurant onboarding flow - no layout wrapper */}
               <Route path="/onboarding/:restaurantRef" element={
-                <React.Suspense fallback={<div>Loading...</div>}>
+                <React.Suspense fallback={
+                  <div className="min-h-screen flex items-center justify-center bg-[#fdfaf7] px-6 md:px-10 py-10 md:py-20 overflow-x-hidden">
+                    <div className="text-center max-w-7xl w-full mx-auto">
+                      <div className="h-12 w-12 animate-spin border-4 border-[#872657] border-t-transparent rounded-full mx-auto mb-6"></div>
+                      <p className="text-gray-600 text-lg" style={{ fontFamily: 'TayBasal' }}>Loading your restaurant registration...</p>
+                    </div>
+                  </div>
+                }>
                   <RestaurantOnboarding />
                 </React.Suspense>
               } />
 
               {/* Authenticated routes */}
-              <Route path="/dashboard/*" element={<AuthenticatedApp />} />
+              <Route path="/dashboard/*" element={<AuthGuard><AuthenticatedApp /></AuthGuard>} />
 
+              {/* Admin routes */}
+              <Route path="/admin/*" element={<AdminRoutes />} />
+              
               {/* Default redirect */}
               <Route path="/" element={<Navigate to="/landing" replace />} />
             </Routes>

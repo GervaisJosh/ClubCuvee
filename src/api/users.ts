@@ -8,6 +8,7 @@ export interface User {
   last_name: string;
   preferences: any;
   created_at: string;
+  is_admin?: boolean;
 }
 
 export const getUserProfile = async (userId: string): Promise<User | null> => {

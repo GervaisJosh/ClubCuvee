@@ -8,6 +8,7 @@ interface AuthContextType {
   user: User | null
   session: Session | null
   userProfile: any | null
+  isAdmin: boolean
   setUser: (user: User | null) => void
   signOut: () => Promise<void>
 }
@@ -18,6 +19,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null)
   const [session, setSession] = useState<Session | null>(null)
   const [userProfile, setUserProfile] = useState<any | null>(null)
+  const [isAdmin, setIsAdmin] = useState<boolean>(false)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -35,6 +37,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         fetchUserProfile(session.user.id)
       } else {
         setUserProfile(null)
+        setIsAdmin(false)
       }
     })
 
@@ -43,10 +46,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const fetchUserProfile = async (userId: string) => {
     try {
-      const profile = await getUserProfile(userId)
-      setUserProfile(profile)
+      const profile = await getUserProfile(userId);
+      setUserProfile(profile);
+      
+      // Set admin status from user profile
+      // Explicitly convert to boolean to ensure consistent type
+      if (profile) {
+        setIsAdmin(profile.is_admin === true);
+        
+        // Log admin status for debugging
+        if (profile.is_admin) {
+          console.info('User has admin privileges');
+        }
+      } else {
+        setIsAdmin(false);
+      }
     } catch (error) {
-      console.error('Error fetching user profile:', error)
+      console.error('Error fetching user profile:', error);
+      setIsAdmin(false);
     }
   }
 
@@ -55,10 +72,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (error) throw error
     setUser(null)
     setUserProfile(null)
+    setIsAdmin(false)
   }
 
   return (
-    <AuthContext.Provider value={{ user, session, userProfile, setUser, signOut }}>
+    <AuthContext.Provider value={{ user, session, userProfile, isAdmin, setUser, signOut }}>
       {children}
     </AuthContext.Provider>
   )
