@@ -81,7 +81,8 @@ export const membershipService = {
         .from('membership_tiers')
         .select('*')
         .eq('restaurant_id', restaurantId)
-        .order('price', { ascending: true });
+        .order('price', { ascending: true })
+        .returns<MembershipTier[]>();
       
       if (error) throw new Error(`Failed to fetch tiers: ${error.message}`);
       return data || [];
@@ -97,6 +98,7 @@ export const membershipService = {
         .from('membership_tiers')
         .select('*')
         .eq('id', tierId)
+        .returns<MembershipTier>()
         .single();
       
       if (error) throw new Error(`Failed to fetch tier: ${error.message}`);

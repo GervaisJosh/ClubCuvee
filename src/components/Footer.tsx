@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Wine, Instagram, Twitter, Youtube } from 'lucide-react';
 import ThemeToggle from './ThemeToggle';
 import { useTheme } from '../contexts/ThemeContext';
+import NavLink from './NavLink';
 
 const Footer = () => {
   const { theme } = useTheme();
@@ -76,14 +77,14 @@ const Footer = () => {
               <ul className="space-y-2">
                 {section.links.map((link, index) => (
                   <li key={index}>
-                    <Link
+                    <NavLink
                       to={link.href}
                       className={`${
                         isDark ? 'text-gray-400 hover:text-white' : 'text-gray-600 hover:text-gray-900'
                       }`}
                     >
                       {link.name}
-                    </Link>
+                    </NavLink>
                   </li>
                 ))}
               </ul>

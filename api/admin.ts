@@ -37,7 +37,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         // Check if this is the first admin being created (check if any admin exists)
         const { data: existingAdmins } = await supabaseAdmin
           .from('users')
-          .select('id')
+          .select('local_id') // Changed from 'id' to 'local_id'
           .eq('is_admin', true)
           .limit(1);
         

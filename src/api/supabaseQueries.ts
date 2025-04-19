@@ -24,13 +24,14 @@ export const signUp = async (
   if (data.user) {
     const existingProfile = await getUserProfile(data.user.id);
     if (!existingProfile) {
-      // Removed the `id` property to satisfy the type requirements.
+      // Create user profile with local_id mapping to auth.id
       await createUser({
         email: data.user.email!,
         wine_tier: 1,
         first_name: username,
         last_name: '',
         preferences: {},
+        // Note: local_id is added automatically in the createUser function
       });
     }
   }
@@ -80,6 +81,7 @@ export const resendConfirmationEmail = async (email: string) => {
 };
 
 export { getUserProfile } from './users';
+export { getUserProfileByAuthId } from '../services/userService';
 
 export const fetchWines = async () => {
   const { data, error } = await supabase

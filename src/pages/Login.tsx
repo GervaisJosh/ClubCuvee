@@ -5,7 +5,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { signIn, resendConfirmationEmail } from '../api/supabaseQueries';
 import { useTheme } from '../contexts/ThemeContext';
 import AuthLayout from '../components/AuthLayout';
-import { redirectBasedOnRole } from '../utils/authRedirects';
+import { redirectBasedOnRole, getHomePathFromProfile } from '../utils/authRedirects';
+import { getUserProfileByAuthId } from '../services/userService';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -21,7 +22,7 @@ const Login = () => {
   const burgundy = "#800020";
   
   // Get redirect path from location state (if it exists)
-  const from = location.state?.from || '/dashboard';
+  const from = location.state?.from || '';
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,8 +37,17 @@ const Login = () => {
       if (user) {
         setUser(user);
         
-        // Redirect based on user role, considering the original target path
-        await redirectBasedOnRole(user.id, navigate, '/dashboard', from);
+        // Fetch the user profile to determine their role
+        const profile = await getUserProfileByAuthId(user.id);
+        
+        // If we have a specific page the user was trying to access, try to redirect there
+        if (from) {
+          await redirectBasedOnRole(user.id, navigate, '/customer/dashboard', from);
+        } else {
+          // Otherwise, redirect to the appropriate dashboard based on role
+          const homePath = getHomePathFromProfile(profile);
+          navigate(homePath);
+        }
       } else {
         throw new Error('No user returned from signIn');
       }
@@ -160,7 +170,7 @@ const Login = () => {
             style={{ fontFamily: 'Libre Baskerville' }}
           >
             Don't have an account?{' '}
-            <Link to="/register" className="font-medium text-[#800020] hover:text-black focus:text-black">
+            <Link to="/signup" className="font-medium text-[#800020] hover:text-black focus:text-black">
               Sign Up Now
             </Link>
           </p>

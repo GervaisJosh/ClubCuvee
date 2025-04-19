@@ -2,6 +2,7 @@ import React, { createContext, useState, useEffect, useContext } from 'react'
 import { supabase } from '../supabase'
 import { User, Session } from '@supabase/supabase-js'
 import { getUserProfile } from '../api/supabaseQueries';
+import { getUserProfileByAuthId } from '../services/userService';
 
 
 interface AuthContextType {
@@ -46,7 +47,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const fetchUserProfile = async (userId: string) => {
     try {
-      const profile = await getUserProfile(userId);
+      // Use the enhanced function that ensures a user profile exists
+      const profile = await getUserProfileByAuthId(userId);
       setUserProfile(profile);
       
       // Set admin status from user profile
@@ -60,6 +62,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       } else {
         setIsAdmin(false);
+        console.warn('No user profile found even after creation attempt');
       }
     } catch (error) {
       console.error('Error fetching user profile:', error);

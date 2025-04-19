@@ -1,4 +1,4 @@
-import { verifyStripeSetup } from './handlers/membershipHandler.js';
+import { verifyStripeSetup } from './handlers/membershipHandler';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 /**
@@ -24,14 +24,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const deployUrl = process.env.VERCEL_URL || process.env.FRONTEND_URL;
   
   try {
-    const response = await verifyStripeSetup(req, res);
-    return response;
+    // Instead of returning the response directly, we need to call the handler
+    // and let it handle the response
+    return await verifyStripeSetup(req, res);
   } catch (error: any) {
     console.error('Error in verify-stripe endpoint:', error);
+    // Detailed error logging
+    const errorDetails = {
+      message: error.message || 'Internal server error',
+      code: error.code,
+      type: error.type,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    };
+    
+    console.error('Detailed error:', JSON.stringify(errorDetails, null, 2));
+    
     return res.status(500).json({
       status: 'error',
       error: error.message || 'Internal server error',
-      deployment_url: deployUrl ? `https://${deployUrl}` : undefined
+      deployment_url: deployUrl ? `https://${deployUrl}` : undefined,
+      errorDetails: process.env.NODE_ENV === 'development' ? errorDetails : undefined
     });
   }
 }

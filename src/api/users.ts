@@ -1,7 +1,8 @@
 import { supabase } from '../supabase';
 
 export interface User {
-  id: string;
+  local_id: string; // Primary key in Users table
+  auth_id?: string; // Reference to auth.users.id (Supabase auth user ID)
   email: string;
   wine_tier: number;
   first_name: string;
@@ -11,18 +12,19 @@ export interface User {
   is_admin?: boolean;
 }
 
-export const getUserProfile = async (userId: string): Promise<User | null> => {
+export const getUserProfile = async (authUserId: string): Promise<User | null> => {
   try {
+    // First try to find by auth_id
     const { data, error } = await supabase
       .from('users')
       .select('*')
-      .eq('id', userId)
-      .single()
+      .eq('auth_id', authUserId)
+      .single();
 
     if (error) {
       if (error.code === 'PGRST116') {
-        console.log('User profile not found, creating a new one');
-        return createDefaultUserProfile(userId);
+        console.log('User profile not found by auth_id, creating a new one');
+        return createDefaultUserProfile(authUserId);
       }
       throw error;
     }
@@ -34,21 +36,47 @@ export const getUserProfile = async (userId: string): Promise<User | null> => {
   }
 }
 
-const createDefaultUserProfile = async (userId: string): Promise<User | null> => {
-  const defaultProfile: Omit<User, 'id' | 'created_at'> = {
-    email: '',
-    wine_tier: 1,
-    first_name: '',
-    last_name: '',
-    preferences: {},
-  };
-
+const createDefaultUserProfile = async (authUserId: string): Promise<User | null> => {
   try {
-    // First, check if the user already exists
+    // Get auth user data to populate default profile
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    
+    if (authError) {
+      console.error('Error getting auth user:', authError);
+      throw authError;
+    }
+    
+    if (!user || user.id !== authUserId) {
+      throw new Error('Auth user not found or mismatch');
+    }
+    
+    // Extract user metadata if available
+    const metadata = user.user_metadata || {};
+    const name = metadata.full_name || metadata.name || '';
+    let firstName = name, lastName = '';
+    
+    // Try to split name into first and last parts
+    if (name.includes(' ')) {
+      const nameParts = name.split(' ');
+      firstName = nameParts[0];
+      lastName = nameParts.slice(1).join(' ');
+    }
+    
+    const defaultProfile: Omit<User, 'local_id' | 'created_at'> = {
+      auth_id: authUserId, // Store the auth.users.id for future reference
+      email: user.email || '',
+      wine_tier: 1,
+      first_name: firstName,
+      last_name: lastName,
+      preferences: {},
+      is_admin: metadata.role === 'admin' // Set admin flag based on auth metadata
+    };
+
+    // Check if user already exists by auth_id
     const { data: existingUser, error: checkError } = await supabase
       .from('users')
-      .select('id')
-      .eq('id', userId)
+      .select('local_id')
+      .eq('auth_id', authUserId)
       .single();
 
     if (checkError && checkError.code !== 'PGRST116') {
@@ -60,7 +88,7 @@ const createDefaultUserProfile = async (userId: string): Promise<User | null> =>
       const { data, error } = await supabase
         .from('users')
         .update(defaultProfile)
-        .eq('id', userId)
+        .eq('local_id', existingUser.local_id)
         .select()
         .single();
 
@@ -70,7 +98,7 @@ const createDefaultUserProfile = async (userId: string): Promise<User | null> =>
       // If the user doesn't exist, create a new profile
       const { data, error } = await supabase
         .from('users')
-        .insert({ id: userId, ...defaultProfile })
+        .insert(defaultProfile)
         .select()
         .single();
 
@@ -84,22 +112,40 @@ const createDefaultUserProfile = async (userId: string): Promise<User | null> =>
 }
 
 export const updateUserProfile = async (userId: string, updates: Partial<User>): Promise<User | null> => {
-  const { data, error } = await supabase
-    .from('users')
-    .update(updates)
-    .eq('id', userId)
-    .select()
-    .single()
+  // First determine if userId is auth_id or local_id
+  let query = supabase.from('users');
+  
+  if (userId.length === 36) { // UUID length check (likely auth_id)
+    // Try to find by auth_id first
+    const { data: userByAuthId } = await supabase
+      .from('users')
+      .select('local_id')
+      .eq('auth_id', userId)
+      .single();
+      
+    if (userByAuthId) {
+      // If found, update by local_id
+      query = query.update(updates).eq('local_id', userByAuthId.local_id);
+    } else {
+      // Fallback to update by local_id
+      query = query.update(updates).eq('local_id', userId);
+    }
+  } else {
+    // If not UUID format, assume it's local_id
+    query = query.update(updates).eq('local_id', userId);
+  }
+  
+  const { data, error } = await query.select().single();
 
   if (error) {
-    console.error('Error updating user profile:', error)
-    return null
+    console.error('Error updating user profile:', error);
+    return null;
   }
 
-  return data
+  return data;
 }
 
-export const createUser = async (userData: Omit<User, 'id' | 'created_at'>): Promise<User | null> => {
+export const createUser = async (userData: Omit<User, 'local_id' | 'created_at'>): Promise<User | null> => {
   const { data, error } = await supabase
     .from('users')
     .insert(userData)

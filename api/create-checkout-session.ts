@@ -1,2 +1,2 @@
-import { handleWebhook, createCheckoutSession } from './handlers/checkoutHandler';
+import { createCheckoutSession } from './handlers/checkoutHandler';
 export default createCheckoutSession;

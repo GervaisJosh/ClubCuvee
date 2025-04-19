@@ -29,7 +29,10 @@ export function validateEmail(email: string): boolean {
   return emailRegex.test(email);
 }
 
-export function validatePrice(price: string): boolean {
+export function validatePrice(price: string | number): boolean {
+  if (typeof price === 'number') {
+    return price > 0;
+  }
   const priceNum = parseFloat(price);
   return !isNaN(priceNum) && priceNum > 0;
 }

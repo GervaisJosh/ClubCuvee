@@ -95,6 +95,10 @@ export const authService = {
       });
 
       if (error) throw error;
+      
+      // The user profile will be created automatically by AuthContext
+      // via the getUserProfileByAuthId function after login
+      
       return { user: data.user, error: null };
     } catch (error: any) {
       console.error('Error during login:', error);

@@ -2,6 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { Wine } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
+import NavLink from './NavLink';
 
 const AuthHeader = () => {
   const { theme } = useTheme();
@@ -13,23 +14,26 @@ const AuthHeader = () => {
       <div className="max-w-[1920px] mx-auto px-4 sm:px-6">
         <div className="flex justify-between items-center py-4">
           <div className="flex items-center">
-            <Link to="/" className="flex items-center">
+            <NavLink to="/" className="flex items-center">
               <Wine className="h-8 w-8" style={{ color: burgundy }} />
               <span className={`text-xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`} style={{ fontFamily: 'TayBasal' }}>
                  Club Cuvee
               </span>
-            </Link>
+            </NavLink>
             
-            <nav className="flex items-center ml-10 space-x-16">
-              <Link to="/features" className={`${isDark ? 'text-gray-300 hover:text-white' : 'text-black hover:text-gray-900'}`} style={{ fontFamily: 'TayBasal' }}>
+            <nav className="hidden md:flex items-center ml-10 space-x-8">
+              <NavLink to="/how-it-works" className={`${isDark ? 'text-gray-300 hover:text-white' : 'text-black hover:text-gray-900'}`} style={{ fontFamily: 'TayBasal' }}>
+                How It Works
+              </NavLink>
+              <NavLink to="/features" className={`${isDark ? 'text-gray-300 hover:text-white' : 'text-black hover:text-gray-900'}`} style={{ fontFamily: 'TayBasal' }}>
                 Features
-              </Link>
-              <Link to="/about" className={`${isDark ? 'text-gray-300 hover:text-white' : 'text-black hover:text-gray-900'}`} style={{ fontFamily: 'TayBasal' }}>
-                About
-              </Link>
-              <Link to="/pricing" className={`${isDark ? 'text-gray-300 hover:text-white' : 'text-black hover:text-gray-900'}`} style={{ fontFamily: 'TayBasal' }}>
+              </NavLink>
+              <NavLink to="/pricing" className={`${isDark ? 'text-gray-300 hover:text-white' : 'text-black hover:text-gray-900'}`} style={{ fontFamily: 'TayBasal' }}>
                 Pricing
-              </Link>
+              </NavLink>
+              <NavLink to="/about" className={`${isDark ? 'text-gray-300 hover:text-white' : 'text-black hover:text-gray-900'}`} style={{ fontFamily: 'TayBasal' }}>
+                About
+              </NavLink>
             </nav>
           </div>
         </div>

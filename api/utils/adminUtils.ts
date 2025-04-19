@@ -12,7 +12,7 @@ export const setUserAdminStatus = async (userId: string, isAdmin: boolean) => {
     const { data, error } = await supabaseAdmin
       .from('users')
       .update({ is_admin: isAdmin })
-      .eq('id', userId)
+      .eq('local_id', userId) // Changed from 'id' to 'local_id'
       .select()
       .single();
     
@@ -45,7 +45,7 @@ export const checkUserAdminStatus = async (userId: string) => {
     const { data, error } = await supabaseAdmin
       .from('users')
       .select('is_admin')
-      .eq('id', userId)
+      .eq('local_id', userId) // Changed from 'id' to 'local_id'
       .single();
     
     if (error) {

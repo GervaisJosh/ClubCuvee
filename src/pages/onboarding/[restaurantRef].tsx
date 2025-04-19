@@ -80,12 +80,9 @@ export const RestaurantOnboarding: React.FC = () => {
               setCurrentStep(2);
               
               try {
-                const { data: existingTiers, error: tiersError } = await supabase
-                  .from('membership_tiers')
-                  .select('*')
-                  .eq('restaurant_id', invitation.restaurant_id);
-                  
-                if (!tiersError && existingTiers && existingTiers.length > 0) {
+                // Use membershipService instead of direct Supabase query to ensure proper typing
+                const existingTiers = await membershipService.getMembershipTiersByRestaurant(invitation.restaurant_id);
+                if (existingTiers && existingTiers.length > 0) {
                   setTiers(existingTiers);
                 }
               } catch (err) {

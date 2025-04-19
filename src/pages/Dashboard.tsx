@@ -3,11 +3,15 @@ import { Wine, Star, ShoppingCart, Calendar, Gift, Heart, TrendingUp, Percent, D
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
 import BentoBox from '../components/BentoBox';
 import { useTheme } from "../contexts/ThemeContext";
-
+import DefaultText from '../components/DefaultText';
+import Card from '../components/Card';
+import Section from '../components/Section';
+import Button from '../components/Button';
 
 const Dashboard = ({ userRole }) => {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
+  const burgundy = '#800020';
 
   const salesData = [
     { name: 'Jan', sales: 4000 },
@@ -33,76 +37,165 @@ const Dashboard = ({ userRole }) => {
     { name: 'Memberships', value: 15 },
   ];
 
-  const adminWidgets = [
-    { title: 'Total Revenue', value: '$328,000', icon: DollarSign, color: 'bg-green-500', size: 'col-span-1', path: '/revenue-insights' },
-    { title: 'Wine Inventory', value: '1,234 bottles', icon: Wine, color: 'bg-red-500', size: 'col-span-1', path: '/wines' },
-    { title: 'Pending Orders', value: '23', icon: Package, color: 'bg-yellow-500', size: 'col-span-1', path: '/order-fulfillment' },
-    { title: 'Active Customers', value: '567', icon: Users, color: 'bg-blue-500', size: 'col-span-1', path: '/customer-segmentation' },
-    { title: 'Monthly Revenue Trend', chart: 'lineChart', size: 'col-span-2 row-span-2', path: '/wine-inventory-analytics' },
-    { title: 'Top Selling Wines', list: ['Chateau Margaux 2015', 'Opus One 2018', 'Dom Perignon 2010'], icon: TrendingUp, size: 'col-span-1 row-span-2', path: '/wine-inventory-analytics' },
-    { title: 'Revenue Breakdown', chart: 'barChart', size: 'col-span-2 row-span-2', path: '/revenue-insights' },
-    { title: 'Avg Customer Rating', value: '96', icon: Star, color: 'bg-purple-500', size: 'col-span-1', path: '/customer-insights' },
-    { title: 'Upcoming Events', value: '3', icon: Calendar, color: 'bg-indigo-500', size: 'col-span-1', path: '/admin-calendar' },
+  const stats = [
+    { label: 'Total Revenue', value: '$328,000', icon: DollarSign, color: 'bg-green-500', path: '/revenue-insights' },
+    { label: 'Wine Inventory', value: '1,234 bottles', icon: Wine, color: `bg-[${burgundy}]`, path: '/wines' },
+    { label: 'Pending Orders', value: '23', icon: Package, color: 'bg-yellow-500', path: '/order-fulfillment' },
+    { label: 'Active Customers', value: '567', icon: Users, color: 'bg-blue-500', path: '/customer-segmentation' },
   ];
 
-  const widgets = userRole === 'admin' ? adminWidgets : customerWidgets;
+  const quickActions = [
+    { 
+      name: "Wine Inventory", 
+      description: "Manage your wine collection", 
+      icon: Wine,
+      color: burgundy,
+      path: "/wine-inventory"
+    },
+    { 
+      name: "Customer Management", 
+      description: "View and edit member details", 
+      icon: Users,
+      color: "#3B82F6", // Blue
+      path: "/customer-insights"
+    },
+    { 
+      name: "Order Fulfillment", 
+      description: "Process pending wine orders", 
+      icon: Package,
+      color: burgundy,
+      path: "/order-fulfillment"
+    },
+    { 
+      name: "Event Calendar", 
+      description: "Schedule and manage events", 
+      icon: Calendar,
+      color: burgundy,
+      path: "/calendar"
+    }
+  ];
+
+  const bestSellingWines = [
+    { name: 'Chateau Margaux 2015', sales: 45, trend: 'up' },
+    { name: 'Opus One 2018', sales: 38, trend: 'up' },
+    { name: 'Dom Perignon 2010', sales: 32, trend: 'down' },
+    { name: 'Silver Oak Cabernet 2017', sales: 28, trend: 'up' },
+  ];
 
   return (
-    <div className={`space-y-6 ${isDark ? 'bg-gray-900' : 'bg-gray-100'}`}>
-      <h1 className={`text-3xl font-semibold mb-6 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-        {userRole === 'admin' ? 'Admin Dashboard' : 'Welcome to Your Wine Dashboard'}
-      </h1>
-      
-      <div className="grid grid-cols-4 gap-6">
-        {widgets.map((widget, index) => (
-          <BentoBox
-            key={index}
-            title={widget.title}
-            value={widget.value}
-            icon={widget.icon}
-            color={widget.color}
-            size={widget.size}
-            path={widget.path}
-            isDark={isDark} // Pass isDark to customize BentoBox styles
-          >
-            {widget.list && (
-              <ul className={`list-disc list-inside ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                {widget.list.map((item, i) => (
-                  <li key={i}>{item}</li>
-                ))}
-              </ul>
-            )}
-            {widget.chart === 'lineChart' && (
-              <ResponsiveContainer width="100%" height={200}>
-                <LineChart data={userRole === 'admin' ? monthlyRevenue : salesData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke={isDark ? '#444' : '#ddd'} />
-                  <XAxis dataKey={userRole === 'admin' ? 'month' : 'name'} stroke={isDark ? '#bbb' : '#333'} />
-                  <YAxis stroke={isDark ? '#bbb' : '#333'} />
-                  <Tooltip contentStyle={{ backgroundColor: isDark ? '#333' : '#fff', color: isDark ? '#fff' : '#000' }} />
-                  {userRole === 'admin' ? (
-                    <>
-                      <Line type="monotone" dataKey="revenue" stroke="#10B981" name="Total Revenue" />
-                      <Line type="monotone" dataKey="wineRevenue" stroke="#3B82F6" name="Wine Revenue" />
-                    </>
-                  ) : (
-                    <Line type="monotone" dataKey="sales" stroke="#10B981" name="Wines Tasted" />
-                  )}
-                </LineChart>
-              </ResponsiveContainer>
-            )}
-            {widget.chart === 'barChart' && (
-              <ResponsiveContainer width="100%" height={200}>
-                <BarChart data={revenueBreakdown}>
-                  <CartesianGrid strokeDasharray="3 3" stroke={isDark ? '#444' : '#ddd'} />
-                  <XAxis dataKey="name" stroke={isDark ? '#bbb' : '#333'} />
-                  <YAxis stroke={isDark ? '#bbb' : '#333'} />
-                  <Tooltip contentStyle={{ backgroundColor: isDark ? '#333' : '#fff', color: isDark ? '#fff' : '#000' }} />
-                  <Bar dataKey="value" fill={isDark ? '#8884d8' : '#5555ff'} />
-                </BarChart>
-              </ResponsiveContainer>
-            )}
-          </BentoBox>
+    <div className="space-y-8 max-w-7xl mx-auto">
+      <Section className="pb-2">
+        <DefaultText variant="heading2" className="mb-2">
+          Welcome to Your Business Dashboard
+        </DefaultText>
+        <DefaultText variant="body" color="muted">
+          Track your wine club performance, manage inventory, and engage with your members all in one place.
+        </DefaultText>
+      </Section>
+
+      {/* Stats Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {stats.map((stat, index) => (
+          <Card key={index} className="flex items-center" hover onClick={() => window.location.href = stat.path}>
+            <div className={`${stat.color} rounded-full p-3 mr-4`}>
+              <stat.icon className="h-6 w-6 text-white" />
+            </div>
+            <div>
+              <DefaultText variant="caption" color="muted">
+                {stat.label}
+              </DefaultText>
+              <DefaultText variant="heading3" className="font-bold">
+                {stat.value}
+              </DefaultText>
+            </div>
+          </Card>
         ))}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Revenue Chart */}
+        <Card className="col-span-1 lg:col-span-2">
+          <DefaultText variant="heading3" className="mb-4">Monthly Revenue</DefaultText>
+          <ResponsiveContainer width="100%" height={250}>
+            <LineChart data={monthlyRevenue}>
+              <CartesianGrid strokeDasharray="3 3" stroke={isDark ? '#444' : '#ddd'} />
+              <XAxis dataKey="month" stroke={isDark ? '#bbb' : '#333'} />
+              <YAxis stroke={isDark ? '#bbb' : '#333'} />
+              <Tooltip contentStyle={{ backgroundColor: isDark ? '#333' : '#fff', color: isDark ? '#fff' : '#000' }} />
+              <Line type="monotone" dataKey="revenue" stroke="#10B981" name="Total Revenue" />
+              <Line type="monotone" dataKey="wineRevenue" stroke={burgundy} name="Wine Revenue" />
+            </LineChart>
+          </ResponsiveContainer>
+        </Card>
+
+        {/* Top Selling Wines */}
+        <Card>
+          <DefaultText variant="heading3" className="mb-4">Top Selling Wines</DefaultText>
+          <div className="space-y-4">
+            {bestSellingWines.map((wine, index) => (
+              <div 
+                key={index} 
+                className="flex items-center justify-between pb-4 border-b border-gray-200 dark:border-gray-800"
+              >
+                <div>
+                  <DefaultText className="font-medium">{wine.name}</DefaultText>
+                  <DefaultText variant="caption" color="muted">{wine.sales} bottles this month</DefaultText>
+                </div>
+                <TrendingUp className={`h-5 w-5 ${wine.trend === 'up' ? 'text-green-500' : 'text-red-500'}`} />
+              </div>
+            ))}
+          </div>
+        </Card>
+      </div>
+
+      {/* Quick Actions */}
+      <Section title="Quick Actions" className="pt-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {quickActions.map((action, index) => (
+            <Card 
+              key={index} 
+              className="flex items-start" 
+              hover 
+              onClick={() => window.location.href = action.path}
+              padding="md"
+            >
+              <div 
+                className="mr-4 p-2 rounded-md flex-shrink-0" 
+                style={{ backgroundColor: `${action.color}20` }}
+              >
+                <action.icon style={{ color: action.color }} className="h-6 w-6" />
+              </div>
+              <div>
+                <DefaultText className="font-medium mb-1">{action.name}</DefaultText>
+                <DefaultText variant="caption" color="muted">{action.description}</DefaultText>
+              </div>
+            </Card>
+          ))}
+        </div>
+      </Section>
+
+      {/* Revenue Breakdown */}
+      <Card>
+        <DefaultText variant="heading3" className="mb-4">Revenue Breakdown</DefaultText>
+        <ResponsiveContainer width="100%" height={250}>
+          <BarChart data={revenueBreakdown}>
+            <CartesianGrid strokeDasharray="3 3" stroke={isDark ? '#444' : '#ddd'} />
+            <XAxis dataKey="name" stroke={isDark ? '#bbb' : '#333'} />
+            <YAxis stroke={isDark ? '#bbb' : '#333'} />
+            <Tooltip contentStyle={{ backgroundColor: isDark ? '#333' : '#fff', color: isDark ? '#fff' : '#000' }} />
+            <Bar dataKey="value" fill={burgundy} />
+          </BarChart>
+        </ResponsiveContainer>
+      </Card>
+
+      <div className="flex justify-center mt-8">
+        <Button 
+          variant="outline" 
+          onClick={() => window.location.href = '/revenue-insights'}
+          icon={<BarChart2 className="h-5 w-5" />}
+        >
+          View Detailed Analytics
+        </Button>
       </div>
     </div>
   );

@@ -57,7 +57,7 @@ const SignUp = () => {
       const { error: userError } = await supabase
         .from('users')
         .insert({
-          id: authData.user.id,
+          local_id: authData.user.id, // Changed from 'id' to 'local_id'
           username,
           email,
           restaurant_id: restaurantId,

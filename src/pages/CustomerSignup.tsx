@@ -113,7 +113,8 @@ const CustomerSignup: React.FC = () => {
           .from('membership_tiers')
           .select('*')
           .eq('restaurant_id', restaurantId)
-          .order('price', { ascending: true });
+          .order('price', { ascending: true })
+          .returns<MembershipTier[]>();
         if (tiersError) throw new Error(tiersError.message);
         setMembershipTiers(tiersData || []);
 

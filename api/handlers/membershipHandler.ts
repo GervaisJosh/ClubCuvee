@@ -1,8 +1,10 @@
-import { stripe } from '../utils/stripeClient.js';
-import { supabaseAdmin } from '../utils/supabaseAdmin.js';
-import { validateRequest, validatePrice } from '../utils/validation.js';
+import { stripe } from '../utils/stripeClient';
+import { supabaseAdmin } from '../utils/supabaseAdmin';
+import { validateRequest, validatePrice } from '../utils/validation';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { randomUUID } from 'crypto';
+
+import { ensurePriceString, ensurePriceNumber, convertPriceToStripeCents } from '../../src/utils/priceUtils.js';
 
 // Type definitions for clarity and safety
 interface MembershipTierData {
@@ -75,7 +77,7 @@ export async function createMembershipTier(req: VercelRequest, res: VercelRespon
     // Create price for the product
     const stripePrice = await stripe.prices.create({
       product: product.id,
-      unit_amount: Math.round(parseFloat(price as string) * 100),
+      unit_amount: convertPriceToStripeCents(price),
       currency: 'usd',
       recurring: { interval: 'month' },
       metadata: { 
@@ -86,7 +88,7 @@ export async function createMembershipTier(req: VercelRequest, res: VercelRespon
     // Store in Supabase
     const tierData: MembershipTierData = {
       name,
-      price: typeof price === 'number' ? price.toString() : price,
+      price: ensurePriceString(price),
       description: description || '',
       restaurant_id,
       stripe_product_id: product.id,
@@ -179,10 +181,9 @@ export async function updateMembershipTier(req: VercelRequest, res: VercelRespon
     }
     
     // Prepare tier data for update
-    const priceNumber = parseFloat(price as string);
     const updateData: Partial<MembershipTierData> = {
       name,
-      price: priceNumber,
+      price: ensurePriceString(price),
       description: description || '',
       updated_at: new Date().toISOString(),
     };
@@ -192,7 +193,7 @@ export async function updateMembershipTier(req: VercelRequest, res: VercelRespon
       // Check what needs to be updated in Stripe
       const hasNameChanged = existingTier.name !== name;
       const hasDescriptionChanged = existingTier.description !== description;
-      const hasPriceChanged = parseFloat(existingTier.price as string) !== priceNumber;
+      const hasPriceChanged = ensurePriceNumber(existingTier.price) !== ensurePriceNumber(price);
       
       try {
         // 1. Update product if name or description changed
@@ -225,7 +226,7 @@ export async function updateMembershipTier(req: VercelRequest, res: VercelRespon
           // Create new price
           const newPrice = await stripe.prices.create({
             product: stripe_product_id,
-            unit_amount: Math.round(priceNumber * 100),
+            unit_amount: convertPriceToStripeCents(price),
             currency: 'usd',
             recurring: { interval: 'month' },
             metadata: {

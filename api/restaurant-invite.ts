@@ -1,4 +1,4 @@
-import { createInvitationLink } from './handlers/membershipHandler.js';
+import { createInvitationLink } from './handlers/membershipHandler';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 /**
@@ -22,5 +22,37 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
   
-  return createInvitationLink(req, res);
+  try {
+    // Validate that the request body has the required fields
+    const { email, restaurant_name } = req.body || {};
+    if (!email || !restaurant_name) {
+      return res.status(400).json({
+        error: 'Missing required fields',
+        details: {
+          email: email ? undefined : 'Email is required',
+          restaurant_name: restaurant_name ? undefined : 'Restaurant name is required'
+        }
+      });
+    }
+    
+    // Call the handler with proper error handling
+    return await createInvitationLink(req, res);
+  } catch (error: any) {
+    console.error('Error in restaurant-invite endpoint:', error);
+    // Detailed error for debugging
+    const errorDetails = {
+      message: error.message || 'Internal server error',
+      code: error.code,
+      type: error.type,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    };
+    
+    console.error('Detailed error:', JSON.stringify(errorDetails, null, 2));
+    
+    return res.status(500).json({
+      success: false,
+      error: error.message || 'Internal server error',
+      errorDetails: process.env.NODE_ENV === 'development' ? errorDetails : undefined
+    });
+  }
 }

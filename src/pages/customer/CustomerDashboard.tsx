@@ -1,10 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Wine, Star, ShoppingCart, Calendar } from 'lucide-react';
+import { Wine, Star, ShoppingCart, Calendar, ArrowRight } from 'lucide-react';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 import { useTheme } from '../../contexts/ThemeContext';
-import BentoBox from '../../components/BentoBox';
-import RecommendationBentoBox from '../../components/RecommendationBentoBox';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../supabase';
+import DefaultText from '../../components/DefaultText';
+import Card from '../../components/Card';
+import Section from '../../components/Section';
+import Button from '../../components/Button';
+import RecommendationBentoBox from '../../components/RecommendationBentoBox';
 
 const winesTastedData = [
   { month: 'Jan', count: 5 },
@@ -19,7 +23,7 @@ const CustomerDashboard: React.FC = () => {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
   const burgundy = '#800020';
-  const charcoalGray = '#1A1A1D';
+  const navigate = useNavigate();
 
   const [userId, setUserId] = useState<string | null>(null);
   const [userStats, setUserStats] = useState({
@@ -38,14 +42,35 @@ const CustomerDashboard: React.FC = () => {
         if (user) {
           setUserId(user.id);
           
-          // Fetch user stats
+          // First get the local_id that corresponds to this auth user.id
+          const { data: userData, error: userError } = await supabase
+            .from('users')
+            .select('local_id')
+            .eq('auth_id', user.id)
+            .single();
+            
+          if (userError) {
+            console.error('Error finding user local_id:', userError);
+            throw new Error('Unable to find user profile');
+          }
+          
+          const localId = userData?.local_id;
+          if (!localId) {
+            throw new Error('User profile not found');
+          }
+          
+          // Fetch user stats using local_id
           const { data: statsData, error: statsError } = await supabase
             .from('user_stats')
             .select('wines_tasted, average_rating, upcoming_deliveries, next_event')
-            .eq('user_id', user.id)
+            .eq('user_id', localId)
             .single();
 
-          if (statsError) throw statsError;
+          if (statsError) {
+            console.error('Error fetching user stats:', statsError);
+            console.info('The user_stats table may not exist or has no data for this user');
+            // Don't throw, just continue with default values
+          }
 
           if (statsData) {
             setUserStats({
@@ -64,106 +89,113 @@ const CustomerDashboard: React.FC = () => {
     fetchUserData();
   }, []);
 
-  const widgets = [
-    {
-      title: 'Wines Tasted',
-      value: userStats.winesTasted.toString(),
-      icon: Wine,
-      iconColor: isDark ? 'text-white' : 'text-gray-900',
-      titleColor: isDark ? 'text-white' : burgundy,
-      size: 'col-span-1',
-      path: '/my-wines',
+  const stats = [
+    { 
+      label: 'Wines Tasted', 
+      value: userStats.winesTasted.toString(), 
+      icon: Wine, 
+      color: `bg-[${burgundy}]`,
+      path: '/customer/my-wines' 
     },
-    {
-      title: 'Average Rating',
-      value: userStats.averageRating.toString(),
-      icon: Star,
-      iconColor: isDark ? 'text-white' : 'text-gray-900',
-      titleColor: isDark ? 'text-white' : burgundy,
-      size: 'col-span-1',
-      path: '/rate-wines',
+    { 
+      label: 'Average Rating', 
+      value: userStats.averageRating.toString(), 
+      icon: Star, 
+      color: 'bg-amber-500',
+      path: '/customer/rate-wines' 
     },
-    {
-      title: 'Upcoming Deliveries',
-      value: userStats.upcomingDeliveries.toString(),
-      icon: ShoppingCart,
-      iconColor: isDark ? 'text-white' : 'text-gray-900',
-      titleColor: isDark ? 'text-white' : burgundy,
-      size: 'col-span-1',
-      path: '/order-history',
+    { 
+      label: 'Upcoming Deliveries', 
+      value: userStats.upcomingDeliveries.toString(), 
+      icon: ShoppingCart, 
+      color: 'bg-blue-500',
+      path: '/customer/order-history' 
     },
-    {
-      title: 'Next Event',
-      value: userStats.nextEvent,
-      icon: Calendar,
-      iconColor: isDark ? 'text-white' : 'text-gray-900',
-      titleColor: isDark ? 'text-white' : burgundy,
-      size: 'col-span-1',
-      path: '/customer-calendar',
+    { 
+      label: 'Next Event', 
+      value: userStats.nextEvent, 
+      icon: Calendar, 
+      color: 'bg-purple-500',
+      path: '/customer/calendar' 
     },
   ];
 
   return (
-    <div className="p-6">
-      <h1 className={`text-3xl font-bold mb-8 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-        Welcome to Your Wine Dashboard
-      </h1>
+    <div className="space-y-8 max-w-7xl mx-auto">
+      <Section className="pb-2">
+        <DefaultText variant="heading2" className="mb-2">
+          Welcome to Your Wine Club
+        </DefaultText>
+        <DefaultText variant="body" color="muted">
+          Discover your personalized wine journey, track your favorites, and explore upcoming events.
+        </DefaultText>
+      </Section>
 
-      {/* Widgets Section */}
+      {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {widgets.map((widget, index) => (
-          <BentoBox
-            key={index}
-            title={widget.title}
-            value={widget.value}
-            icon={widget.icon}
-            iconColor={widget.iconColor}
-            titleColor={widget.titleColor}
-            backgroundColor={isDark ? charcoalGray : 'white'}
-            size={widget.size}
-            path={widget.path}
-          />
+        {stats.map((stat, index) => (
+          <Card key={index} className="flex items-center" hover onClick={() => navigate(stat.path)}>
+            <div className={`${stat.color} rounded-full p-3 mr-4`}>
+              <stat.icon className="h-6 w-6 text-white" />
+            </div>
+            <div>
+              <DefaultText variant="caption" color="muted">
+                {stat.label}
+              </DefaultText>
+              <DefaultText variant="heading3" className="font-bold">
+                {stat.value}
+              </DefaultText>
+            </div>
+          </Card>
         ))}
       </div>
 
       {/* Recommendations Section */}
-      <div className="mt-8">
+      <Section title="Your Recommended Wines" className="pt-6">
         {userId ? (
-          <RecommendationBentoBox
-            userId={userId}
-            title="Your Recommended Wines"
-            size="col-span-3"
-            titleColor={isDark ? 'text-white' : burgundy}
-            backgroundColor={isDark ? charcoalGray : 'white'}
-            isDark={isDark}
-          />
+          <Card padding="lg">
+            <RecommendationBentoBox
+              userId={userId}
+              title=""
+              size="col-span-3"
+              titleColor={isDark ? 'text-white' : burgundy}
+              backgroundColor={isDark ? 'black' : 'white'}
+              isDark={isDark}
+            />
+            <div className="mt-6 flex justify-end">
+              <Button 
+                variant="outline"
+                onClick={() => navigate('/customer/recommendations')}
+                icon={<ArrowRight className="h-4 w-4" />}
+              >
+                View All Recommendations
+              </Button>
+            </div>
+          </Card>
         ) : (
-          <div className="text-center py-8">
+          <Card className="text-center py-10">
             <Wine className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-            <p className={`${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+            <DefaultText color="muted">
               Please sign in to see your recommendations
-            </p>
-          </div>
+            </DefaultText>
+          </Card>
         )}
-      </div>
+      </Section>
 
       {/* Wines Tasted Over Time Section */}
-      <div className="mt-8">
-        <BentoBox
-          title="Wines Tasted Over Time"
-          size="col-span-3"
-          titleColor={isDark ? 'text-white' : burgundy}
-          backgroundColor={isDark ? charcoalGray : 'white'}
-          path="/my-wines"
-        >
+      <Section title="Your Wine Journey" className="pt-6">
+        <Card padding="lg">
+          <DefaultText variant="heading3" className="mb-4">
+            Wines Tasted Over Time
+          </DefaultText>
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={winesTastedData}>
-              <CartesianGrid strokeDasharray="3 3" stroke={isDark ? '#333' : '#ccc'} />
+              <CartesianGrid strokeDasharray="3 3" stroke={isDark ? '#333' : '#eee'} />
               <XAxis dataKey="month" stroke={isDark ? '#aaa' : '#666'} />
               <YAxis stroke={isDark ? '#aaa' : '#666'} />
               <Tooltip
                 contentStyle={{
-                  backgroundColor: isDark ? charcoalGray : 'white',
+                  backgroundColor: isDark ? 'black' : 'white',
                   borderRadius: '8px',
                   color: isDark ? 'white' : 'black',
                 }}
@@ -177,8 +209,17 @@ const CustomerDashboard: React.FC = () => {
               />
             </LineChart>
           </ResponsiveContainer>
-        </BentoBox>
-      </div>
+          <div className="mt-6 flex justify-end">
+            <Button 
+              variant="outline"
+              onClick={() => navigate('/customer/my-wines')}
+              icon={<ArrowRight className="h-4 w-4" />}
+            >
+              Explore Your Collection
+            </Button>
+          </div>
+        </Card>
+      </Section>
     </div>
   );
 };
