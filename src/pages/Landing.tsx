@@ -15,24 +15,24 @@ const Landing = () => {
       <Header />
 
       <main className="pt-32">
-        <div className="max-w-[1920px] mx-auto px-4 flex flex-col lg:flex-row items-center lg:items-start mb-32">
+        <div className="max-w-[1920px] mx-auto px-4 sm:px-6 flex flex-col lg:flex-row items-center lg:items-start mb-16 md:mb-32">
           <div className="lg:w-1/2 flex flex-col items-center lg:justify-center text-center">
             <div className="max-w-2xl">
-              <h1 className={`text-4xl sm:text-5xl md:text-6xl font-extrabold ${isDark ? 'text-white' : 'text-gray-900'}`} style={{ fontFamily: 'HV Florentino' }}>
+              <h1 className={`text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold ${isDark ? 'text-white' : 'text-gray-900'}`} style={{ fontFamily: 'HV Florentino' }}>
                 Your Wine Inventory,
               </h1>
-              <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold mt-2" style={{ fontFamily: 'HV Florentino', color: burgundy }}>
+              <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold mt-2" style={{ fontFamily: 'HV Florentino', color: burgundy }}>
                 A Personal Wine Club for Your Customers
               </h1>
               
-              <p className={`mt-8 text-xl ${isDark ? 'text-gray-300' : 'text-black'}`} style={{ fontFamily: 'Libre Baskerville' }}>
+              <p className={`mt-6 md:mt-8 text-base sm:text-lg md:text-xl ${isDark ? 'text-gray-300' : 'text-black'}`} style={{ fontFamily: 'Libre Baskerville' }}>
                 Club Cuvee uses AI and advanced algorithms to digitize your wine inventory, allowing for data-driven experiences for your members based on their personal reviews, ratings, and wine history—not only increasing brand connection but also generating additional revenue through sales of existing inventory. 
               </p>
 
-              <div className="mt-10">
+              <div className="mt-8 md:mt-10">
                 <Link 
                   to="/get-started"
-                  className="text-white px-8 py-4 rounded-md transition-colors duration-200 text-lg hover:opacity-80"
+                  className="w-full sm:w-auto text-white px-6 sm:px-8 py-3 sm:py-4 rounded-md transition-colors duration-200 text-lg inline-block hover:opacity-80"
                   style={{ backgroundColor: burgundy, fontFamily: 'TayBasal' }}
                 >
                   Get Started
@@ -41,8 +41,8 @@ const Landing = () => {
             </div>
           </div>
 
-          <div className="lg:w-1/2 mt-16 lg:mt-0 lg:pl-16">
-            <div className="relative h-[400px] lg:h-[600px] rounded-lg overflow-hidden">
+          <div className="lg:w-1/2 mt-12 lg:mt-0 lg:pl-16">
+            <div className="relative h-[300px] sm:h-[350px] md:h-[400px] lg:h-[600px] rounded-lg overflow-hidden">
               <img 
                 src="https://github.com/GervaisJosh/Maestro/blob/9751d16460033163589a05be88418ebf8acc62c6/c5516fac-3c7d-4cf5-8b26-4e169a89a87c.jpg?raw=true"
                 alt="Wine Collection"
@@ -53,18 +53,18 @@ const Landing = () => {
           </div>
         </div>
 
-        <div className={`w-full py-32 border-t border-b ${isDark ? 'border-gray-800' : 'border-gray-200'}`}>
-          <div className="max-w-[1920px] mx-auto px-4">
-            <h2 className={`text-4xl md:text-5xl font-bold text-center mb-16 ${isDark ? 'text-white' : 'text-gray-900'}`} style={{ fontFamily: 'HV Florentino' }}>
+        <div className={`w-full py-16 md:py-24 lg:py-32 border-t border-b ${isDark ? 'border-gray-800' : 'border-gray-200'}`}>
+          <div className="max-w-[1920px] mx-auto px-4 sm:px-6">
+            <h2 className={`text-3xl sm:text-4xl md:text-5xl font-bold text-center mb-10 md:mb-16 ${isDark ? 'text-white' : 'text-gray-900'}`} style={{ fontFamily: 'HV Florentino' }}>
               Your Wine Inventory, <span style={{ color: burgundy, fontFamily: 'HV Florentino' }}>Digitized</span>
             </h2>
             <ImageCarousel />
           </div>
         </div>
 
-        <div className="w-full py-32">
-          <div className="max-w-[1920px] mx-auto px-4">
-            <h2 className={`text-4xl md:text-5xl font-bold text-center mb-24 ${isDark ? 'text-white' : 'text-gray-900'}`} style={{ fontFamily: 'HV Florentino' }}>
+        <div className="w-full py-16 md:py-24 lg:py-32">
+          <div className="max-w-[1920px] mx-auto px-4 sm:px-6">
+            <h2 className={`text-3xl sm:text-4xl md:text-5xl font-bold text-center mb-12 md:mb-16 lg:mb-24 ${isDark ? 'text-white' : 'text-gray-900'}`} style={{ fontFamily: 'HV Florentino' }}>
               Features
             </h2>
             <div className="space-y-32">

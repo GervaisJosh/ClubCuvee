@@ -63,8 +63,8 @@ const BentoBox: React.FC<BentoBoxProps> = ({
   return (
     <div
       ref={boxRef}
-      className={`rounded-lg shadow-md p-6 ${size} cursor-pointer transition-all duration-200 transform hover:scale-105 relative overflow-hidden ${className} ${
-        isDark ? 'bg-gray-900' : backgroundColor || 'bg-white'
+      className={`rounded-lg md:rounded-xl shadow-md p-4 sm:p-6 ${size} cursor-pointer transition-all duration-200 transform hover:scale-105 relative overflow-hidden ${className} ${
+        isDark ? 'bg-black' : backgroundColor || 'bg-white'
       }`}
       onClick={handleClick}
       onMouseEnter={() => setIsHovered(true)}
@@ -79,11 +79,11 @@ const BentoBox: React.FC<BentoBoxProps> = ({
           }}
         />
       )}
-      <h2 className={`text-xl font-semibold mb-4 ${titleColor}`}>{title}</h2>
+      <h2 className={`text-lg md:text-xl font-semibold mb-3 md:mb-4 ${titleColor}`}>{title}</h2>
       {value && (
         <div className="flex items-center justify-between">
-          <p className={`text-3xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>{value}</p>
-          {Icon && <Icon className={`h-10 w-10 ${iconColor}`} />}
+          <p className={`text-2xl md:text-3xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>{value}</p>
+          {Icon && <Icon className={`h-8 w-8 md:h-10 md:w-10 ${iconColor}`} />}
         </div>
       )}
       {children}
