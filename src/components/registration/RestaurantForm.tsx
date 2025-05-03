@@ -3,12 +3,19 @@ import { Upload } from 'lucide-react';
 import type { RestaurantFormData, FormErrors } from '../../types';
 import { LoadingSpinner } from '../shared/LoadingStates';
 
+interface PricingTierInfo {
+  name: string;
+  monthlyPrice: string;
+  description: string;
+}
+
 interface RestaurantFormProps {
   initialData: RestaurantFormData;
   onSubmit: (data: RestaurantFormData) => void;
   isSubmitting?: boolean;
   errors?: FormErrors;
   sessionId?: string;
+  tierInfo?: PricingTierInfo | null;
 }
 
 const RestaurantForm: React.FC<RestaurantFormProps> = ({
@@ -17,6 +24,7 @@ const RestaurantForm: React.FC<RestaurantFormProps> = ({
   isSubmitting = false,
   errors = {},
   sessionId,
+  tierInfo = null,
 }) => {
   const [formData, setFormData] = useState<RestaurantFormData>(initialData);
   const [localErrors, setLocalErrors] = useState<FormErrors>({});
@@ -176,6 +184,56 @@ const RestaurantForm: React.FC<RestaurantFormProps> = ({
       {localErrors.general && (
         <div className="p-4 bg-red-100 text-red-700 rounded-md border border-red-200">
           {localErrors.general}
+        </div>
+      )}
+      
+      {/* Pricing Tier Summary Box */}
+      {tierInfo && (
+        <div className="mb-6 p-6 rounded-xl border border-[#872657] bg-gradient-to-br from-[#fff8f8] to-[#fff]">
+          <h3 className="text-xl font-bold mb-3 text-[#872657]" style={{ fontFamily: 'HV Florentino' }}>
+            {tierInfo.name} Plan
+          </h3>
+          <div className="flex justify-between items-center mb-4">
+            <p className="text-2xl font-bold text-[#872657]" style={{ fontFamily: 'TayBasal' }}>
+              ${parseFloat(tierInfo.monthlyPrice).toFixed(2)}
+              <span className="text-sm text-gray-600 ml-1">/month</span>
+            </p>
+            <div className="px-3 py-1 bg-[#872657] bg-opacity-10 rounded-full text-[#872657] text-sm font-medium">
+              Selected Plan
+            </div>
+          </div>
+          <p className="text-gray-700" style={{ fontFamily: 'TayBasal' }}>
+            {tierInfo.description}
+          </p>
+          <div className="mt-4 pt-4 border-t border-[#872657] border-opacity-20">
+            <h4 className="text-sm font-medium mb-2 text-gray-700">Included with {tierInfo.name}:</h4>
+            <ul className="space-y-2">
+              <li className="flex items-center text-sm text-gray-600">
+                <div className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center mr-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3 text-green-600">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                Personalized wine recommendations
+              </li>
+              <li className="flex items-center text-sm text-gray-600">
+                <div className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center mr-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3 text-green-600">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                Membership tier management
+              </li>
+              <li className="flex items-center text-sm text-gray-600">
+                <div className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center mr-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3 text-green-600">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                Customer accounts & profile data
+              </li>
+            </ul>
+          </div>
         </div>
       )}
 

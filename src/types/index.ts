@@ -26,6 +26,7 @@ export interface RestaurantFormData {
   tier?: string;
   sessionId?: string;
   invitationToken?: string;
+  pricingTier?: string; // Club Cuvee business pricing tier (NeighborhoodCellar, EstablishedShop, etc.)
 }
 
 export interface RestaurantInvitation {

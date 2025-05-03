@@ -386,26 +386,48 @@ const OnboardingTester: React.FC = () => {
                 
                 <div>
                   <label htmlFor="tier" className="block text-sm font-medium text-gray-700 mb-1">
-                    Membership Tier (optional)
+                    Business Pricing Tier
                   </label>
-                  <input
-                    type="text"
-                    id="tier"
-                    name="tier"
-                    placeholder="standard"
-                    className="w-full p-2 border rounded-md"
-                    value={invitationForm.tier}
-                    onChange={handleInvitationFormChange}
-                  />
+                  <div className="space-y-3">
+                    {['NeighborhoodCellar', 'EstablishedShop', 'PremiumCollection', 'LuxuryVintage'].map((tierName) => (
+                      <div key={tierName} className="flex items-center">
+                        <input
+                          type="radio"
+                          id={`tier_${tierName}`}
+                          name="tier"
+                          value={tierName}
+                          checked={invitationForm.tier === tierName}
+                          onChange={handleInvitationFormChange}
+                          className="w-4 h-4 text-[#872657] focus:ring-[#872657] border-gray-300"
+                        />
+                        <label 
+                          htmlFor={`tier_${tierName}`} 
+                          className={`ml-2 block text-sm font-medium ${invitationForm.tier === tierName ? 'text-[#872657]' : 'text-gray-700'}`}
+                        >
+                          {tierName === 'NeighborhoodCellar' && 'Neighborhood Cellar - $199/mo'}
+                          {tierName === 'EstablishedShop' && 'Established Shop - $349/mo'}
+                          {tierName === 'PremiumCollection' && 'Premium Collection - $599/mo'}
+                          {tierName === 'LuxuryVintage' && 'Luxury Vintage - $999/mo'}
+                        </label>
+                      </div>
+                    ))}
+                  </div>
                 </div>
                 
-                <div>
+                <div className="mt-6">
                   <button
                     type="submit"
-                    className="px-4 py-2 bg-[#872657] text-white rounded-md hover:bg-[#6d1f46] transition"
+                    className="w-full px-4 py-3 bg-gradient-to-r from-[#800020] to-[#872657] text-white rounded-lg hover:bg-[#6d1f46] transition shadow-md flex items-center justify-center"
                   >
-                    Generate Invitation
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5 mr-2">
+                      <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
+                      <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
+                    </svg>
+                    Generate Restaurant Invitation
                   </button>
+                  <p className="text-xs text-gray-500 text-center mt-2">
+                    This will create an invitation link you can share with the restaurant admin.
+                  </p>
                 </div>
               </form>
               
@@ -421,24 +443,50 @@ const OnboardingTester: React.FC = () => {
                   </h3>
                   
                   {invitationResult.data && invitationResult.statusType === 'success' && (
-                    <div className="space-y-2">
-                      <div className="flex justify-between items-center">
-                        <p className="font-medium">Invitation URL:</p>
-                        <button 
-                          onClick={() => copyToClipboard(invitationResult.data.invitation_url)}
-                          className="text-xs px-2 py-1 bg-white border rounded hover:bg-gray-100"
-                        >
-                          Copy URL
-                        </button>
+                    <div className="space-y-4">
+                      <div className="border border-green-200 rounded-lg bg-green-50 overflow-hidden">
+                        <div className="bg-green-100 px-4 py-2 flex justify-between items-center">
+                          <h4 className="font-medium text-green-800">Invitation URL Ready</h4>
+                          <button 
+                            onClick={() => copyToClipboard(invitationResult.data.invitation_url)}
+                            className="text-xs px-3 py-1 bg-white border border-green-300 rounded-full text-green-700 hover:bg-green-50 shadow-sm flex items-center"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3 mr-1">
+                              <path d="M8 2a1 1 0 000 2h2a1 1 0 100-2H8z" />
+                              <path d="M3 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v6h-4.586l1.293-1.293a1 1 0 00-1.414-1.414l-3 3a1 1 0 000 1.414l3 3a1 1 0 001.414-1.414L10.414 13H15v3a2 2 0 01-2 2H5a2 2 0 01-2-2V5zM15 11h2a1 1 0 110 2h-2v-2z" />
+                            </svg>
+                            Copy URL
+                          </button>
+                        </div>
+                        <div className="p-4">
+                          <div className="font-mono text-sm bg-white p-3 rounded-md border border-green-200 break-all">
+                            <a href={invitationResult.data.invitation_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                              {invitationResult.data.invitation_url + (invitationResult.data.invitation_url.includes('?') ? '&' : '?') + `tier=${invitationForm.tier}`}
+                            </a>
+                          </div>
+                          
+                          <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="bg-white p-3 rounded-md border border-gray-200">
+                              <p className="text-xs text-gray-500 mb-1">Invitation Token</p>
+                              <p className="font-mono text-sm">{invitationResult.data.invitation.token}</p>
+                            </div>
+                            <div className="bg-white p-3 rounded-md border border-gray-200">
+                              <p className="text-xs text-gray-500 mb-1">Expiration</p>
+                              <p className="font-mono text-sm">{new Date(invitationResult.data.invitation.expires_at).toLocaleString()}</p>
+                            </div>
+                          </div>
+                          
+                          <div className="mt-4 bg-yellow-50 border border-yellow-200 rounded-md p-3">
+                            <p className="text-sm text-yellow-800 flex items-center">
+                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 mr-2 text-yellow-600">
+                                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                              </svg>
+                              The tier parameter has been appended to the URL. Share this link with the restaurant to begin onboarding.
+                            </p>
+                          </div>
+                        </div>
                       </div>
-                      <p className="font-mono text-sm bg-gray-100 p-2 rounded break-all">
-                        <a href={invitationResult.data.invitation_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
-                          {invitationResult.data.invitation_url}
-                        </a>
-                      </p>
                       
-                      <p><strong>Token:</strong> {invitationResult.data.invitation.token}</p>
-                      <p><strong>Expires:</strong> {new Date(invitationResult.data.invitation.expires_at).toLocaleString()}</p>
                       
                       <div className="mt-4">
                         <h4 className="font-medium mb-1">Full Response:</h4>

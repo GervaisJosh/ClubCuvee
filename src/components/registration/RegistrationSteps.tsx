@@ -5,9 +5,21 @@ import { CheckCircle, Loader2, Building2, CreditCard, CheckSquare, Wine } from '
 import { LoadingSpinner } from '../shared/LoadingStates';
 import type { RestaurantFormData, MembershipTier, FormErrors } from '../../types';
 
+// Pricing tier information interface
+interface PricingTierInfo {
+  name: string;
+  monthlyPrice: string;
+  description: string;
+}
+
+// Extended RestaurantFormData to include pricing tier info
+interface ExtendedRestaurantFormData extends RestaurantFormData {
+  pricingTierInfo?: PricingTierInfo;
+}
+
 interface RegistrationStepsProps {
   initialStep?: number;
-  initialRestaurantData?: RestaurantFormData;
+  initialRestaurantData?: ExtendedRestaurantFormData;
   initialTiers?: MembershipTier[];
   onComplete: (data: {
     restaurant: RestaurantFormData;
@@ -131,6 +143,7 @@ const RegistrationSteps: React.FC<RegistrationStepsProps> = ({
             onSubmit={handleRestaurantSubmit}
             errors={errors?.restaurant}
             sessionId={sessionId}
+            tierInfo={initialRestaurantData.pricingTierInfo}
           />
         </div>
       );

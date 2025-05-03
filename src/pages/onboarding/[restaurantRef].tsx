@@ -4,6 +4,7 @@ import { Loader2, CheckCircle, Wine } from 'lucide-react';
 import { supabase } from '../../supabase';
 import { restaurantService } from '../../services/restaurantService';
 import { membershipService } from '../../services/membershipService';
+import { BusinessOnboardingService } from '../../services/BusinessOnboardingService';
 import RegistrationSteps from '../../components/registration/RegistrationSteps';
 import type { RestaurantFormData, MembershipTier, FormErrors } from '../../types';
 
@@ -15,6 +16,7 @@ export const RestaurantOnboarding: React.FC = () => {
   
   const sessionId = queryParams.get('session_id');
   const paymentStatus = queryParams.get('status');
+  const pricingTier = queryParams.get('tier') || 'EstablishedShop'; // Default to EstablishedShop if not provided
 
   const [isLoading, setIsLoading] = useState(true);
   const [registrationComplete, setRegistrationComplete] = useState(false);
@@ -25,6 +27,11 @@ export const RestaurantOnboarding: React.FC = () => {
     tiers?: string;
     general?: string;
   }>({});
+  const [tierInfo, setTierInfo] = useState<{
+    name: string;
+    monthlyPrice: string;
+    description: string;
+  } | null>(null);
 
   const [restaurantData, setRestaurantData] = useState<RestaurantFormData>({
     restaurantName: '',
@@ -43,6 +50,19 @@ export const RestaurantOnboarding: React.FC = () => {
     const checkRegistrationStatus = async () => {
       try {
         setIsLoading(true);
+        
+        // Validate the pricing tier
+        if (!BusinessOnboardingService.validatePricingTier(pricingTier)) {
+          setErrors({
+            general: 'Invalid pricing tier specified. Please use a valid tier or contact support.'
+          });
+          setIsLoading(false);
+          return;
+        }
+        
+        // Get pricing tier info for display
+        const tierDetails = BusinessOnboardingService.getBusinessPricingTierInfo(pricingTier);
+        setTierInfo(tierDetails);
         
         if (sessionId && paymentStatus === 'success') {
           setPaymentVerified(true);
@@ -68,7 +88,8 @@ export const RestaurantOnboarding: React.FC = () => {
               password: '',
               confirmPassword: '',
               tier: invitation.tier,
-              invitationToken: invitation.token
+              invitationToken: invitation.token,
+              pricingTier: pricingTier // Store the pricing tier from URL
             });
             
             if (invitation.status === 'paid' || invitation.payment_session_id) {
@@ -114,7 +135,7 @@ export const RestaurantOnboarding: React.FC = () => {
     };
     
     checkRegistrationStatus();
-  }, [restaurantRef, sessionId, paymentStatus]);
+  }, [restaurantRef, sessionId, paymentStatus, pricingTier]);
 
   const handleRestaurantSubmit = async (data: RestaurantFormData) => {
     setIsSubmitting(true);
@@ -164,66 +185,118 @@ export const RestaurantOnboarding: React.FC = () => {
     setErrors({});
     
     try {
-      const finalRestaurantId = data.restaurantId || restaurantId;
-      if (!finalRestaurantId) {
-        throw new Error('Missing restaurant ID');
-      }
-      
-      const tierPromises = data.tiers.map(async (tier) => {
-        if (
-          tier.id &&
-          tier.stripe_product_id &&
-          tier.stripe_price_id &&
-          tier.restaurant_id === finalRestaurantId
-        ) {
-          return tier;
+      // For new restaurants, use the BusinessOnboardingService for complete onboarding flow
+      if (!restaurantId && data.restaurant.invitationToken) {
+        // Create restaurant data object for BusinessOnboardingService
+        const restaurantCreationData = {
+          name: data.restaurant.restaurantName,
+          website: data.restaurant.website,
+          admin_email: data.restaurant.email,
+          logo_url: data.restaurant.logo ? URL.createObjectURL(data.restaurant.logo) : undefined
+        };
+        
+        // Convert tiers to the format expected by BusinessOnboardingService
+        const membershipTierConfigs = data.tiers.map(tier => ({
+          name: tier.name,
+          price: tier.price,
+          description: tier.description
+        }));
+        
+        // Call the BusinessOnboardingService to complete onboarding
+        const result = await BusinessOnboardingService.completeOnboarding(
+          data.restaurant.invitationToken,
+          restaurantCreationData,
+          membershipTierConfigs,
+          pricingTier // Pass the pricing tier from URL
+        );
+        
+        if (!result.success) {
+          throw new Error(result.error || 'Failed to complete onboarding');
         }
         
-        return await membershipService.createMembershipTier(
-          {
-            name: tier.name,
-            price: tier.price,
-            description: tier.description,
-            stripe_product_id: tier.stripe_product_id,
-            stripe_price_id: tier.stripe_price_id,
-          },
-          finalRestaurantId
-        );
-      });
-      
-      await Promise.all(tierPromises);
-      
-      await restaurantService.updateRestaurant(finalRestaurantId, {
-        registration_complete: true,
-        updated_at: new Date().toISOString(),
-      });
-      
-      if (restaurantData.invitationToken) {
-        await restaurantService.updateInvitationStatus(
-          restaurantData.invitationToken,
-          'completed',
-          finalRestaurantId
-        );
-      }
-      
-      const { error } = await supabase.auth.signUp({
-        email: data.restaurant.email,
-        password: data.restaurant.password,
-        options: {
-          data: {
-            restaurant_id: finalRestaurantId,
-            full_name: data.restaurant.adminName,
-            role: 'restaurant_admin',
+        setRestaurantId(result.restaurantId!);
+        
+        // Sign up the user with Supabase auth
+        const { error } = await supabase.auth.signUp({
+          email: data.restaurant.email,
+          password: data.restaurant.password,
+          options: {
+            data: {
+              restaurant_id: result.restaurantId,
+              full_name: data.restaurant.adminName,
+              role: 'restaurant_admin',
+            }
           }
+        });
+        
+        if (error) {
+          console.error('Error creating user account:', error);
         }
-      });
-      
-      if (error) {
-        console.error('Error creating user account:', error);
+        
+        setRegistrationComplete(true);
+      } 
+      // For existing restaurants, use the previous flow
+      else {
+        const finalRestaurantId = data.restaurantId || restaurantId;
+        if (!finalRestaurantId) {
+          throw new Error('Missing restaurant ID');
+        }
+        
+        const tierPromises = data.tiers.map(async (tier) => {
+          if (
+            tier.id &&
+            tier.stripe_product_id &&
+            tier.stripe_price_id &&
+            tier.restaurant_id === finalRestaurantId
+          ) {
+            return tier;
+          }
+          
+          return await membershipService.createMembershipTier(
+            {
+              name: tier.name,
+              price: tier.price,
+              description: tier.description,
+              stripe_product_id: tier.stripe_product_id,
+              stripe_price_id: tier.stripe_price_id,
+            },
+            finalRestaurantId
+          );
+        });
+        
+        await Promise.all(tierPromises);
+        
+        await restaurantService.updateRestaurant(finalRestaurantId, {
+          registration_complete: true,
+          updated_at: new Date().toISOString(),
+        });
+        
+        if (restaurantData.invitationToken) {
+          await restaurantService.updateInvitationStatus(
+            restaurantData.invitationToken,
+            'completed',
+            finalRestaurantId
+          );
+        }
+        
+        const { error } = await supabase.auth.signUp({
+          email: data.restaurant.email,
+          password: data.restaurant.password,
+          options: {
+            data: {
+              restaurant_id: finalRestaurantId,
+              full_name: data.restaurant.adminName,
+              role: 'restaurant_admin',
+            }
+          }
+        });
+        
+        if (error) {
+          console.error('Error creating user account:', error);
+        }
+        
+        setRegistrationComplete(true);
       }
-      
-      setRegistrationComplete(true);
-      
     } catch (error: any) {
       console.error('Error completing registration:', error);
       setErrors({
@@ -326,7 +399,10 @@ export const RestaurantOnboarding: React.FC = () => {
         
         <RegistrationSteps
           initialStep={currentStep}
-          initialRestaurantData={restaurantData}
+          initialRestaurantData={{
+            ...restaurantData,
+            pricingTierInfo: tierInfo || undefined
+          }}
           initialTiers={tiers}
           onComplete={handleRegistrationComplete}
           isSubmitting={isSubmitting}
