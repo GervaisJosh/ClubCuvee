@@ -51,30 +51,55 @@ const OnboardingTester: React.FC = () => {
     });
 
     try {
-      const response = await fetch('/api/verify-stripe');
+      // Import from our error handling utilities
+      const { stripeService } = await import('../../services/stripeService');
+      const { isApiSuccess, isApiError } = await import('../../services/apiErrorHandler');
       
-      if (response.ok) {
-        const data = await response.json();
+      // Use the stripe service which handles errors properly
+      const result = await stripeService.verifyStripeSetup();
+      
+      if (isApiSuccess(result)) {
         setApiStatus({
           loading: false,
-          status: 'API is online!',
+          status: result.message || 'API is online!',
           statusType: 'success',
-          data,
+          data: result,
+        });
+      } else if (isApiError(result)) {
+        // Format error message based on error type
+        let errorMessage = result.error;
+        
+        // Add more context for specific error types
+        if (result.type === 'StripeAuthenticationError') {
+          errorMessage = `Authentication Error: ${result.error}`;
+        } else if (result.type === 'ConfigurationError') {
+          errorMessage = `Configuration Error: ${result.error}`;
+        } else if (result.type === 'StripeConnectionError') {
+          errorMessage = `Connection Error: ${result.error}`;
+        }
+        
+        setApiStatus({
+          loading: false,
+          status: errorMessage,
+          statusType: 'error',
+          data: result,
         });
       } else {
+        // Fallback for unexpected response format
         setApiStatus({
           loading: false,
-          status: `API responded with an error: ${response.status} ${response.statusText}`,
+          status: 'Received unexpected response format',
           statusType: 'error',
-          data: null,
+          data: result,
         });
       }
     } catch (error: any) {
+      console.error('Error checking API status:', error);
       setApiStatus({
         loading: false,
         status: `Could not connect to API: ${error.message}`,
         statusType: 'error',
-        data: null,
+        data: { error: error.message },
       });
     }
   };

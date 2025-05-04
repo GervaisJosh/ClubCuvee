@@ -29,7 +29,15 @@ const App = () => {
   // Initialize data check for development mode
   useEffect(() => {
     if (import.meta.env.MODE === 'development') {
-      console.log('Development mode: Checking database setup...');
+      // Log development environment info to help with debugging
+      console.log(
+        `%c🍷 Club Cuvee Dev Environment 🍷`,
+        'font-size: 14px; font-weight: bold; color: #872657;'
+      );
+      console.log(
+        `%c• API routes path: /api/*\n• Using standard Vercel-compatible API routes\n• For full API simulation: run 'vercel dev'\n• Checking database setup...`,
+        'color: #666; font-size: 12px;'
+      );
       ensureWineInventoryExists();
     }
   }, []);

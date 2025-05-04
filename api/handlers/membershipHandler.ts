@@ -1,6 +1,7 @@
 import { stripe } from '../utils/stripeClient';
 import { supabaseAdmin } from '../utils/supabaseAdmin';
 import { validateRequest, validatePrice } from '../utils/validation';
+import { sendApiError } from '../utils/errorHandler';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { randomUUID } from 'crypto';
 
@@ -425,12 +426,29 @@ export async function createInvitationLink(req: VercelRequest, res: VercelRespon
  */
 export async function verifyStripeSetup(req: VercelRequest, res: VercelResponse) {
   try {
+    // First, validate that we have the necessary environment variables
+    const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
+    
+    if (!stripeSecretKey) {
+      const configError = new Error('Missing Stripe configuration. STRIPE_SECRET_KEY is not set in environment variables.');
+      // Add properties to the error for better categorization
+      Object.assign(configError, { 
+        type: 'ConfigurationError',
+        config: {
+          STRIPE_SECRET_KEY: 'missing',
+          STRIPE_WEBHOOK_SECRET: !!process.env.STRIPE_WEBHOOK_SECRET ? 'configured' : 'missing',
+          VITE_STRIPE_PUBLIC_KEY: !!(process.env.VITE_STRIPE_PUBLIC_KEY || process.env.STRIPE_PUBLIC_KEY) ? 'configured' : 'missing',
+        }
+      });
+      return sendApiError(res, configError, 500, true);
+    }
+    
     // Verify we can connect to Stripe API
     const balance = await stripe.balance.retrieve();
     
     // Check for required environment variables
     const configStatus = {
-      STRIPE_SECRET_KEY: !!process.env.STRIPE_SECRET_KEY ? 'configured' : 'missing',
+      STRIPE_SECRET_KEY: 'configured',
       STRIPE_WEBHOOK_SECRET: !!process.env.STRIPE_WEBHOOK_SECRET ? 'configured' : 'missing',
       VITE_STRIPE_PUBLIC_KEY: !!(process.env.VITE_STRIPE_PUBLIC_KEY || process.env.STRIPE_PUBLIC_KEY) ? 'configured' : 'missing',
     };
@@ -452,21 +470,33 @@ export async function verifyStripeSetup(req: VercelRequest, res: VercelResponse)
       }
     });
   } catch (error: any) {
-    // Check if it's a Stripe authentication error
-    if (error.type === 'StripeAuthenticationError') {
-      return res.status(401).json({
-        status: 'error',
-        error: 'Invalid Stripe API key. Please check your STRIPE_SECRET_KEY environment variable.',
-        details: error.message
-      });
-    }
-    
-    console.error('Error verifying Stripe setup:', error);
-    return res.status(500).json({
-      status: 'error',
-      error: error.message || 'Internal server error'
-    });
+    // Let our error handler determine the appropriate status code
+    // and format the error response consistently
+    const statusCode = getErrorStatusCodeForStripe(error);
+    return sendApiError(res, error, statusCode, true);
   }
+}
+
+/**
+ * Helper function to determine the appropriate status code for Stripe-specific errors
+ */
+function getErrorStatusCodeForStripe(error: any): number {
+  if (error.type === 'StripeAuthenticationError') {
+    return 401; // Unauthorized
+  } else if (error.type === 'StripeConnectionError') {
+    return 503; // Service Unavailable
+  } else if (error.type === 'StripeAPIError') {
+    return 502; // Bad Gateway
+  } else if (error.type === 'StripeInvalidRequestError') {
+    return 400; // Bad Request
+  } else if (error.type === 'StripeRateLimitError') {
+    return 429; // Too Many Requests
+  } else if (error.type === 'ConfigurationError') {
+    return 500; // Internal Server Error due to misconfiguration
+  }
+  
+  // Default to internal server error
+  return 500;
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {

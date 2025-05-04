@@ -1,17 +1,9 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import Stripe from 'stripe';
-import { createClient } from '@supabase/supabase-js';
+import { stripe } from './utils/stripeClient';
+import { supabaseAdmin } from './utils/supabaseAdmin';
+import { withErrorHandling, sendApiError } from './utils/errorHandler';
 
-// Initialize Stripe
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {});
-
-// Initialize Supabase with service role key to bypass RLS
-const supabase = createClient(
-  process.env.SUPABASE_URL as string,
-  process.env.SUPABASE_SERVICE_ROLE_KEY as string
-);
-
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+const handler = async (req: VercelRequest, res: VercelResponse) => {
   // Only allow POST (create) and PUT (update) requests
   if (req.method !== 'POST' && req.method !== 'PUT') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -44,7 +36,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // Get restaurant info for product metadata/description
-    const { data: restaurant, error: restaurantError } = await supabase
+    const { data: restaurant, error: restaurantError } = await supabaseAdmin
       .from('restaurants')
       .select('name')
       .eq('id', restaurant_id)
@@ -79,7 +71,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // UPDATE FLOW: If ID is provided, update an existing tier
     if (id) {
       // First fetch the existing tier
-      const { data: fetchedTier, error: fetchError } = await supabase
+      const { data: fetchedTier, error: fetchError } = await supabaseAdmin
         .from('membership_tiers')
         .select('*')
         .eq('id', id)
@@ -95,7 +87,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       existingTier = fetchedTier;
       
       // Update the tier in Supabase
-      const { data: updatedTier, error: updateError } = await supabase
+      const { data: updatedTier, error: updateError } = await supabaseAdmin
         .from('membership_tiers')
         .update(tierData)
         .eq('id', id)
@@ -113,7 +105,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // CREATE FLOW: Insert a new tier
     else {
       // Create a new tier in Supabase
-      const { data: newTier, error: insertError } = await supabase
+      const { data: newTier, error: insertError } = await supabaseAdmin
         .from('membership_tiers')
         .insert([{
           ...tierData,
@@ -172,7 +164,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           });
           
           // 3. Update the tier with the new price ID
-          const { error: priceUpdateError } = await supabase
+          const { error: priceUpdateError } = await supabaseAdmin
             .from('membership_tiers')
             .update({ 
               stripe_price_id: newPrice.id,
@@ -213,7 +205,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         });
 
         // Update the tier with the Stripe IDs
-        const { data: updatedTier, error: updateError } = await supabase
+        const { data: updatedTier, error: updateError } = await supabaseAdmin
           .from('membership_tiers')
           .update({ 
             stripe_product_id: product.id,
@@ -245,8 +237,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(200).json(tier);
   } catch (error: any) {
     console.error('Error processing membership tier:', error);
-    return res.status(500).json({ 
-      error: `Failed to process membership tier: ${error.message}` 
-    });
+    return sendApiError(res, error, 500);
   }
 }
+
+// Export with error handling wrapper
+export default withErrorHandling(handler);

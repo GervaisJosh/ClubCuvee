@@ -27,12 +27,33 @@ export default defineConfig({
   },
   server: {
     port: 3000,
-    // During development, proxy API requests to Vercel or a local API server
+    // Standard development setup that matches Vercel deployment
+    // API requests go directly to Vercel-compatible API routes in /api directory
+    // For full simulation of the Vercel environment, use `vercel dev` instead
     proxy: {
       '/api': {
-        target: process.env.VERCEL_URL || 'http://localhost:3000',
+        target: 'http://localhost:3000', // Self-referential since API handlers are served by Vite
         changeOrigin: true,
-        secure: false
+        secure: false,
+        rewrite: (path) => path,
+        configure: (proxy, options) => {
+          // Log proxy errors for easier debugging
+          proxy.on('error', (err, req, res) => {
+            console.error('API request error:', err);
+            if (!res.headersSent) {
+              res.writeHead(500, {
+                'Content-Type': 'application/json',
+              });
+              res.end(JSON.stringify({
+                status: 'error',
+                error: 'API request failed',
+                message: 'This could be due to API route not implemented in dev mode. ' +
+                         'Consider using `vercel dev` for full API simulation.'
+              }));
+            }
+          });
+          return proxy;
+        }
       },
     },
   },

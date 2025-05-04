@@ -96,18 +96,31 @@ export const stripeService = {
     config?: Record<string, string>;
     balance?: any;
     error?: string;
+    type?: string;
+    details?: any;
   }> {
     try {
-      const response = await fetch('/api/verify-stripe', {
-        method: 'GET',
-        headers: { 'Content-Type': 'application/json' },
+      // Use our centralized API request handler
+      const { apiRequest, isApiError } = await import('./apiErrorHandler');
+      const result = await apiRequest('/api/verify-stripe', {
+        method: 'GET'
       });
       
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error || 'Failed to verify Stripe configuration');
       return result;
     } catch (error: any) {
       console.error('Error verifying Stripe:', error);
+      
+      // Format the error consistently
+      if (error.name === 'ApiError') {
+        return {
+          status: 'error',
+          error: error.message,
+          type: error.type,
+          details: error.data
+        };
+      }
+      
+      // Fallback for other types of errors
       return {
         status: 'error',
         error: error.message || 'Failed to verify Stripe configuration'
