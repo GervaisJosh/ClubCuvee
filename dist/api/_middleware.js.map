@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["_middleware.ts"],
+  "sourcesContent": ["import type { VercelRequest, VercelResponse } from '@vercel/node';\r\n\r\nexport default function middleware(req: VercelRequest, res: VercelResponse, next: () => void) {\r\n  // Set CORS headers\r\n  res.setHeader('Access-Control-Allow-Origin', '*');\r\n  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');\r\n  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');\r\n  \r\n  // Handle preflight OPTIONS requests\r\n  if (req.method === 'OPTIONS') {\r\n    return res.status(200).end();\r\n  }\r\n  \r\n  // Continue to the API route\r\n  return next();\r\n}"],
+  "mappings": ";;;;;;;;;;;;;;;;;;;;;;AAAA;AAAA;AAAA;AAAA;AAAA;AAEe,SAAR,WAA4B,KAAoB,KAAqB,MAAkB;AAE5F,MAAI,UAAU,+BAA+B,GAAG;AAChD,MAAI,UAAU,gCAAgC,iCAAiC;AAC/E,MAAI,UAAU,gCAAgC,6BAA6B;AAG3E,MAAI,IAAI,WAAW,WAAW;AAC5B,WAAO,IAAI,OAAO,GAAG,EAAE,IAAI;AAAA,EAC7B;AAGA,SAAO,KAAK;AACd;",
+  "names": []
+}

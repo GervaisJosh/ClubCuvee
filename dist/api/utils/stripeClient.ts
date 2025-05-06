@@ -9,6 +9,6 @@ if (!stripeSecretKey) {
 
 // Initialize Stripe for server-side operations with proper configuration
 export const stripe = new Stripe(stripeSecretKey || 'invalid_key', {
-  apiVersion: '2023-10-16', // Using a specific API version for stability
+  apiVersion: '2025-02-24.acacia', // Using latest API version
   maxNetworkRetries: 3, // Retry on network failures for better reliability
 });

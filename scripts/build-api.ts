@@ -31,8 +31,7 @@ async function buildApi() {
         'http',
         'https',
         'url',
-        'zod',
-        'tsconfig.json'
+        'zod'
       ],
       outbase: 'api',
       loader: { '.ts': 'ts' },
@@ -43,7 +42,10 @@ async function buildApi() {
         js: '// @ts-nocheck\n'
       },
       alias: {
-        '@/lib': resolve(__dirname, '../lib')
+        '@': resolve(__dirname, '..'),
+        '@/lib': resolve(__dirname, '../lib'),
+        '@/api': resolve(__dirname, '../api'),
+        '@/src': resolve(__dirname, '../src')
       },
       // Ensure proper bundling for Vercel
       metafile: true,
