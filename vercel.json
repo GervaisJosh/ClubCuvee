@@ -21,6 +21,5 @@
       "src": "/(.*)",
       "dest": "/$1"
     }
-  ],
-  "ignoreCommand": "echo 'Ignoring source files'"
+  ]
 }
