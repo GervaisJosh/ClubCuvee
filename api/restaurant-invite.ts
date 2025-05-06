@@ -26,16 +26,16 @@ function sendJsonResponse(res: VercelResponse, status: number, data: JsonRespons
     if (!res.headersSent) {
       res.setHeader('Content-Type', 'application/json');
     }
-    return res.status(status).send(JSON.stringify(data));
+    return res.status(status).json(data);
   } catch (error) {
     console.error('Error sending JSON response:', error);
     if (!res.headersSent) {
       res.setHeader('Content-Type', 'application/json');
-      return res.status(500).send(JSON.stringify({
+      return res.status(500).json({
         status: 'error',
         error: 'Failed to send response',
         message: 'Internal server error'
-      }));
+      });
     }
   }
 }
@@ -47,12 +47,13 @@ function sendJsonResponse(res: VercelResponse, status: number, data: JsonRespons
  * Production-ready with comprehensive error handling and consistent JSON responses
  */
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  // Set CORS headers for all responses
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.setHeader('Content-Type', 'application/json');
+
   try {
-    // Set CORS headers
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-    
     // Handle preflight OPTIONS requests
     if (req.method === 'OPTIONS') {
       return sendJsonResponse(res, 200, { status: 'success' });
@@ -63,24 +64,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return sendJsonResponse(res, 405, {
         status: 'error',
         error: 'Method not allowed',
+        message: 'Only POST requests are allowed',
         allowed_methods: ['POST', 'OPTIONS']
       });
     }
     
-    // Check if req.body exists and is an object
-    if (!req.body || typeof req.body !== 'object') {
+    // Parse and validate request body
+    let body: Partial<InvitationData>;
+    try {
+      body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+    } catch (e) {
       return sendJsonResponse(res, 400, {
         status: 'error',
-        error: 'Invalid request body',
-        message: 'Request body must be a valid JSON object'
+        error: 'Invalid JSON',
+        message: 'Request body must be valid JSON'
       });
     }
     
     // Safely extract and validate required request body fields
-    let { email, restaurant_name, website, admin_name, tier } = req.body as Partial<InvitationData>;
-    
-    // Set default value for tier
-    tier = tier || 'standard';
+    const { email, restaurant_name, website, admin_name, tier = 'standard' } = body;
     
     const validationErrors: Record<string, string> = {};
     
@@ -104,6 +106,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return sendJsonResponse(res, 400, {
         status: 'error',
         error: 'Validation failed',
+        message: 'Invalid input data',
         details: validationErrors
       });
     }
@@ -119,8 +122,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       console.error('Database error checking existing user:', userError);
       return sendJsonResponse(res, 500, {
         status: 'error',
-        error: 'Failed to verify email',
-        message: 'Internal database error'
+        error: 'Database error',
+        message: 'Failed to verify email'
       });
     }
     
@@ -161,8 +164,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       console.error('Database error creating invitation:', inviteError);
       return sendJsonResponse(res, 500, {
         status: 'error',
-        error: 'Failed to create invitation',
-        message: inviteError.message || 'Internal database error'
+        error: 'Database error',
+        message: 'Failed to create invitation'
       });
     }
     
@@ -198,13 +201,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return sendJsonResponse(res, 500, {
       status: 'error',
       error: 'Internal server error',
-      message: error.message || 'An unexpected error occurred',
-      details: process.env.NODE_ENV === 'development' ? {
-        error: error.message,
-        name: error.name,
-        code: error.code,
-        hint: error.hint,
-      } : undefined
+      message: 'An unexpected error occurred while processing your request'
     });
   }
 }
