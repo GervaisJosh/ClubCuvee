@@ -1,8 +1,11 @@
-import { stripe } from '../utils/stripeClient.js';
-import { supabaseAdmin } from '../utils/supabaseAdmin.js';
-import { validateRequest, validatePrice } from '../utils/validation.js';
+import { stripe } from '../utils/stripeClient';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { validateRequest, validatePrice } from '../utils/validation';
+import { sendApiError } from '../utils/errorHandler';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { randomUUID } from 'crypto';
+
+import { ensurePriceString, ensurePriceNumber, convertPriceToStripeCents } from '../../src/utils/priceUtils.js';
 
 // Type definitions for clarity and safety
 interface MembershipTierData {
@@ -75,7 +78,7 @@ export async function createMembershipTier(req: VercelRequest, res: VercelRespon
     // Create price for the product
     const stripePrice = await stripe.prices.create({
       product: product.id,
-      unit_amount: Math.round(parseFloat(price as string) * 100),
+      unit_amount: convertPriceToStripeCents(price),
       currency: 'usd',
       recurring: { interval: 'month' },
       metadata: { 
@@ -86,7 +89,7 @@ export async function createMembershipTier(req: VercelRequest, res: VercelRespon
     // Store in Supabase
     const tierData: MembershipTierData = {
       name,
-      price: typeof price === 'number' ? price.toString() : price,
+      price: ensurePriceString(price),
       description: description || '',
       restaurant_id,
       stripe_product_id: product.id,
@@ -179,10 +182,9 @@ export async function updateMembershipTier(req: VercelRequest, res: VercelRespon
     }
     
     // Prepare tier data for update
-    const priceNumber = parseFloat(price as string);
     const updateData: Partial<MembershipTierData> = {
       name,
-      price: priceNumber,
+      price: ensurePriceString(price),
       description: description || '',
       updated_at: new Date().toISOString(),
     };
@@ -192,7 +194,7 @@ export async function updateMembershipTier(req: VercelRequest, res: VercelRespon
       // Check what needs to be updated in Stripe
       const hasNameChanged = existingTier.name !== name;
       const hasDescriptionChanged = existingTier.description !== description;
-      const hasPriceChanged = parseFloat(existingTier.price as string) !== priceNumber;
+      const hasPriceChanged = ensurePriceNumber(existingTier.price) !== ensurePriceNumber(price);
       
       try {
         // 1. Update product if name or description changed
@@ -225,7 +227,7 @@ export async function updateMembershipTier(req: VercelRequest, res: VercelRespon
           // Create new price
           const newPrice = await stripe.prices.create({
             product: stripe_product_id,
-            unit_amount: Math.round(priceNumber * 100),
+            unit_amount: convertPriceToStripeCents(price),
             currency: 'usd',
             recurring: { interval: 'month' },
             metadata: {
@@ -424,12 +426,29 @@ export async function createInvitationLink(req: VercelRequest, res: VercelRespon
  */
 export async function verifyStripeSetup(req: VercelRequest, res: VercelResponse) {
   try {
+    // First, validate that we have the necessary environment variables
+    const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
+    
+    if (!stripeSecretKey) {
+      const configError = new Error('Missing Stripe configuration. STRIPE_SECRET_KEY is not set in environment variables.');
+      // Add properties to the error for better categorization
+      Object.assign(configError, { 
+        type: 'ConfigurationError',
+        config: {
+          STRIPE_SECRET_KEY: 'missing',
+          STRIPE_WEBHOOK_SECRET: !!process.env.STRIPE_WEBHOOK_SECRET ? 'configured' : 'missing',
+          VITE_STRIPE_PUBLIC_KEY: !!(process.env.VITE_STRIPE_PUBLIC_KEY || process.env.STRIPE_PUBLIC_KEY) ? 'configured' : 'missing',
+        }
+      });
+      return sendApiError(res, configError, 500, true);
+    }
+    
     // Verify we can connect to Stripe API
     const balance = await stripe.balance.retrieve();
     
     // Check for required environment variables
     const configStatus = {
-      STRIPE_SECRET_KEY: !!process.env.STRIPE_SECRET_KEY ? 'configured' : 'missing',
+      STRIPE_SECRET_KEY: 'configured',
       STRIPE_WEBHOOK_SECRET: !!process.env.STRIPE_WEBHOOK_SECRET ? 'configured' : 'missing',
       VITE_STRIPE_PUBLIC_KEY: !!(process.env.VITE_STRIPE_PUBLIC_KEY || process.env.STRIPE_PUBLIC_KEY) ? 'configured' : 'missing',
     };
@@ -451,21 +470,33 @@ export async function verifyStripeSetup(req: VercelRequest, res: VercelResponse)
       }
     });
   } catch (error: any) {
-    // Check if it's a Stripe authentication error
-    if (error.type === 'StripeAuthenticationError') {
-      return res.status(401).json({
-        status: 'error',
-        error: 'Invalid Stripe API key. Please check your STRIPE_SECRET_KEY environment variable.',
-        details: error.message
-      });
-    }
-    
-    console.error('Error verifying Stripe setup:', error);
-    return res.status(500).json({
-      status: 'error',
-      error: error.message || 'Internal server error'
-    });
+    // Let our error handler determine the appropriate status code
+    // and format the error response consistently
+    const statusCode = getErrorStatusCodeForStripe(error);
+    return sendApiError(res, error, statusCode, true);
   }
+}
+
+/**
+ * Helper function to determine the appropriate status code for Stripe-specific errors
+ */
+function getErrorStatusCodeForStripe(error: any): number {
+  if (error.type === 'StripeAuthenticationError') {
+    return 401; // Unauthorized
+  } else if (error.type === 'StripeConnectionError') {
+    return 503; // Service Unavailable
+  } else if (error.type === 'StripeAPIError') {
+    return 502; // Bad Gateway
+  } else if (error.type === 'StripeInvalidRequestError') {
+    return 400; // Bad Request
+  } else if (error.type === 'StripeRateLimitError') {
+    return 429; // Too Many Requests
+  } else if (error.type === 'ConfigurationError') {
+    return 500; // Internal Server Error due to misconfiguration
+  }
+  
+  // Default to internal server error
+  return 500;
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {

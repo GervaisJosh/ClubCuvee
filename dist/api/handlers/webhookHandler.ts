@@ -1,5 +1,5 @@
 import { stripe } from '../utils/stripeClient';
-import { supabaseAdmin } from '../utils/supabaseAdmin';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { Readable } from 'stream';
 import Stripe from 'stripe';

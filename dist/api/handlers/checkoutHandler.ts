@@ -1,5 +1,5 @@
 import { stripe } from '../utils/stripeClient';
-import { supabaseAdmin } from '../utils/supabaseAdmin';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { validateRequest } from '../utils/validation';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 

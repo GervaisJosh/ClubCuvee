@@ -1,6 +1,8 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { viteStaticCopy } from 'vite-plugin-static-copy';
+import path from 'path';
+import tsconfigPaths from 'vite-tsconfig-paths';
 
 export default defineConfig({
   plugins: [
@@ -13,6 +15,7 @@ export default defineConfig({
         }
       ]
     }),
+    tsconfigPaths()
   ],
   build: {
     outDir: 'dist',
@@ -22,8 +25,8 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      '@': '/src' // Ensures path aliases work
-    }
+      '@': path.resolve(__dirname, './'),
+    },
   },
   server: {
     port: 3000,
@@ -56,5 +59,8 @@ export default defineConfig({
         }
       },
     },
+    fs: {
+      allow: ['..']
+    }
   },
 });
