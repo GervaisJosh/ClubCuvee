@@ -17,7 +17,7 @@ async function buildApi() {
     await build({
       entryPoints,
       bundle: true,
-      outdir: 'dist/api',
+      outdir: 'api',
       platform: 'node',
       target: 'node18',
       format: 'cjs',
