@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { stripe } from './utils/stripeClient';
-import { supabaseAdmin } from './utils/supabaseAdmin';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { withErrorHandling, sendApiError } from './utils/errorHandler';
 
 const handler = async (req: VercelRequest, res: VercelResponse) => {

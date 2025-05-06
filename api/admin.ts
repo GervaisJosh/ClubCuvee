@@ -1,6 +1,6 @@
-import { VercelRequest, VercelResponse } from '@vercel/node';
+import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { setUserAdminStatus, checkUserAdminStatus } from './utils/adminUtils';
-import { supabaseAdmin } from './utils/supabaseAdmin';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Check if the request has a valid auth token

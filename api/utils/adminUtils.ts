@@ -1,4 +1,4 @@
-import { supabaseAdmin } from './supabaseAdmin';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 
 /**
  * Sets the is_admin flag for a user
