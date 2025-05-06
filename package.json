@@ -8,9 +8,9 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "npm run build:api && vite build",
     "build:api": "tsx scripts/build-api.ts",
-    "build:all": "rimraf dist && npm run build && npm run build:api",
+    "build:all": "rimraf dist && npm run build",
     "lint": "eslint .",
     "test:recommendations": "tsx src/utils/tests/testRecommendations.ts",
     "preview": "vite preview"

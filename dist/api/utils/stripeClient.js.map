@@ -1,7 +1,0 @@
-{
-  "version": 3,
-  "sources": ["../../../api/utils/stripeClient.ts"],
-  "sourcesContent": ["import Stripe from 'stripe';\r\n\r\n// Check if the Stripe secret key is configured\r\nconst stripeSecretKey = process.env.STRIPE_SECRET_KEY;\r\n\r\nif (!stripeSecretKey) {\r\n  console.error('STRIPE_SECRET_KEY is not configured in environment variables');\r\n}\r\n\r\n// Initialize Stripe for server-side operations with proper configuration\r\nexport const stripe = new Stripe(stripeSecretKey || 'invalid_key', {\r\n  apiVersion: '2023-10-16', // Using a specific API version for stability\r\n  maxNetworkRetries: 3, // Retry on network failures for better reliability\r\n});"],
-  "mappings": ";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA,oBAAmB;AAGnB,IAAM,kBAAkB,QAAQ,IAAI;AAEpC,IAAI,CAAC,iBAAiB;AACpB,UAAQ,MAAM,8DAA8D;AAC9E;AAGO,IAAM,SAAS,IAAI,cAAAA,QAAO,mBAAmB,eAAe;AAAA,EACjE,YAAY;AAAA;AAAA,EACZ,mBAAmB;AAAA;AACrB,CAAC;",
-  "names": ["Stripe"]
-}
