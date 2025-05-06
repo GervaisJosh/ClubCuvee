@@ -6,16 +6,27 @@
     {
       "src": "dist/api/**/*.js",
       "use": "@vercel/node"
+    },
+    {
+      "src": "dist/**/*",
+      "use": "@vercel/static"
     }
   ],
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "/api/$1"
+      "dest": "/api/$1.js"
     },
     {
       "src": "/(.*)",
       "dest": "/$1"
     }
-  ]
+  ],
+  "ignoreCommand": "echo 'Ignoring source files'",
+  "functions": {
+    "api/**/*.ts": {
+      "memory": 1024,
+      "maxDuration": 10
+    }
+  }
 }

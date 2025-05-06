@@ -1,6 +1,10 @@
 import { build } from 'esbuild';
 import { glob } from 'glob';
-import path from 'path';
+import { fileURLToPath } from 'url';
+import { dirname, resolve } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 async function buildApi() {
   try {
@@ -27,7 +31,8 @@ async function buildApi() {
         'http',
         'https',
         'url',
-        'zod'
+        'zod',
+        'tsconfig.json'
       ],
       outbase: 'api',
       loader: { '.ts': 'ts' },
@@ -36,7 +41,15 @@ async function buildApi() {
       },
       banner: {
         js: '// @ts-nocheck\n'
-      }
+      },
+      alias: {
+        '@/lib': resolve(__dirname, '../lib')
+      },
+      // Prevent copying tsconfig.json and other unnecessary files
+      outExtension: { '.js': '.js' },
+      metafile: true,
+      // Ensure we don't include tsconfig.json in the bundle
+      inject: []
     });
 
     console.log('✅ API build complete');
