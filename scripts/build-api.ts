@@ -45,11 +45,11 @@ async function buildApi() {
       alias: {
         '@/lib': resolve(__dirname, '../lib')
       },
-      // Prevent copying tsconfig.json and other unnecessary files
-      outExtension: { '.js': '.js' },
+      // Ensure proper bundling for Vercel
       metafile: true,
-      // Ensure we don't include tsconfig.json in the bundle
-      inject: []
+      inject: [],
+      // Ensure proper path resolution
+      absWorkingDir: resolve(__dirname, '..')
     });
 
     console.log('✅ API build complete');
