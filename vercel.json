@@ -15,18 +15,12 @@
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "/api/$1.js"
+      "dest": "/dist/api/$1.js"
     },
     {
       "src": "/(.*)",
-      "dest": "/$1"
+      "dest": "/dist/$1"
     }
   ],
-  "ignoreCommand": "echo 'Ignoring source files'",
-  "functions": {
-    "api/**/*.ts": {
-      "memory": 1024,
-      "maxDuration": 10
-    }
-  }
+  "ignoreCommand": "echo 'Ignoring source files'"
 }
