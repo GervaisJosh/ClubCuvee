@@ -101,7 +101,6 @@ export const RestaurantOnboarding: React.FC = () => {
               setCurrentStep(2);
               
               try {
-                // Use membershipService instead of direct Supabase query to ensure proper typing
                 const existingTiers = await membershipService.getMembershipTiersByRestaurant(invitation.restaurant_id);
                 if (existingTiers && existingTiers.length > 0) {
                   setTiers(existingTiers);

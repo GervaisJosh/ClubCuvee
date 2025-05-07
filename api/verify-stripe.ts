@@ -51,7 +51,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     let stripe;
     try {
       stripe = new Stripe(stripeSecretKey, {
-        apiVersion: '2023-10-16',
+        apiVersion: '2025-02-24.acacia',
         maxNetworkRetries: 3,
       });
     } catch (initError: any) {

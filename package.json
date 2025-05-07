@@ -21,8 +21,10 @@
     "@stripe/react-stripe-js": "^3.3.0",
     "@stripe/stripe-js": "^5.10.0",
     "@supabase/supabase-js": "2.47.8",
+    "@types/express": "^5.0.1",
     "axios": "1.7.8",
     "dotenv": "^16.4.7",
+    "express-rate-limit": "^7.1.5",
     "lucide-react": "0.344.0",
     "openai": "4.82.0",
     "pinecone": "0.1.0",
@@ -33,7 +35,8 @@
     "recharts": "2.13.0",
     "stripe": "^17.7.0",
     "supabase": "^2.20.12",
-    "xlsx": "0.18.5"
+    "xlsx": "0.18.5",
+    "zod": "^3.22.4"
   },
   "devDependencies": {
     "@eslint/js": "9.9.1",

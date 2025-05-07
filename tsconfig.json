@@ -2,9 +2,9 @@
   "compilerOptions": {
     "target": "ES2020",
     "lib": ["ES2020", "DOM", "DOM.Iterable"],
-    "module": "es2020",
-    "moduleResolution": "node",
-    "allowImportingTsExtensions": false,
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
     "strict": true,
@@ -17,7 +17,7 @@
       "@/api/*": ["api/*"],
       "@/src/*": ["src/*"]
     },
-    "types": ["vite/client"],
+    "types": ["vite/client", "node"],
     "noEmit": true,
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true

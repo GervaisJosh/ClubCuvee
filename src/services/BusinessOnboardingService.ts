@@ -234,40 +234,52 @@ export const BusinessOnboardingService = {
   /**
    * If something fails during onboarding, roll back all changes
    */
-  async rollbackOnboarding(
-    restaurantId: string, 
-    stripeProductIds: { productId: string; priceId: string; tier: string }[]
-  ): Promise<void> {
+  async rollbackOnboarding(restaurantId: string, stripeProductIds: { productId: string; priceId: string; tier: string }[]) {
     try {
-      console.log('Rolling back onboarding due to error...');
-      
-      // 1. Delete membership tiers from Supabase
-      await supabase
-        .from('membership_tiers')
-        .delete()
-        .eq('restaurant_id', restaurantId);
-      
-      // 2. Delete Stripe prices and products
-      for (const { priceId, productId } of stripeProductIds) {
+      // Delete Stripe products and prices
+      await Promise.all(stripeProductIds.map(async ({ productId }) => {
         try {
-          await stripe.prices.update(priceId, { active: false });
-          await stripe.products.update(productId, { active: false });
-        } catch (stripeError) {
-          console.error('Error deactivating Stripe resource:', stripeError);
-          // Continue with other rollbacks even if one fails
+          await stripe.products.del(productId);
+        } catch (error) {
+          console.error(`Failed to delete Stripe product ${productId}:`, error);
         }
-      }
-      
-      // 3. Delete restaurant record from Supabase
-      await supabase
+      }));
+
+      // Delete restaurant record from Supabase
+      const { error: restaurantError } = await supabase
         .from('restaurants')
         .delete()
         .eq('id', restaurantId);
-      
-      console.log('Rollback completed successfully');
+
+      if (restaurantError) {
+        console.error('Failed to delete restaurant record:', restaurantError);
+      }
+
+      // Delete associated membership tiers
+      const { error: tierError } = await supabase
+        .from('membership_tiers')
+        .delete()
+        .eq('restaurant_id', restaurantId);
+
+      if (tierError) {
+        console.error('Failed to delete membership tiers:', tierError);
+      }
+
+      // Update invitation status to failed
+      const { error: inviteError } = await supabase
+        .from('restaurant_invitations')
+        .update({
+          status: 'failed',
+          updated_at: new Date().toISOString()
+        })
+        .eq('restaurant_id', restaurantId);
+
+      if (inviteError) {
+        console.error('Failed to update invitation status:', inviteError);
+      }
     } catch (error) {
       console.error('Error during rollback:', error);
-      // We can't do much if rollback itself fails
+      throw new Error('Failed to complete rollback: ' + (error as Error).message);
     }
   },
 
