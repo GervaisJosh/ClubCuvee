@@ -18,6 +18,8 @@ export default async function handler(request: VercelRequest) {
   try {
     // Initialize Pinecone using the new format:
     console.time(`[PINECONE] Client init`);
+    // @ts-ignore - Intentionally initialized for future vector operations
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars, @typescript-eslint/ban-ts-comment
     const pc = new Pinecone({ apiKey: process.env.VITE_PINECONE_API_KEY! });
     console.timeEnd(`[PINECONE] Client init`);
 
