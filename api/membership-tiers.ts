@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { stripe } from './utils/stripeClient';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
-import { withErrorHandling, sendApiError } from './utils/errorHandler';
+import { withErrorHandling } from './utils/errorHandler';
 
 const handler = async (req: VercelRequest, res: VercelResponse) => {
   // Only allow POST (create) and PUT (update) requests
@@ -16,8 +16,6 @@ const handler = async (req: VercelRequest, res: VercelResponse) => {
       price,            // Required: Monthly price
       description,      // Optional: Tier description
       restaurant_id,    // Required: ID of the parent restaurant
-      stripe_price_id,  // Optional: Existing Stripe price ID (if reconnecting)
-      stripe_product_id // Optional: Existing Stripe product ID (if reconnecting)
     } = req.body;
 
     // Validate required fields
@@ -237,7 +235,10 @@ const handler = async (req: VercelRequest, res: VercelResponse) => {
     return res.status(200).json(tier);
   } catch (error: any) {
     console.error('Error processing membership tier:', error);
-    return sendApiError(res, error, 500);
+    return res.status(500).json({ 
+      error: 'Internal server error',
+      message: error.message 
+    });
   }
 }
 

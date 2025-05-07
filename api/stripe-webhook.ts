@@ -2,7 +2,7 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { withErrorHandler } from './utils/error-handler';
 import { verifyStripeWebhook, getSubscription } from './utils/stripe';
-import { createRestaurant, getRestaurantInvite, updateRestaurantInvite } from './utils/supabase';
+import { createRestaurant, updateRestaurantInvite } from './utils/supabase';
 import { APIError } from './utils/error-handler';
 import Stripe from 'stripe';
 
@@ -52,16 +52,6 @@ export default withErrorHandler(async (req: VercelRequest, res: VercelResponse):
         });
       }
 
-      break;
-    }
-
-    case 'customer.subscription.deleted': {
-      const subscription = event.data.object as Stripe.Subscription;
-      
-      // Update restaurant status if needed
-      // This could involve updating a status field in the restaurants table
-      // or handling the subscription cancellation in some other way
-      
       break;
     }
 
