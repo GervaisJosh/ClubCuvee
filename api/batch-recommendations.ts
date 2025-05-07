@@ -19,7 +19,6 @@ export default async function handler(request: VercelRequest) {
     // Initialize Pinecone using the new format:
     console.time(`[PINECONE] Client init`);
     const pc = new Pinecone({ apiKey: process.env.VITE_PINECONE_API_KEY! });
-    const wineIndex = pc.Index('wine-knowledgebase', process.env.VITE_PINECONE_HOST!);
     console.timeEnd(`[PINECONE] Client init`);
 
     // Clean up any existing batches

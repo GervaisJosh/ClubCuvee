@@ -2,24 +2,26 @@
   "extends": "../tsconfig.json",
   "compilerOptions": {
     "composite": true,
-    "module": "CommonJS",
-    "moduleResolution": "node",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
     "target": "ES2020",
     "outDir": "../dist/api",
     "baseUrl": ".",
+    "rootDir": "..",
     "paths": {
       "@/*": ["../*"],
       "@/lib/*": ["../lib/*"],
       "@/api/*": ["./*"]
     },
-    "types": ["node"],
+    "types": ["node", "vite/client"],
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "declaration": true
   },
   "include": [
-    "./**/*.ts"
+    "./**/*.ts",
+    "../src/utils/priceUtils.ts"
   ],
   "exclude": [
     "node_modules",

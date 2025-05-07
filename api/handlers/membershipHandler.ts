@@ -5,7 +5,7 @@ import { sendApiError } from '../utils/errorHandler';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { randomUUID } from 'crypto';
 
-import { ensurePriceString, ensurePriceNumber, convertPriceToStripeCents } from '../../src/utils/priceUtils.js';
+import { ensurePriceString, ensurePriceNumber, convertPriceToStripeCents } from '@/src/utils/priceUtils';
 
 // Type definitions for clarity and safety
 interface MembershipTierData {
@@ -301,7 +301,7 @@ export async function createInvitationLink(req: VercelRequest, res: VercelRespon
     }
     
     // Check if email is already registered
-    const { data: existingUser, error: userError } = await supabaseAdmin
+    const { data: existingUser } = await supabaseAdmin
       .from('restaurants')
       .select('id')
       .eq('admin_email', email)
@@ -424,14 +424,13 @@ export async function createInvitationLink(req: VercelRequest, res: VercelRespon
 /**
  * Verify Stripe configuration and connectivity
  */
-export async function verifyStripeSetup(req: VercelRequest, res: VercelResponse) {
+export async function verifyStripeSetup(_req: VercelRequest, res: VercelResponse) {
   try {
     // First, validate that we have the necessary environment variables
     const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
     
     if (!stripeSecretKey) {
       const configError = new Error('Missing Stripe configuration. STRIPE_SECRET_KEY is not set in environment variables.');
-      // Add properties to the error for better categorization
       Object.assign(configError, { 
         type: 'ConfigurationError',
         config: {
@@ -470,8 +469,7 @@ export async function verifyStripeSetup(req: VercelRequest, res: VercelResponse)
       }
     });
   } catch (error: any) {
-    // Let our error handler determine the appropriate status code
-    // and format the error response consistently
+    console.error('Error verifying Stripe setup:', error);
     const statusCode = getErrorStatusCodeForStripe(error);
     return sendApiError(res, error, statusCode, true);
   }

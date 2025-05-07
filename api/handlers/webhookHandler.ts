@@ -3,13 +3,7 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { Readable } from 'stream';
 import Stripe from 'stripe';
-import { z } from 'zod';
-import { sendErrorResponse, AppError, handleStripeError } from '../utils/errorHandler';
-
-// Define CheckoutData type
-interface CheckoutData extends Stripe.Checkout.SessionCreateParams {
-  idempotencyKey?: string;
-}
+import { sendErrorResponse, AppError } from '../utils/errorHandler';
 
 // For verifying Stripe signatures, we need the raw request body
 async function readRawBody(readable: Readable) {
@@ -218,7 +212,7 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
  * Handle customer.subscription.updated event
  */
 async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
-  const { customer_id, restaurant_id } = subscription.metadata || {};
+  const { customer_id } = subscription.metadata || {};
   
   if (!customer_id) {
     // Try to get metadata from the Stripe customer
@@ -315,7 +309,7 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
 /**
  * Update subscription cancellation by customer ID
  */
-async function updateSubscriptionCancellation(customerId: string, subscription: Stripe.Subscription) {
+async function updateSubscriptionCancellation(_customerId: string, subscription: Stripe.Subscription) {
   const canceledAt = subscription.canceled_at
     ? new Date(subscription.canceled_at * 1000).toISOString()
     : new Date().toISOString();
@@ -403,31 +397,10 @@ async function handlePaymentFailed(invoice: Stripe.Invoice) {
       console.error('Error updating customer subscription status:', updateError);
       throw updateError;
     }
-
-    // Optionally, send an email to the customer about the failed payment
-    // if (foundCustomer.email) {
-    //   await sendFailedPaymentEmail(foundCustomer.email, {
-    //     amount: invoice.amount_due / 100,
-    //     currency: invoice.currency
-    //   });
-    // }
   } catch (error) {
     console.error('Error processing payment failed event:', error);
     // Don't throw to avoid webhook failure
   }
 }
-
-const InvitationSchema = z.object({
-  email: z.string().email(),
-  restaurant_name: z.string().min(1),
-  // ... other fields
-});
-
-const createCheckoutSession = async (data: CheckoutData) => {
-  const idempotencyKey = crypto.randomUUID();
-  return stripe.checkout.sessions.create(data, {
-    idempotencyKey
-  });
-};
 
 export default handleWebhook;

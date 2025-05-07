@@ -14,7 +14,7 @@ export class APIError extends Error {
 
 export const errorHandler = (
   error: unknown,
-  req: VercelRequest,
+  _req: VercelRequest,
   res: VercelResponse
 ) => {
   console.error('API Error:', error);
