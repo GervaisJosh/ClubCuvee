@@ -4,8 +4,8 @@ import type { Restaurant, RestaurantInvitation, MembershipTier } from '../types'
 
 // Initialize clients for server-side operations
 const supabase = createClient(
-  process.env.SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  import.meta.env.VITE_SUPABASE_URL!,
+  import.meta.env.VITE_SUPABASE_ANON_KEY!,
   {
     auth: {
       autoRefreshToken: false,
@@ -14,7 +14,7 @@ const supabase = createClient(
   }
 );
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+const stripe = new Stripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY!, {
   maxNetworkRetries: 3,
 });
 

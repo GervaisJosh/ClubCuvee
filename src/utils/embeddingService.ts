@@ -3,7 +3,8 @@ import { OpenAI } from "openai";
 
 // Initialize the OpenAI client with your API key.
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY, // Ensure this is set in your environment
+  apiKey: import.meta.env.VITE_OPENAI_API_KEY
+  // Ensure this is set in your environment
 });
 
 /**
