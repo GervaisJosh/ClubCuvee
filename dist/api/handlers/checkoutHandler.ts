@@ -4,10 +4,53 @@ import { validateRequest } from '../utils/validation';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 /**
+ * Helper function to send JSON response with proper error handling
+ */
+function sendJsonResponse(res: VercelResponse, status: number, data: any) {
+  try {
+    if (!res.headersSent) {
+      res.setHeader('Content-Type', 'application/json');
+    }
+    return res.status(status).json(data);
+  } catch (error) {
+    console.error('Error sending JSON response:', error);
+    if (!res.headersSent) {
+      res.setHeader('Content-Type', 'application/json');
+      return res.status(500).json({
+        status: 'error',
+        error: 'Failed to send response',
+        message: 'Internal server error'
+      });
+    }
+  }
+}
+
+/**
  * Create a Stripe checkout session for subscription payments
  */
 export async function createCheckoutSession(req: VercelRequest, res: VercelResponse) {
+  // Set CORS headers for all responses
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.setHeader('Content-Type', 'application/json');
+
   try {
+    // Handle preflight OPTIONS requests
+    if (req.method === 'OPTIONS') {
+      return sendJsonResponse(res, 200, { status: 'success' });
+    }
+
+    // Ensure method is POST
+    if (req.method !== 'POST') {
+      return sendJsonResponse(res, 405, {
+        status: 'error',
+        error: 'Method not allowed',
+        message: 'Only POST requests are allowed',
+        allowed_methods: ['POST', 'OPTIONS']
+      });
+    }
+
     const {
       tierId,         // ID of membership_tiers row
       priceId,        // Optional: Direct Stripe price ID
@@ -28,15 +71,18 @@ export async function createCheckoutSession(req: VercelRequest, res: VercelRespo
     );
     
     if (!validation.isValid) {
-      return res.status(400).json({
+      return sendJsonResponse(res, 400, {
+        status: 'error',
         error: 'Validation failed',
         details: validation.errors,
       });
     }
     
     if (!tierId && !priceId && !createPrice) {
-      return res.status(400).json({
-        error: 'Either tierId, priceId, or createPrice must be provided'
+      return sendJsonResponse(res, 400, {
+        status: 'error',
+        error: 'Invalid request',
+        message: 'Either tierId, priceId, or createPrice must be provided'
       });
     }
     
@@ -77,10 +123,12 @@ export async function createCheckoutSession(req: VercelRequest, res: VercelRespo
         
         finalPriceId = price.id;
         createdPrice = true;
-      } catch (err) {
+      } catch (err: any) {
         console.error('Error creating price:', err);
-        return res.status(500).json({
-          error: 'Failed to create price'
+        return sendJsonResponse(res, 500, {
+          status: 'error',
+          error: 'Failed to create price',
+          message: err.message || 'Could not create Stripe price'
         });
       }
     } else if (tierId) {
@@ -93,21 +141,27 @@ export async function createCheckoutSession(req: VercelRequest, res: VercelRespo
         .single();
 
       if (tierError || !tier) {
-        return res.status(404).json({
-          error: tierError?.message || 'Tier not found'
+        return sendJsonResponse(res, 404, {
+          status: 'error',
+          error: 'Tier not found',
+          message: tierError?.message || 'Could not find membership tier'
         });
       }
       
       if (!tier.stripe_price_id) {
-        return res.status(400).json({
-          error: 'This membership tier is not properly configured for payments'
+        return sendJsonResponse(res, 400, {
+          status: 'error',
+          error: 'Invalid tier configuration',
+          message: 'This membership tier is not properly configured for payments'
         });
       }
       
       finalPriceId = tier.stripe_price_id;
     } else {
-      return res.status(400).json({
-        error: 'Invalid request configuration'
+      return sendJsonResponse(res, 400, {
+        status: 'error',
+        error: 'Invalid request configuration',
+        message: 'Could not determine price ID'
       });
     }
     
@@ -143,10 +197,18 @@ export async function createCheckoutSession(req: VercelRequest, res: VercelRespo
       }
     });
     
-    return res.status(200).json({ id: session.id });
+    return sendJsonResponse(res, 200, {
+      status: 'success',
+      id: session.id,
+      url: session.url
+    });
   } catch (error: any) {
     console.error('Error creating checkout session:', error);
-    return res.status(500).json({ error: error.message || 'Internal server error' });
+    return sendJsonResponse(res, 500, {
+      status: 'error',
+      error: 'Internal server error',
+      message: error.message || 'Failed to create checkout session'
+    });
   }
 }
 
@@ -154,6 +216,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === 'POST') {
     return createCheckoutSession(req, res);
   } else {
-    return res.status(405).json({ error: 'Method not allowed' });
+    return sendJsonResponse(res, 405, {
+      status: 'error',
+      error: 'Method not allowed',
+      message: 'Only POST requests are allowed',
+      allowed_methods: ['POST', 'OPTIONS']
+    });
   }
 }

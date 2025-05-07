@@ -45,9 +45,12 @@ if (!stripeSecretKey) {
 }
 var stripe = new import_stripe.default(stripeSecretKey || "invalid_key", {
   apiVersion: "2025-02-24.acacia",
-  // Using latest API version
-  maxNetworkRetries: 3
-  // Retry on network failures for better reliability
+  maxNetworkRetries: 3,
+  typescript: true,
+  appInfo: {
+    name: "Club Cuvee",
+    version: "1.0.0"
+  }
 });
 
 // lib/supabaseAdmin.ts
@@ -96,8 +99,41 @@ function validateRequest(data, requiredFields, customValidators) {
 }
 
 // api/handlers/checkoutHandler.ts
-async function createCheckoutSession(req, res) {
+function sendJsonResponse(res, status, data) {
   try {
+    if (!res.headersSent) {
+      res.setHeader("Content-Type", "application/json");
+    }
+    return res.status(status).json(data);
+  } catch (error) {
+    console.error("Error sending JSON response:", error);
+    if (!res.headersSent) {
+      res.setHeader("Content-Type", "application/json");
+      return res.status(500).json({
+        status: "error",
+        error: "Failed to send response",
+        message: "Internal server error"
+      });
+    }
+  }
+}
+async function createCheckoutSession(req, res) {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  res.setHeader("Content-Type", "application/json");
+  try {
+    if (req.method === "OPTIONS") {
+      return sendJsonResponse(res, 200, { status: "success" });
+    }
+    if (req.method !== "POST") {
+      return sendJsonResponse(res, 405, {
+        status: "error",
+        error: "Method not allowed",
+        message: "Only POST requests are allowed",
+        allowed_methods: ["POST", "OPTIONS"]
+      });
+    }
     const {
       tierId,
       // ID of membership_tiers row
@@ -125,14 +161,17 @@ async function createCheckoutSession(req, res) {
       ["customerId", "customerEmail", "restaurantId", "successUrl", "cancelUrl"]
     );
     if (!validation.isValid) {
-      return res.status(400).json({
+      return sendJsonResponse(res, 400, {
+        status: "error",
         error: "Validation failed",
         details: validation.errors
       });
     }
     if (!tierId && !priceId && !createPrice) {
-      return res.status(400).json({
-        error: "Either tierId, priceId, or createPrice must be provided"
+      return sendJsonResponse(res, 400, {
+        status: "error",
+        error: "Invalid request",
+        message: "Either tierId, priceId, or createPrice must be provided"
       });
     }
     let finalPriceId;
@@ -165,26 +204,34 @@ async function createCheckoutSession(req, res) {
         createdPrice = true;
       } catch (err) {
         console.error("Error creating price:", err);
-        return res.status(500).json({
-          error: "Failed to create price"
+        return sendJsonResponse(res, 500, {
+          status: "error",
+          error: "Failed to create price",
+          message: err.message || "Could not create Stripe price"
         });
       }
     } else if (tierId) {
       const { data: tier, error: tierError } = await supabaseAdmin.from("membership_tiers").select("stripe_price_id").eq("id", tierId).eq("restaurant_id", restaurantId).single();
       if (tierError || !tier) {
-        return res.status(404).json({
-          error: tierError?.message || "Tier not found"
+        return sendJsonResponse(res, 404, {
+          status: "error",
+          error: "Tier not found",
+          message: tierError?.message || "Could not find membership tier"
         });
       }
       if (!tier.stripe_price_id) {
-        return res.status(400).json({
-          error: "This membership tier is not properly configured for payments"
+        return sendJsonResponse(res, 400, {
+          status: "error",
+          error: "Invalid tier configuration",
+          message: "This membership tier is not properly configured for payments"
         });
       }
       finalPriceId = tier.stripe_price_id;
     } else {
-      return res.status(400).json({
-        error: "Invalid request configuration"
+      return sendJsonResponse(res, 400, {
+        status: "error",
+        error: "Invalid request configuration",
+        message: "Could not determine price ID"
       });
     }
     const sessionMetadata = {
@@ -218,17 +265,30 @@ async function createCheckoutSession(req, res) {
         }
       }
     });
-    return res.status(200).json({ id: session.id });
+    return sendJsonResponse(res, 200, {
+      status: "success",
+      id: session.id,
+      url: session.url
+    });
   } catch (error) {
     console.error("Error creating checkout session:", error);
-    return res.status(500).json({ error: error.message || "Internal server error" });
+    return sendJsonResponse(res, 500, {
+      status: "error",
+      error: "Internal server error",
+      message: error.message || "Failed to create checkout session"
+    });
   }
 }
 async function handler(req, res) {
   if (req.method === "POST") {
     return createCheckoutSession(req, res);
   } else {
-    return res.status(405).json({ error: "Method not allowed" });
+    return sendJsonResponse(res, 405, {
+      status: "error",
+      error: "Method not allowed",
+      message: "Only POST requests are allowed",
+      allowed_methods: ["POST", "OPTIONS"]
+    });
   }
 }
 // Annotate the CommonJS export names for ESM import in node:

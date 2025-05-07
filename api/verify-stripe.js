@@ -32,112 +32,139 @@ var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: tru
 // api/verify-stripe.ts
 var verify_stripe_exports = {};
 __export(verify_stripe_exports, {
-  default: () => handler
+  default: () => verify_stripe_default
 });
 module.exports = __toCommonJS(verify_stripe_exports);
-var import_stripe = __toESM(require("stripe"), 1);
-async function handler(req, res) {
-  res.setHeader("Content-Type", "application/json");
-  try {
-    res.setHeader("Access-Control-Allow-Origin", "*");
-    res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
-    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
-    if (req.method === "OPTIONS") {
-      return res.status(200).send(JSON.stringify({ status: "success" }));
-    }
-    if (req.method !== "GET") {
-      return res.status(405).send(JSON.stringify({
-        status: "error",
-        error: "Method not allowed",
-        allowed_methods: ["GET", "OPTIONS"]
-      }));
-    }
-    const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
-    if (!stripeSecretKey) {
-      return res.status(500).send(JSON.stringify({
-        status: "error",
-        error: "Missing Stripe configuration",
-        message: "STRIPE_SECRET_KEY is not set in environment variables",
-        config: {
-          STRIPE_SECRET_KEY: "missing",
-          STRIPE_WEBHOOK_SECRET: !!process.env.STRIPE_WEBHOOK_SECRET ? "configured" : "missing",
-          STRIPE_PUBLIC_KEY: !!(process.env.VITE_STRIPE_PUBLIC_KEY || process.env.STRIPE_PUBLIC_KEY) ? "configured" : "missing"
-        }
-      }));
-    }
-    let stripe;
-    try {
-      stripe = new import_stripe.default(stripeSecretKey, {
-        apiVersion: "2023-10-16",
-        maxNetworkRetries: 3
-      });
-    } catch (initError) {
-      console.error("Failed to initialize Stripe client:", initError);
-      return res.status(500).send(JSON.stringify({
-        status: "error",
-        error: "Stripe initialization failed",
-        message: initError.message || "Could not initialize Stripe client"
-      }));
-    }
-    let balance;
-    try {
-      balance = await stripe.balance.retrieve();
-    } catch (apiError) {
-      console.error("Failed to retrieve Stripe balance:", apiError);
-      const statusCode = apiError.type === "StripeAuthenticationError" ? 401 : apiError.type === "StripeConnectionError" ? 503 : apiError.type === "StripeAPIError" ? 502 : 500;
-      return res.status(statusCode).send(JSON.stringify({
-        status: "error",
-        error: "Stripe API verification failed",
-        message: apiError.message || "Could not connect to Stripe API",
-        type: apiError.type || "unknown"
-      }));
-    }
-    return res.status(200).send(JSON.stringify({
-      status: "success",
-      message: "Stripe API connection successful",
-      livemode: balance.livemode,
-      config: {
-        STRIPE_SECRET_KEY: "configured",
-        STRIPE_WEBHOOK_SECRET: !!process.env.STRIPE_WEBHOOK_SECRET ? "configured" : "missing",
-        STRIPE_PUBLIC_KEY: !!(process.env.VITE_STRIPE_PUBLIC_KEY || process.env.STRIPE_PUBLIC_KEY) ? "configured" : "missing"
-      },
-      balance: {
-        available: balance.available.map((b) => ({
-          amount: (b.amount / 100).toFixed(2),
-          currency: b.currency
-        })),
-        pending: balance.pending.map((b) => ({
-          amount: (b.amount / 100).toFixed(2),
-          currency: b.currency
-        }))
-      }
-    }));
-  } catch (error) {
-    console.error("Stripe verification error:", error);
-    if (res.headersSent) {
-      console.error("Cannot send error response - headers already sent");
-      return;
-    }
-    res.setHeader("Content-Type", "application/json");
-    let statusCode = 500;
-    if (error.type === "StripeAuthenticationError") {
-      statusCode = 401;
-    } else if (error.type === "StripeConnectionError") {
-      statusCode = 503;
-    } else if (error.type === "StripeAPIError") {
-      statusCode = 502;
-    }
-    return res.status(statusCode).send(JSON.stringify({
-      status: "error",
-      error: error.message || "Internal server error",
-      type: error.type || "unknown",
-      details: false ? {
-        message: error.message,
-        code: error.code,
-        type: error.type,
-        name: error.name
-      } : void 0
-    }));
+var import_zod2 = require("zod");
+
+// api/utils/error-handler.ts
+var import_zod = require("zod");
+var APIError = class extends Error {
+  constructor(statusCode, message, code) {
+    super(message);
+    this.statusCode = statusCode;
+    this.code = code;
+    this.name = "APIError";
   }
+};
+var errorHandler = (error, req, res) => {
+  console.error("API Error:", error);
+  if (error instanceof APIError) {
+    return res.status(error.statusCode).json({
+      error: {
+        message: error.message,
+        code: error.code
+      }
+    });
+  }
+  if (error instanceof import_zod.ZodError) {
+    return res.status(400).json({
+      error: {
+        message: "Validation error",
+        code: "VALIDATION_ERROR",
+        details: error.errors
+      }
+    });
+  }
+  if (error instanceof Error && error.name === "StripeError") {
+    return res.status(400).json({
+      error: {
+        message: error.message,
+        code: "STRIPE_ERROR"
+      }
+    });
+  }
+  return res.status(500).json({
+    error: {
+      message: "Internal server error",
+      code: "INTERNAL_ERROR"
+    }
+  });
+};
+var withErrorHandler = (handler) => {
+  return async (req, res) => {
+    try {
+      await handler(req, res);
+    } catch (error) {
+      errorHandler(error, req, res);
+    }
+  };
+};
+
+// api/utils/stripe.ts
+var import_stripe = __toESM(require("stripe"), 1);
+if (!process.env.STRIPE_SECRET_KEY) {
+  throw new Error("STRIPE_SECRET_KEY is required");
 }
+if (!process.env.STRIPE_WEBHOOK_SECRET) {
+  throw new Error("STRIPE_WEBHOOK_SECRET is required");
+}
+var stripe = new import_stripe.default(process.env.STRIPE_SECRET_KEY, {
+  apiVersion: "2025-02-24.acacia",
+  typescript: true
+});
+var getSubscription = async (subscriptionId) => {
+  try {
+    return await stripe.subscriptions.retrieve(subscriptionId);
+  } catch (err) {
+    if (err instanceof import_stripe.default.errors.StripeError) {
+      throw new APIError(400, err.message, "STRIPE_ERROR");
+    }
+    throw err;
+  }
+};
+
+// api/utils/supabase.ts
+var import_supabase_js = require("@supabase/supabase-js");
+if (!process.env.SUPABASE_URL) {
+  throw new Error("SUPABASE_URL is required");
+}
+if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+  throw new Error("SUPABASE_SERVICE_ROLE_KEY is required");
+}
+var supabase = (0, import_supabase_js.createClient)(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY,
+  {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  }
+);
+var getRestaurantInvite = async (token) => {
+  const { data, error } = await supabase.from("restaurant_invites").select("*").eq("token", token).single();
+  if (error) {
+    throw new APIError(500, "Failed to fetch restaurant invite", "DATABASE_ERROR");
+  }
+  if (!data) {
+    throw new APIError(404, "Invite not found", "INVITE_NOT_FOUND");
+  }
+  return data;
+};
+
+// api/verify-stripe.ts
+var verifyStripeSchema = import_zod2.z.object({
+  token: import_zod2.z.string().uuid(),
+  sessionId: import_zod2.z.string()
+});
+var verify_stripe_default = withErrorHandler(async (req, res) => {
+  if (req.method !== "POST") {
+    throw new APIError(405, "Method not allowed", "METHOD_NOT_ALLOWED");
+  }
+  const { token, sessionId } = verifyStripeSchema.parse(req.body);
+  await getRestaurantInvite(token);
+  const subscription = await getSubscription(sessionId);
+  if (subscription.status !== "active") {
+    throw new APIError(400, "Subscription is not active", "INVALID_SUBSCRIPTION");
+  }
+  res.status(200).json({
+    status: "success",
+    subscription: {
+      id: subscription.id,
+      status: subscription.status,
+      currentPeriodEnd: subscription.current_period_end
+    }
+  });
+});
 //# sourceMappingURL=verify-stripe.js.map

@@ -23,7 +23,7 @@ import Pricing from './pages/Pricing';
 import CustomerSignup from './pages/CustomerSignup';
 
 // Restaurant onboarding with lazy loading
-const RestaurantOnboarding = React.lazy(() => import('./pages/onboarding/[restaurantRef]'));
+const RestaurantOnboarding = React.lazy(() => import('./pages/onboarding/token'));
 
 const App = () => {
   // Initialize data check for development mode

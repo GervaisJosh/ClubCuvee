@@ -22,12 +22,24 @@ var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: tru
 // api/utils/errorHandler.ts
 var errorHandler_exports = {};
 __export(errorHandler_exports, {
+  AppError: () => AppError,
   formatApiError: () => formatApiError,
   getErrorStatusCode: () => getErrorStatusCode,
+  handleStripeError: () => handleStripeError,
   sendApiError: () => sendApiError,
+  sendErrorResponse: () => sendErrorResponse,
   withErrorHandling: () => withErrorHandling
 });
 module.exports = __toCommonJS(errorHandler_exports);
+var import_zod = require("zod");
+var AppError = class _AppError extends Error {
+  constructor(statusCode, message, isOperational = true) {
+    super(message);
+    this.statusCode = statusCode;
+    this.isOperational = isOperational;
+    Object.setPrototypeOf(this, _AppError.prototype);
+  }
+};
 function formatApiError(error, includeDetails = false) {
   const errorResponse = {
     status: "error",
@@ -88,11 +100,46 @@ function withErrorHandling(handler) {
     }
   };
 }
+var sendErrorResponse = (res, error, statusCode = 500) => {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  if (res.req?.method === "OPTIONS") {
+    return res.status(204).end();
+  }
+  if (error instanceof import_zod.ZodError) {
+    return res.status(400).json({
+      error: "Validation Error",
+      details: error.errors.map((err) => ({
+        path: err.path.join("."),
+        message: err.message
+      }))
+    });
+  }
+  if (error instanceof AppError && error.isOperational) {
+    return res.status(error.statusCode).json({
+      error: error.message
+    });
+  }
+  console.error("Unexpected error:", error);
+  return res.status(statusCode).json({
+    error: true ? "An unexpected error occurred" : error.message
+  });
+};
+var handleStripeError = (error) => {
+  if (error.type?.startsWith("Stripe")) {
+    throw new AppError(400, error.message);
+  }
+  throw error;
+};
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
+  AppError,
   formatApiError,
   getErrorStatusCode,
+  handleStripeError,
   sendApiError,
+  sendErrorResponse,
   withErrorHandling
 });
 //# sourceMappingURL=errorHandler.js.map

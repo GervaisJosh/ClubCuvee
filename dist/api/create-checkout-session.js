@@ -35,23 +35,111 @@ __export(create_checkout_session_exports, {
   default: () => create_checkout_session_default
 });
 module.exports = __toCommonJS(create_checkout_session_exports);
+var import_zod2 = require("zod");
 
-// api/utils/stripeClient.ts
+// api/utils/error-handler.ts
+var import_zod = require("zod");
+var APIError = class extends Error {
+  constructor(statusCode, message, code) {
+    super(message);
+    this.statusCode = statusCode;
+    this.code = code;
+    this.name = "APIError";
+  }
+};
+var errorHandler = (error, req, res) => {
+  console.error("API Error:", error);
+  if (error instanceof APIError) {
+    return res.status(error.statusCode).json({
+      error: {
+        message: error.message,
+        code: error.code
+      }
+    });
+  }
+  if (error instanceof import_zod.ZodError) {
+    return res.status(400).json({
+      error: {
+        message: "Validation error",
+        code: "VALIDATION_ERROR",
+        details: error.errors
+      }
+    });
+  }
+  if (error instanceof Error && error.name === "StripeError") {
+    return res.status(400).json({
+      error: {
+        message: error.message,
+        code: "STRIPE_ERROR"
+      }
+    });
+  }
+  return res.status(500).json({
+    error: {
+      message: "Internal server error",
+      code: "INTERNAL_ERROR"
+    }
+  });
+};
+var withErrorHandler = (handler) => {
+  return async (req, res) => {
+    try {
+      await handler(req, res);
+    } catch (error) {
+      errorHandler(error, req, res);
+    }
+  };
+};
+
+// api/utils/stripe.ts
 var import_stripe = __toESM(require("stripe"), 1);
-var stripeSecretKey = process.env.STRIPE_SECRET_KEY;
-if (!stripeSecretKey) {
-  console.error("STRIPE_SECRET_KEY is not configured in environment variables");
+if (!process.env.STRIPE_SECRET_KEY) {
+  throw new Error("STRIPE_SECRET_KEY is required");
 }
-var stripe = new import_stripe.default(stripeSecretKey || "invalid_key", {
+if (!process.env.STRIPE_WEBHOOK_SECRET) {
+  throw new Error("STRIPE_WEBHOOK_SECRET is required");
+}
+var stripe = new import_stripe.default(process.env.STRIPE_SECRET_KEY, {
   apiVersion: "2025-02-24.acacia",
-  // Using latest API version
-  maxNetworkRetries: 3
-  // Retry on network failures for better reliability
+  typescript: true
 });
+var createCheckoutSession = async (data) => {
+  try {
+    const session = await stripe.checkout.sessions.create({
+      mode: "subscription",
+      payment_method_types: ["card"],
+      line_items: [
+        {
+          price: process.env[`STRIPE_PRICE_ID_${data.membershipTier.toUpperCase()}`],
+          quantity: 1
+        }
+      ],
+      customer_email: data.email,
+      metadata: {
+        restaurantName: data.restaurantName,
+        membershipTier: data.membershipTier
+      },
+      success_url: data.successUrl,
+      cancel_url: data.cancelUrl
+    });
+    return session;
+  } catch (err) {
+    if (err instanceof import_stripe.default.errors.StripeError) {
+      throw new APIError(400, err.message, "STRIPE_ERROR");
+    }
+    throw err;
+  }
+};
 
-// lib/supabaseAdmin.ts
+// api/utils/supabase.ts
 var import_supabase_js = require("@supabase/supabase-js");
-var supabaseAdmin = (0, import_supabase_js.createClient)(
+if (!process.env.SUPABASE_URL) {
+  throw new Error("SUPABASE_URL is required");
+}
+if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+  throw new Error("SUPABASE_SERVICE_ROLE_KEY is required");
+}
+var supabase = (0, import_supabase_js.createClient)(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY,
   {
@@ -61,169 +149,46 @@ var supabaseAdmin = (0, import_supabase_js.createClient)(
     }
   }
 );
-
-// api/utils/validation.ts
-function validateRequired(data, requiredFields) {
-  const errors = [];
-  for (const field of requiredFields) {
-    const value = data[field];
-    if (value === void 0 || value === null || value === "") {
-      errors.push({
-        field,
-        message: `${field} is required`
-      });
-    }
+var getRestaurantInvite = async (token) => {
+  const { data, error } = await supabase.from("restaurant_invites").select("*").eq("token", token).single();
+  if (error) {
+    throw new APIError(500, "Failed to fetch restaurant invite", "DATABASE_ERROR");
   }
-  return errors;
-}
-function validateRequest(data, requiredFields, customValidators) {
-  const errors = validateRequired(data, requiredFields);
-  if (customValidators) {
-    for (const [field, validator] of Object.entries(customValidators)) {
-      if (data[field] !== void 0 && data[field] !== null) {
-        const validationResult = validator(data[field]);
-        if (validationResult) {
-          errors.push(validationResult);
-        }
-      }
-    }
+  if (!data) {
+    throw new APIError(404, "Invite not found", "INVITE_NOT_FOUND");
   }
-  return {
-    isValid: errors.length === 0,
-    errors
-  };
-}
-
-// api/handlers/checkoutHandler.ts
-async function createCheckoutSession(req, res) {
-  try {
-    const {
-      tierId,
-      // ID of membership_tiers row
-      priceId,
-      // Optional: Direct Stripe price ID
-      customerId,
-      // ID from your "customers" table
-      customerEmail,
-      // email for the checkout session
-      restaurantId,
-      // ID of the restaurant
-      successUrl,
-      // Redirect URL on success
-      cancelUrl,
-      // Redirect URL on cancel
-      createPrice,
-      // Whether to create a new price (rare)
-      tierData,
-      // Data for creating a new price (rare)
-      metadata
-      // Additional metadata for the session
-    } = req.body;
-    const validation = validateRequest(
-      req.body,
-      ["customerId", "customerEmail", "restaurantId", "successUrl", "cancelUrl"]
-    );
-    if (!validation.isValid) {
-      return res.status(400).json({
-        error: "Validation failed",
-        details: validation.errors
-      });
-    }
-    if (!tierId && !priceId && !createPrice) {
-      return res.status(400).json({
-        error: "Either tierId, priceId, or createPrice must be provided"
-      });
-    }
-    let finalPriceId;
-    let createdPrice = false;
-    if (priceId) {
-      finalPriceId = priceId;
-    } else if (createPrice && tierData) {
-      try {
-        const product = await stripe.products.create({
-          name: tierData.name || "Membership",
-          description: tierData.description || "Custom membership tier",
-          metadata: {
-            restaurant_id: restaurantId,
-            customer_id: customerId,
-            temporary: "true"
-          }
-        });
-        const price = await stripe.prices.create({
-          product: product.id,
-          unit_amount: Math.round(parseFloat(tierData.price) * 100),
-          currency: "usd",
-          recurring: { interval: "month" },
-          metadata: {
-            restaurant_id: restaurantId,
-            customer_id: customerId,
-            temporary: "true"
-          }
-        });
-        finalPriceId = price.id;
-        createdPrice = true;
-      } catch (err) {
-        console.error("Error creating price:", err);
-        return res.status(500).json({
-          error: "Failed to create price"
-        });
-      }
-    } else if (tierId) {
-      const { data: tier, error: tierError } = await supabaseAdmin.from("membership_tiers").select("stripe_price_id").eq("id", tierId).eq("restaurant_id", restaurantId).single();
-      if (tierError || !tier) {
-        return res.status(404).json({
-          error: tierError?.message || "Tier not found"
-        });
-      }
-      if (!tier.stripe_price_id) {
-        return res.status(400).json({
-          error: "This membership tier is not properly configured for payments"
-        });
-      }
-      finalPriceId = tier.stripe_price_id;
-    } else {
-      return res.status(400).json({
-        error: "Invalid request configuration"
-      });
-    }
-    const sessionMetadata = {
-      restaurant_id: restaurantId,
-      customer_id: customerId,
-      tier_id: tierId || "custom",
-      created_price: createdPrice ? "true" : "false",
-      ...metadata || {}
-      // Spread any additional metadata from the request
-    };
-    const session = await stripe.checkout.sessions.create({
-      payment_method_types: ["card"],
-      line_items: [
-        {
-          price: finalPriceId,
-          quantity: 1
-        }
-      ],
-      mode: "subscription",
-      success_url: successUrl,
-      cancel_url: cancelUrl,
-      customer_email: customerEmail,
-      metadata: sessionMetadata,
-      subscription_data: {
-        metadata: {
-          restaurant_id: restaurantId,
-          customer_id: customerId,
-          tier_id: tierId || "custom",
-          ...metadata || {}
-          // Also add metadata to subscription
-        }
-      }
-    });
-    return res.status(200).json({ id: session.id });
-  } catch (error) {
-    console.error("Error creating checkout session:", error);
-    return res.status(500).json({ error: error.message || "Internal server error" });
+  return data;
+};
+var updateRestaurantInvite = async (token, data) => {
+  const { error } = await supabase.from("restaurant_invites").update(data).eq("token", token);
+  if (error) {
+    throw new APIError(500, "Failed to update restaurant invite", "DATABASE_ERROR");
   }
-}
+};
 
 // api/create-checkout-session.ts
-var create_checkout_session_default = createCheckoutSession;
+var createCheckoutSchema = import_zod2.z.object({
+  token: import_zod2.z.string().uuid(),
+  membershipTier: import_zod2.z.string()
+});
+var create_checkout_session_default = withErrorHandler(async (req, res) => {
+  if (req.method !== "POST") {
+    throw new APIError(405, "Method not allowed", "METHOD_NOT_ALLOWED");
+  }
+  const { token, membershipTier } = createCheckoutSchema.parse(req.body);
+  const invite = await getRestaurantInvite(token);
+  const session = await createCheckoutSession({
+    restaurantName: invite.restaurant_name,
+    email: invite.email,
+    membershipTier,
+    successUrl: `${process.env.FRONTEND_URL}/onboarding/${token}/success?session_id={CHECKOUT_SESSION_ID}`,
+    cancelUrl: `${process.env.FRONTEND_URL}/onboarding/${token}`
+  });
+  await updateRestaurantInvite(token, {
+    status: "in_progress"
+  });
+  res.status(200).json({
+    url: session.url
+  });
+});
 //# sourceMappingURL=create-checkout-session.js.map

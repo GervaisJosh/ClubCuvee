@@ -36,22 +36,103 @@ __export(stripe_webhook_exports, {
 });
 module.exports = __toCommonJS(stripe_webhook_exports);
 
-// api/utils/stripeClient.ts
-var import_stripe = __toESM(require("stripe"), 1);
-var stripeSecretKey = process.env.STRIPE_SECRET_KEY;
-if (!stripeSecretKey) {
-  console.error("STRIPE_SECRET_KEY is not configured in environment variables");
-}
-var stripe = new import_stripe.default(stripeSecretKey || "invalid_key", {
-  apiVersion: "2025-02-24.acacia",
-  // Using latest API version
-  maxNetworkRetries: 3
-  // Retry on network failures for better reliability
-});
+// api/utils/error-handler.ts
+var import_zod = require("zod");
+var APIError = class extends Error {
+  constructor(statusCode, message, code) {
+    super(message);
+    this.statusCode = statusCode;
+    this.code = code;
+    this.name = "APIError";
+  }
+};
+var errorHandler = (error, req, res) => {
+  console.error("API Error:", error);
+  if (error instanceof APIError) {
+    return res.status(error.statusCode).json({
+      error: {
+        message: error.message,
+        code: error.code
+      }
+    });
+  }
+  if (error instanceof import_zod.ZodError) {
+    return res.status(400).json({
+      error: {
+        message: "Validation error",
+        code: "VALIDATION_ERROR",
+        details: error.errors
+      }
+    });
+  }
+  if (error instanceof Error && error.name === "StripeError") {
+    return res.status(400).json({
+      error: {
+        message: error.message,
+        code: "STRIPE_ERROR"
+      }
+    });
+  }
+  return res.status(500).json({
+    error: {
+      message: "Internal server error",
+      code: "INTERNAL_ERROR"
+    }
+  });
+};
+var withErrorHandler = (handler) => {
+  return async (req, res) => {
+    try {
+      await handler(req, res);
+    } catch (error) {
+      errorHandler(error, req, res);
+    }
+  };
+};
 
-// lib/supabaseAdmin.ts
+// api/utils/stripe.ts
+var import_stripe = __toESM(require("stripe"), 1);
+if (!process.env.STRIPE_SECRET_KEY) {
+  throw new Error("STRIPE_SECRET_KEY is required");
+}
+if (!process.env.STRIPE_WEBHOOK_SECRET) {
+  throw new Error("STRIPE_WEBHOOK_SECRET is required");
+}
+var stripe = new import_stripe.default(process.env.STRIPE_SECRET_KEY, {
+  apiVersion: "2025-02-24.acacia",
+  typescript: true
+});
+var verifyStripeWebhook = (signature, payload) => {
+  try {
+    return stripe.webhooks.constructEvent(
+      payload,
+      signature,
+      process.env.STRIPE_WEBHOOK_SECRET
+    );
+  } catch (err) {
+    throw new APIError(400, "Invalid webhook signature", "INVALID_SIGNATURE");
+  }
+};
+var getSubscription = async (subscriptionId) => {
+  try {
+    return await stripe.subscriptions.retrieve(subscriptionId);
+  } catch (err) {
+    if (err instanceof import_stripe.default.errors.StripeError) {
+      throw new APIError(400, err.message, "STRIPE_ERROR");
+    }
+    throw err;
+  }
+};
+
+// api/utils/supabase.ts
 var import_supabase_js = require("@supabase/supabase-js");
-var supabaseAdmin = (0, import_supabase_js.createClient)(
+if (!process.env.SUPABASE_URL) {
+  throw new Error("SUPABASE_URL is required");
+}
+if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+  throw new Error("SUPABASE_SERVICE_ROLE_KEY is required");
+}
+var supabase = (0, import_supabase_js.createClient)(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY,
   {
@@ -61,303 +142,58 @@ var supabaseAdmin = (0, import_supabase_js.createClient)(
     }
   }
 );
-
-// api/handlers/webhookHandler.ts
-async function readRawBody(readable) {
-  const chunks = [];
-  for await (const chunk of readable) {
-    chunks.push(typeof chunk === "string" ? Buffer.from(chunk) : chunk);
+var createRestaurant = async (data) => {
+  const { data: restaurant, error } = await supabase.from("restaurants").insert([data]).select().single();
+  if (error) {
+    throw new APIError(500, "Failed to create restaurant", "DATABASE_ERROR");
   }
-  return Buffer.concat(chunks);
-}
-async function handleWebhook(req, res) {
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
+  return restaurant;
+};
+var updateRestaurantInvite = async (token, data) => {
+  const { error } = await supabase.from("restaurant_invites").update(data).eq("token", token);
+  if (error) {
+    throw new APIError(500, "Failed to update restaurant invite", "DATABASE_ERROR");
   }
-  let event;
-  try {
-    const rawBody = await readRawBody(req);
-    const signature = req.headers["stripe-signature"];
-    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
-    if (!webhookSecret) {
-      throw new Error("Missing STRIPE_WEBHOOK_SECRET environment variable");
-    }
-    event = stripe.webhooks.constructEvent(
-      rawBody,
-      signature,
-      webhookSecret
-    );
-  } catch (err) {
-    console.error("\u274C Error verifying Stripe webhook signature:", err.message);
-    return res.status(400).send(`Webhook Error: ${err.message}`);
-  }
-  try {
-    console.log(`Processing webhook event: ${event.type}`);
-    switch (event.type) {
-      case "checkout.session.completed": {
-        await handleCheckoutCompleted(event.data.object);
-        break;
-      }
-      case "customer.subscription.updated": {
-        await handleSubscriptionUpdated(event.data.object);
-        break;
-      }
-      case "customer.subscription.deleted": {
-        await handleSubscriptionDeleted(event.data.object);
-        break;
-      }
-      case "invoice.payment_succeeded": {
-        await handlePaymentSucceeded(event.data.object);
-        break;
-      }
-      case "invoice.payment_failed": {
-        await handlePaymentFailed(event.data.object);
-        break;
-      }
-      default:
-        console.log(`Unhandled event type: ${event.type}`);
-    }
-    return res.status(200).json({ received: true });
-  } catch (error) {
-    console.error("Error handling Stripe webhook:", error);
-    return res.status(500).json({ error: error.message || "Internal server error" });
-  }
-}
-async function handleCheckoutCompleted(session) {
-  const { customer_id, restaurant_id, type } = session.metadata || {};
-  if (!customer_id || !restaurant_id) {
-    console.error("Missing metadata (customer_id or restaurant_id) in session");
-    return;
-  }
-  const isRestaurantOnboarding = type === "restaurant_onboarding";
-  if (isRestaurantOnboarding) {
-    console.log(`Processing restaurant onboarding payment for restaurant_id: ${restaurant_id}`);
-    const { error: restaurantError } = await supabaseAdmin.from("restaurants").update({
-      payment_session_id: session.id,
-      payment_completed: true,
-      payment_date: (/* @__PURE__ */ new Date()).toISOString(),
-      updated_at: (/* @__PURE__ */ new Date()).toISOString()
-    }).eq("id", restaurant_id);
-    if (restaurantError) {
-      console.error("Error updating restaurant after checkout:", restaurantError);
-      throw restaurantError;
-    }
-    if (session.metadata?.invitation_token) {
-      await supabaseAdmin.from("restaurant_invitations").update({
-        status: "paid",
-        payment_session_id: session.id,
-        updated_at: (/* @__PURE__ */ new Date()).toISOString()
-      }).eq("token", session.metadata.invitation_token);
-    }
-  } else {
-    console.log(`Processing customer subscription for customer_id: ${customer_id}`);
-    let stripeCustomerId = session.customer;
-    if (!stripeCustomerId && session.customer_email) {
-      const newCustomer = await stripe.customers.create({
-        email: session.customer_email,
-        metadata: {
-          customer_id,
-          restaurant_id
-        }
-      });
-      stripeCustomerId = newCustomer.id;
-    }
-    const { error: updateError } = await supabaseAdmin.from("customers").update({
-      stripe_customer_id: stripeCustomerId,
-      stripe_subscription_id: session.subscription,
-      subscription_status: "active",
-      subscription_start_date: (/* @__PURE__ */ new Date()).toISOString(),
-      updated_at: (/* @__PURE__ */ new Date()).toISOString()
-    }).eq("id", customer_id);
-    if (updateError) {
-      console.error("Error updating customer after checkout:", updateError);
-      throw updateError;
-    }
-  }
-}
-async function handleSubscriptionUpdated(subscription) {
-  const { customer_id, restaurant_id } = subscription.metadata || {};
-  if (!customer_id) {
-    const customerId = subscription.customer;
-    try {
-      const customer = await stripe.customers.retrieve(customerId);
-      const metadata = customer.metadata;
-      if (metadata.customer_id) {
-        await updateSubscriptionByCustomerId(metadata.customer_id, subscription);
-        return;
-      }
-    } catch (err) {
-      console.error("Error fetching Stripe customer:", err);
-    }
-    console.error("Missing customer_id in subscription metadata");
-    return;
-  }
-  await updateSubscriptionByCustomerId(customer_id, subscription);
-}
-async function updateSubscriptionByCustomerId(customerId, subscription) {
-  const { error: subIdError, count } = await supabaseAdmin.from("customers").update({
-    subscription_status: subscription.status,
-    current_period_end: subscription.current_period_end ? new Date(subscription.current_period_end * 1e3).toISOString() : null,
-    updated_at: (/* @__PURE__ */ new Date()).toISOString()
-  }).eq("stripe_subscription_id", subscription.id).select("count", { count: "exact", head: true });
-  if (subIdError) {
-    console.error("Error updating subscription by ID:", subIdError);
-  }
-  if (!count) {
-    const { error: custIdError } = await supabaseAdmin.from("customers").update({
-      stripe_subscription_id: subscription.id,
-      subscription_status: subscription.status,
-      current_period_end: subscription.current_period_end ? new Date(subscription.current_period_end * 1e3).toISOString() : null,
-      updated_at: (/* @__PURE__ */ new Date()).toISOString()
-    }).eq("id", customerId);
-    if (custIdError) {
-      console.error("Error updating subscription by customer ID:", custIdError);
-      throw custIdError;
-    }
-  }
-}
-async function handleSubscriptionDeleted(subscription) {
-  const { customer_id } = subscription.metadata || {};
-  if (!customer_id) {
-    const customerId = subscription.customer;
-    try {
-      const customer = await stripe.customers.retrieve(customerId);
-      const metadata = customer.metadata;
-      if (metadata.customer_id) {
-        await updateSubscriptionCancellation(metadata.customer_id, subscription);
-        return;
-      }
-    } catch (err) {
-      console.error("Error fetching Stripe customer:", err);
-    }
-    console.error("Missing customer_id in subscription metadata");
-    return;
-  }
-  await updateSubscriptionCancellation(customer_id, subscription);
-}
-async function updateSubscriptionCancellation(customerId, subscription) {
-  const canceledAt = subscription.canceled_at ? new Date(subscription.canceled_at * 1e3).toISOString() : (/* @__PURE__ */ new Date()).toISOString();
-  const { error: updateError } = await supabaseAdmin.from("customers").update({
-    subscription_status: "canceled",
-    subscription_end_date: canceledAt,
-    updated_at: (/* @__PURE__ */ new Date()).toISOString()
-  }).eq("stripe_subscription_id", subscription.id);
-  if (updateError) {
-    console.error("Error updating subscription cancellation:", updateError);
-    throw updateError;
-  }
-}
-async function handlePaymentSucceeded(invoice) {
-  if (!invoice.subscription) return;
-  try {
-    const { error } = await supabaseAdmin.from("subscription_payments").insert([{
-      stripe_invoice_id: invoice.id,
-      stripe_subscription_id: invoice.subscription,
-      stripe_customer_id: invoice.customer,
-      amount: invoice.amount_paid / 100,
-      // from cents
-      currency: invoice.currency,
-      status: invoice.status,
-      payment_date: new Date(invoice.created * 1e3).toISOString(),
-      created_at: (/* @__PURE__ */ new Date()).toISOString()
-    }]);
-    if (error) {
-      console.error("Error recording subscription payment:", error);
-    }
-  } catch (error) {
-    console.error("Error processing payment succeeded event:", error);
-  }
-}
-async function handlePaymentFailed(invoice) {
-  if (!invoice.subscription) return;
-  try {
-    const { data: foundCustomer, error: custError } = await supabaseAdmin.from("customers").select("id, email").eq("stripe_subscription_id", invoice.subscription).maybeSingle();
-    if (custError) {
-      console.error("Error finding customer for failed payment:", custError);
-      return;
-    }
-    if (!foundCustomer) {
-      console.error("No matching customer found for failed payment");
-      return;
-    }
-    const { error: updateError } = await supabaseAdmin.from("customers").update({
-      subscription_status: "past_due",
-      updated_at: (/* @__PURE__ */ new Date()).toISOString()
-    }).eq("id", foundCustomer.id);
-    if (updateError) {
-      console.error("Error updating customer subscription status:", updateError);
-      throw updateError;
-    }
-  } catch (error) {
-    console.error("Error processing payment failed event:", error);
-  }
-}
-
-// api/utils/errorHandler.ts
-function formatApiError(error, includeDetails = false) {
-  const errorResponse = {
-    status: "error",
-    error: error.message || "Internal server error"
-  };
-  if (error.type) {
-    errorResponse.type = error.type;
-  }
-  if (error.code || error.statusCode) {
-    errorResponse.code = error.code || error.statusCode;
-  }
-  const deployUrl = process.env.VERCEL_URL || process.env.FRONTEND_URL;
-  if (deployUrl) {
-    errorResponse.deployment_url = deployUrl.startsWith("http") ? deployUrl : `https://${deployUrl}`;
-  }
-  if (includeDetails || false) {
-    errorResponse.errorDetails = {
-      message: error.message,
-      code: error.code,
-      type: error.type,
-      stack: error.stack,
-      // Additional properties that might be useful
-      name: error.name,
-      cause: error.cause
-    };
-  }
-  return errorResponse;
-}
-function sendApiError(res, error, statusCode = 500, includeDetails = false) {
-  console.error(`API Error (${statusCode}):`, error);
-  res.status(statusCode).json(formatApiError(error, includeDetails));
-}
-function getErrorStatusCode(error) {
-  if (error.type === "StripeAuthenticationError" || error.message?.toLowerCase().includes("authentication") || error.message?.toLowerCase().includes("api key") || error.code === "auth_error") {
-    return 401;
-  }
-  if (error.type === "StripeInvalidRequestError" || error.message?.toLowerCase().includes("validation") || error.message?.toLowerCase().includes("invalid")) {
-    return 400;
-  }
-  if (error.type === "StripeInvalidRequestError" && error.message?.toLowerCase().includes("no such") || error.code === "resource_missing") {
-    return 404;
-  }
-  if (error.type === "StripeRateLimitError" || error.code === "rate_limit_exceeded") {
-    return 429;
-  }
-  if (error.type === "StripeAPIError" || error.type === "StripeConnectionError") {
-    return 502;
-  }
-  return 500;
-}
-function withErrorHandling(handler2) {
-  return async (req, res) => {
-    try {
-      return await handler2(req, res);
-    } catch (error) {
-      const statusCode = getErrorStatusCode(error);
-      sendApiError(res, error, statusCode);
-    }
-  };
-}
+};
 
 // api/stripe-webhook.ts
-var handler = async (req, res) => {
-  return handleWebhook(req, res);
-};
-var stripe_webhook_default = withErrorHandling(handler);
+var stripe_webhook_default = withErrorHandler(async (req, res) => {
+  if (req.method !== "POST") {
+    throw new APIError(405, "Method not allowed", "METHOD_NOT_ALLOWED");
+  }
+  const signature = req.headers["stripe-signature"];
+  if (!signature || typeof signature !== "string") {
+    throw new APIError(400, "Missing stripe-signature header", "MISSING_SIGNATURE");
+  }
+  const event = verifyStripeWebhook(signature, req.body);
+  switch (event.type) {
+    case "checkout.session.completed": {
+      const session = event.data.object;
+      if (!session.subscription || !session.metadata?.restaurantName) {
+        throw new APIError(400, "Invalid session data", "INVALID_SESSION");
+      }
+      const subscription = await getSubscription(session.subscription);
+      await createRestaurant({
+        name: session.metadata.restaurantName,
+        email: session.customer_email,
+        subscription_id: subscription.id,
+        membership_tier: session.metadata.membershipTier
+      });
+      if (session.metadata.inviteToken) {
+        await updateRestaurantInvite(session.metadata.inviteToken, {
+          status: "accepted",
+          accepted_at: (/* @__PURE__ */ new Date()).toISOString()
+        });
+      }
+      break;
+    }
+    case "customer.subscription.deleted": {
+      const subscription = event.data.object;
+      break;
+    }
+    default:
+      console.log(`Unhandled event type: ${event.type}`);
+  }
+  res.status(200).json({ received: true });
+});
 //# sourceMappingURL=stripe-webhook.js.map

@@ -3,6 +3,13 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { Readable } from 'stream';
 import Stripe from 'stripe';
+import { z } from 'zod';
+import { sendErrorResponse, AppError, handleStripeError } from '../utils/errorHandler';
+
+// Define CheckoutData type
+interface CheckoutData extends Stripe.Checkout.SessionCreateParams {
+  idempotencyKey?: string;
+}
 
 // For verifying Stripe signatures, we need the raw request body
 async function readRawBody(readable: Readable) {
@@ -13,16 +20,90 @@ async function readRawBody(readable: Readable) {
   return Buffer.concat(chunks);
 }
 
+// Rate limiting configuration
+interface RateLimitConfig {
+  windowMs: number;
+  maxRequests: number;
+}
+
+const RATE_LIMITS: Record<string, RateLimitConfig> = {
+  default: {
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    maxRequests: 100
+  },
+  'checkout.session.completed': {
+    windowMs: 5 * 60 * 1000, // 5 minutes
+    maxRequests: 50
+  },
+  'customer.subscription.updated': {
+    windowMs: 5 * 60 * 1000,
+    maxRequests: 50
+  }
+};
+
+interface RateLimitEntry {
+  count: number;
+  resetTime: number;
+}
+
+const requestCounts = new Map<string, RateLimitEntry>();
+
+function cleanupExpiredEntries() {
+  const now = Date.now();
+  for (const [key, entry] of requestCounts.entries()) {
+    if (now > entry.resetTime) {
+      requestCounts.delete(key);
+    }
+  }
+}
+
+function isRateLimited(ip: string, eventType: string): boolean {
+  cleanupExpiredEntries();
+  
+  const config = RATE_LIMITS[eventType] || RATE_LIMITS.default;
+  const key = `${ip}:${eventType}`;
+  const now = Date.now();
+  
+  const entry = requestCounts.get(key);
+  if (!entry) {
+    requestCounts.set(key, {
+      count: 1,
+      resetTime: now + config.windowMs
+    });
+    return false;
+  }
+  
+  if (now > entry.resetTime) {
+    requestCounts.set(key, {
+      count: 1,
+      resetTime: now + config.windowMs
+    });
+    return false;
+  }
+  
+  if (entry.count >= config.maxRequests) {
+    return true;
+  }
+  
+  entry.count++;
+  return false;
+}
+
 /**
  * Handle Stripe webhook events
  */
 export async function handleWebhook(req: VercelRequest, res: VercelResponse) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
-
-  let event: Stripe.Event;
   try {
+    if (req.method !== 'POST') {
+      throw new AppError(405, 'Method not allowed');
+    }
+
+    // Apply rate limiting
+    const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+    if (typeof ip === 'string' && isRateLimited(ip, 'default')) {
+      throw new AppError(429, 'Too many requests');
+    }
+
     // 1. Read raw body
     const rawBody = await readRawBody(req);
     const signature = req.headers['stripe-signature'] as string;
@@ -33,18 +114,18 @@ export async function handleWebhook(req: VercelRequest, res: VercelResponse) {
       throw new Error('Missing STRIPE_WEBHOOK_SECRET environment variable');
     }
     
-    event = stripe.webhooks.constructEvent(
+    const event = stripe.webhooks.constructEvent(
       rawBody,
       signature,
       webhookSecret
     );
-  } catch (err: any) {
-    console.error('❌ Error verifying Stripe webhook signature:', err.message);
-    return res.status(400).send(`Webhook Error: ${err.message}`);
-  }
 
-  // 3. Handle the event
-  try {
+    // Apply event-specific rate limiting after verifying the event
+    if (typeof ip === 'string' && isRateLimited(ip, event.type)) {
+      throw new AppError(429, 'Too many requests for this event type');
+    }
+
+    // 3. Handle the event
     console.log(`Processing webhook event: ${event.type}`);
     
     switch (event.type) {
@@ -74,97 +155,62 @@ export async function handleWebhook(req: VercelRequest, res: VercelResponse) {
       }
 
       default:
-        // Unexpected event type
         console.log(`Unhandled event type: ${event.type}`);
     }
 
     // Acknowledge receipt of the event
     return res.status(200).json({ received: true });
-  } catch (error: any) {
-    console.error('Error handling Stripe webhook:', error);
-    return res.status(500).json({ error: error.message || 'Internal server error' });
+  } catch (error) {
+    return sendErrorResponse(res, error instanceof Error ? error : new Error(String(error)));
   }
 }
 
-/** 
- * Handle checkout.session.completed event 
+/**
+ * Handle checkout.session.completed event
  */
 async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
-  // Extract metadata
-  const { customer_id, restaurant_id, type } = session.metadata || {};
-
-  if (!customer_id || !restaurant_id) {
-    console.error('Missing metadata (customer_id or restaurant_id) in session');
-    return;
+  if (!session.metadata?.customer_id || !session.metadata?.restaurant_id) {
+    throw new AppError(400, 'Missing required metadata in session');
   }
 
-  // Check session type - could be a restaurant onboarding payment or customer subscription
-  const isRestaurantOnboarding = type === 'restaurant_onboarding';
-  
-  if (isRestaurantOnboarding) {
-    console.log(`Processing restaurant onboarding payment for restaurant_id: ${restaurant_id}`);
-    
-    // Update restaurant record if this is an onboarding payment
-    const { error: restaurantError } = await supabaseAdmin
-      .from('restaurants')
-      .update({
-        payment_session_id: session.id,
-        payment_completed: true,
-        payment_date: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', restaurant_id);
-      
-    if (restaurantError) {
-      console.error('Error updating restaurant after checkout:', restaurantError);
-      throw restaurantError;
-    }
-    
-    // Check for pending invitation token and update
-    if (session.metadata?.invitation_token) {
-      await supabaseAdmin
-        .from('restaurant_invitations')
-        .update({
-          status: 'paid',
-          payment_session_id: session.id,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('token', session.metadata.invitation_token);
-    }
-  } else {
-    console.log(`Processing customer subscription for customer_id: ${customer_id}`);
-    
-    // Create a new Stripe customer if one doesn't exist yet
-    let stripeCustomerId = session.customer as string;
-    
-    if (!stripeCustomerId && session.customer_email) {
-      // Create a new Stripe customer from the email
-      const newCustomer = await stripe.customers.create({
-        email: session.customer_email,
-        metadata: {
-          customer_id,
-          restaurant_id,
-        }
-      });
-      stripeCustomerId = newCustomer.id;
-    }
-    
-    // Regular customer subscription payment
+  try {
+    // Start a Supabase transaction
+    const { data: customer, error: customerError } = await supabaseAdmin
+      .from('customers')
+      .select('*')
+      .eq('id', session.metadata.customer_id)
+      .single();
+
+    if (customerError) throw customerError;
+    if (!customer) throw new AppError(404, 'Customer not found');
+
+    // Update customer with Stripe data
     const { error: updateError } = await supabaseAdmin
       .from('customers')
       .update({
-        stripe_customer_id: stripeCustomerId,
+        stripe_customer_id: session.customer as string,
         stripe_subscription_id: session.subscription as string,
         subscription_status: 'active',
-        subscription_start_date: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
       })
-      .eq('id', customer_id);
+      .eq('id', session.metadata.customer_id);
 
-    if (updateError) {
-      console.error('Error updating customer after checkout:', updateError);
-      throw updateError;
-    }
+    if (updateError) throw updateError;
+
+    // Update restaurant status
+    const { error: restaurantError } = await supabaseAdmin
+      .from('restaurants')
+      .update({
+        status: 'active',
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', session.metadata.restaurant_id);
+
+    if (restaurantError) throw restaurantError;
+
+  } catch (error) {
+    console.error('Error processing checkout completed:', error);
+    throw error;
   }
 }
 
@@ -211,7 +257,7 @@ async function updateSubscriptionByCustomerId(customerId: string, subscription: 
       updated_at: new Date().toISOString(),
     })
     .eq('stripe_subscription_id', subscription.id)
-    .select('count', { count: 'exact', head: true });
+    .select('count');
 
   if (subIdError) {
     console.error('Error updating subscription by ID:', subIdError);
@@ -370,5 +416,18 @@ async function handlePaymentFailed(invoice: Stripe.Invoice) {
     // Don't throw to avoid webhook failure
   }
 }
+
+const InvitationSchema = z.object({
+  email: z.string().email(),
+  restaurant_name: z.string().min(1),
+  // ... other fields
+});
+
+const createCheckoutSession = async (data: CheckoutData) => {
+  const idempotencyKey = crypto.randomUUID();
+  return stripe.checkout.sessions.create(data, {
+    idempotencyKey
+  });
+};
 
 export default handleWebhook;

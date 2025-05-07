@@ -45,9 +45,12 @@ if (!stripeSecretKey) {
 }
 var stripe = new import_stripe.default(stripeSecretKey || "invalid_key", {
   apiVersion: "2025-02-24.acacia",
-  // Using latest API version
-  maxNetworkRetries: 3
-  // Retry on network failures for better reliability
+  maxNetworkRetries: 3,
+  typescript: true,
+  appInfo: {
+    name: "Club Cuvee",
+    version: "1.0.0"
+  }
 });
 
 // lib/supabaseAdmin.ts
@@ -64,6 +67,46 @@ var supabaseAdmin = (0, import_supabase_js.createClient)(
 );
 
 // api/handlers/webhookHandler.ts
+var import_zod2 = require("zod");
+
+// api/utils/errorHandler.ts
+var import_zod = require("zod");
+var AppError = class _AppError extends Error {
+  constructor(statusCode, message, isOperational = true) {
+    super(message);
+    this.statusCode = statusCode;
+    this.isOperational = isOperational;
+    Object.setPrototypeOf(this, _AppError.prototype);
+  }
+};
+var sendErrorResponse = (res, error, statusCode = 500) => {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  if (res.req?.method === "OPTIONS") {
+    return res.status(204).end();
+  }
+  if (error instanceof import_zod.ZodError) {
+    return res.status(400).json({
+      error: "Validation Error",
+      details: error.errors.map((err) => ({
+        path: err.path.join("."),
+        message: err.message
+      }))
+    });
+  }
+  if (error instanceof AppError && error.isOperational) {
+    return res.status(error.statusCode).json({
+      error: error.message
+    });
+  }
+  console.error("Unexpected error:", error);
+  return res.status(statusCode).json({
+    error: true ? "An unexpected error occurred" : error.message
+  });
+};
+
+// api/handlers/webhookHandler.ts
 async function readRawBody(readable) {
   const chunks = [];
   for await (const chunk of readable) {
@@ -71,28 +114,80 @@ async function readRawBody(readable) {
   }
   return Buffer.concat(chunks);
 }
-async function handleWebhook(req, res) {
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
+var RATE_LIMITS = {
+  default: {
+    windowMs: 15 * 60 * 1e3,
+    // 15 minutes
+    maxRequests: 100
+  },
+  "checkout.session.completed": {
+    windowMs: 5 * 60 * 1e3,
+    // 5 minutes
+    maxRequests: 50
+  },
+  "customer.subscription.updated": {
+    windowMs: 5 * 60 * 1e3,
+    maxRequests: 50
   }
-  let event;
+};
+var requestCounts = /* @__PURE__ */ new Map();
+function cleanupExpiredEntries() {
+  const now = Date.now();
+  for (const [key, entry] of requestCounts.entries()) {
+    if (now > entry.resetTime) {
+      requestCounts.delete(key);
+    }
+  }
+}
+function isRateLimited(ip, eventType) {
+  cleanupExpiredEntries();
+  const config = RATE_LIMITS[eventType] || RATE_LIMITS.default;
+  const key = `${ip}:${eventType}`;
+  const now = Date.now();
+  const entry = requestCounts.get(key);
+  if (!entry) {
+    requestCounts.set(key, {
+      count: 1,
+      resetTime: now + config.windowMs
+    });
+    return false;
+  }
+  if (now > entry.resetTime) {
+    requestCounts.set(key, {
+      count: 1,
+      resetTime: now + config.windowMs
+    });
+    return false;
+  }
+  if (entry.count >= config.maxRequests) {
+    return true;
+  }
+  entry.count++;
+  return false;
+}
+async function handleWebhook(req, res) {
   try {
+    if (req.method !== "POST") {
+      throw new AppError(405, "Method not allowed");
+    }
+    const ip = req.headers["x-forwarded-for"] || req.socket.remoteAddress;
+    if (typeof ip === "string" && isRateLimited(ip, "default")) {
+      throw new AppError(429, "Too many requests");
+    }
     const rawBody = await readRawBody(req);
     const signature = req.headers["stripe-signature"];
     const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
     if (!webhookSecret) {
       throw new Error("Missing STRIPE_WEBHOOK_SECRET environment variable");
     }
-    event = stripe.webhooks.constructEvent(
+    const event = stripe.webhooks.constructEvent(
       rawBody,
       signature,
       webhookSecret
     );
-  } catch (err) {
-    console.error("\u274C Error verifying Stripe webhook signature:", err.message);
-    return res.status(400).send(`Webhook Error: ${err.message}`);
-  }
-  try {
+    if (typeof ip === "string" && isRateLimited(ip, event.type)) {
+      throw new AppError(429, "Too many requests for this event type");
+    }
     console.log(`Processing webhook event: ${event.type}`);
     switch (event.type) {
       case "checkout.session.completed": {
@@ -120,60 +215,32 @@ async function handleWebhook(req, res) {
     }
     return res.status(200).json({ received: true });
   } catch (error) {
-    console.error("Error handling Stripe webhook:", error);
-    return res.status(500).json({ error: error.message || "Internal server error" });
+    return sendErrorResponse(res, error instanceof Error ? error : new Error(String(error)));
   }
 }
 async function handleCheckoutCompleted(session) {
-  const { customer_id, restaurant_id, type } = session.metadata || {};
-  if (!customer_id || !restaurant_id) {
-    console.error("Missing metadata (customer_id or restaurant_id) in session");
-    return;
+  if (!session.metadata?.customer_id || !session.metadata?.restaurant_id) {
+    throw new AppError(400, "Missing required metadata in session");
   }
-  const isRestaurantOnboarding = type === "restaurant_onboarding";
-  if (isRestaurantOnboarding) {
-    console.log(`Processing restaurant onboarding payment for restaurant_id: ${restaurant_id}`);
-    const { error: restaurantError } = await supabaseAdmin.from("restaurants").update({
-      payment_session_id: session.id,
-      payment_completed: true,
-      payment_date: (/* @__PURE__ */ new Date()).toISOString(),
-      updated_at: (/* @__PURE__ */ new Date()).toISOString()
-    }).eq("id", restaurant_id);
-    if (restaurantError) {
-      console.error("Error updating restaurant after checkout:", restaurantError);
-      throw restaurantError;
-    }
-    if (session.metadata?.invitation_token) {
-      await supabaseAdmin.from("restaurant_invitations").update({
-        status: "paid",
-        payment_session_id: session.id,
-        updated_at: (/* @__PURE__ */ new Date()).toISOString()
-      }).eq("token", session.metadata.invitation_token);
-    }
-  } else {
-    console.log(`Processing customer subscription for customer_id: ${customer_id}`);
-    let stripeCustomerId = session.customer;
-    if (!stripeCustomerId && session.customer_email) {
-      const newCustomer = await stripe.customers.create({
-        email: session.customer_email,
-        metadata: {
-          customer_id,
-          restaurant_id
-        }
-      });
-      stripeCustomerId = newCustomer.id;
-    }
+  try {
+    const { data: customer, error: customerError } = await supabaseAdmin.from("customers").select("*").eq("id", session.metadata.customer_id).single();
+    if (customerError) throw customerError;
+    if (!customer) throw new AppError(404, "Customer not found");
     const { error: updateError } = await supabaseAdmin.from("customers").update({
-      stripe_customer_id: stripeCustomerId,
+      stripe_customer_id: session.customer,
       stripe_subscription_id: session.subscription,
       subscription_status: "active",
-      subscription_start_date: (/* @__PURE__ */ new Date()).toISOString(),
       updated_at: (/* @__PURE__ */ new Date()).toISOString()
-    }).eq("id", customer_id);
-    if (updateError) {
-      console.error("Error updating customer after checkout:", updateError);
-      throw updateError;
-    }
+    }).eq("id", session.metadata.customer_id);
+    if (updateError) throw updateError;
+    const { error: restaurantError } = await supabaseAdmin.from("restaurants").update({
+      status: "active",
+      updated_at: (/* @__PURE__ */ new Date()).toISOString()
+    }).eq("id", session.metadata.restaurant_id);
+    if (restaurantError) throw restaurantError;
+  } catch (error) {
+    console.error("Error processing checkout completed:", error);
+    throw error;
   }
 }
 async function handleSubscriptionUpdated(subscription) {
@@ -200,7 +267,7 @@ async function updateSubscriptionByCustomerId(customerId, subscription) {
     subscription_status: subscription.status,
     current_period_end: subscription.current_period_end ? new Date(subscription.current_period_end * 1e3).toISOString() : null,
     updated_at: (/* @__PURE__ */ new Date()).toISOString()
-  }).eq("stripe_subscription_id", subscription.id).select("count", { count: "exact", head: true });
+  }).eq("stripe_subscription_id", subscription.id).select("count");
   if (subIdError) {
     console.error("Error updating subscription by ID:", subIdError);
   }
@@ -293,6 +360,11 @@ async function handlePaymentFailed(invoice) {
     console.error("Error processing payment failed event:", error);
   }
 }
+var InvitationSchema = import_zod2.z.object({
+  email: import_zod2.z.string().email(),
+  restaurant_name: import_zod2.z.string().min(1)
+  // ... other fields
+});
 var webhookHandler_default = handleWebhook;
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {

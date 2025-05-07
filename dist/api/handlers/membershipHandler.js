@@ -48,9 +48,12 @@ if (!stripeSecretKey) {
 }
 var stripe = new import_stripe.default(stripeSecretKey || "invalid_key", {
   apiVersion: "2025-02-24.acacia",
-  // Using latest API version
-  maxNetworkRetries: 3
-  // Retry on network failures for better reliability
+  maxNetworkRetries: 3,
+  typescript: true,
+  appInfo: {
+    name: "Club Cuvee",
+    version: "1.0.0"
+  }
 });
 
 // lib/supabaseAdmin.ts
@@ -106,6 +109,7 @@ function validateRequest(data, requiredFields, customValidators) {
 }
 
 // api/utils/errorHandler.ts
+var import_zod = require("zod");
 function formatApiError(error, includeDetails = false) {
   const errorResponse = {
     status: "error",
