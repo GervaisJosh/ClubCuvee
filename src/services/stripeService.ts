@@ -70,7 +70,7 @@ export const stripeService = {
     customerEmail?: string;
   }): Promise<void> {
     try {
-      const { error } = await fetch('/api/payments/record', {
+      const response = await fetch('/api/payments/record', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -82,7 +82,8 @@ export const stripeService = {
         }),
       });
       
-      if (error) throw error;
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Failed to record payment');
     } catch (error) {
       console.error('Error recording payment:', error);
       // Don't throw, as this is non-critical
@@ -100,30 +101,29 @@ export const stripeService = {
     details?: any;
   }> {
     try {
-      // Use our centralized API request handler
-      const { apiRequest, isApiError } = await import('./apiErrorHandler');
-      const result = await apiRequest('/api/verify-stripe', {
-        method: 'GET'
+      const response = await fetch('/api/verify-stripe', {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        }
       });
-      
-      return result;
+
+      if (!response.ok) {
+        const errorData = await response.json() as { error?: string };
+        throw new Error(errorData.error || 'Failed to verify Stripe configuration');
+      }
+
+      const data = await response.json();
+      return data;
     } catch (error: any) {
       console.error('Error verifying Stripe:', error);
       
-      // Format the error consistently
-      if (error.name === 'ApiError') {
-        return {
-          status: 'error',
-          error: error.message,
-          type: error.type,
-          details: error.data
-        };
-      }
-      
-      // Fallback for other types of errors
       return {
         status: 'error',
-        error: error.message || 'Failed to verify Stripe configuration'
+        error: error.message || 'Failed to verify Stripe configuration',
+        type: error.type || 'VERIFICATION_ERROR',
+        details: error.details || error
       };
     }
   }

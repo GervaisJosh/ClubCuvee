@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '../supabase';
+import { supabase } from '../../supabase';
 
 interface AdminGuardProps {
   children: React.ReactNode;
@@ -20,14 +20,14 @@ export function AdminGuard({ children }: AdminGuardProps) {
           return;
         }
 
-        // Check if user is an admin
+        // Check if user is an admin using the users table
         const { data: user, error: userError } = await supabase
           .from('users')
-          .select('role')
-          .eq('id', session.user.id)
+          .select('is_admin')
+          .eq('auth_id', session.user.id)
           .single();
 
-        if (userError || user?.role !== 'admin') {
+        if (userError || !user?.is_admin) {
           navigate('/admin/login');
           return;
         }

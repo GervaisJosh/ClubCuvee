@@ -22,17 +22,17 @@ export const supabase = createClient(
 
 export const getRestaurantInvite = async (token: string) => {
   const { data, error } = await supabase
-    .from('restaurant_invites')
+    .from('restaurant_invitations')
     .select('*')
     .eq('token', token)
     .single();
 
   if (error) {
-    throw new APIError(500, 'Failed to fetch restaurant invite', 'DATABASE_ERROR');
+    throw new APIError(500, 'Failed to fetch restaurant invitation', 'DATABASE_ERROR');
   }
 
   if (!data) {
-    throw new APIError(404, 'Invite not found', 'INVITE_NOT_FOUND');
+    throw new APIError(404, 'Invitation not found', 'INVITATION_NOT_FOUND');
   }
 
   return data;
@@ -62,11 +62,11 @@ export const updateRestaurantInvite = async (token: string, data: {
   accepted_at?: string;
 }) => {
   const { error } = await supabase
-    .from('restaurant_invites')
+    .from('restaurant_invitations')
     .update(data)
     .eq('token', token);
 
   if (error) {
-    throw new APIError(500, 'Failed to update restaurant invite', 'DATABASE_ERROR');
+    throw new APIError(500, 'Failed to update restaurant invitation', 'DATABASE_ERROR');
   }
 }; 
