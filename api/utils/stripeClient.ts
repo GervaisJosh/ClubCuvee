@@ -1,12 +1,13 @@
 import Stripe from 'stripe';
 import { handleStripeError } from '@/lib/utils/errorHandler';
 
-if (!process.env.STRIPE_SECRET_KEY) {
-  throw new Error('Missing STRIPE_SECRET_KEY environment variable');
+const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
+if (!stripeSecretKey) {
+  console.error('STRIPE_SECRET_KEY is not configured in environment variables');
 }
 
-export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: '2023-08-16',
+export const stripe = new Stripe(stripeSecretKey || 'invalid_key', {
+  apiVersion: '2025-02-24.acacia',
   maxNetworkRetries: 3,
   typescript: true,
   appInfo: {
