@@ -21,7 +21,9 @@
   },
   "include": [
     "./**/*.ts",
-    "../src/utils/priceUtils.ts"
+    "../src/utils/priceUtils.ts",
+    "../src/utils/recommendation.ts",
+    "../src/lib/services/*.ts"
   ],
   "exclude": [
     "node_modules",

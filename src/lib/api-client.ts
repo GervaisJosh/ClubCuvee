@@ -1,4 +1,4 @@
-import { APIError } from '../types/errors';
+import { APIError } from '@/src/types/errors';
 
 interface FetchOptions extends RequestInit {
   baseUrl?: string;
@@ -13,13 +13,9 @@ const defaultOptions: FetchOptions = {
 
 export class APIClient {
   private static instance: APIClient;
-  private readonly baseUrl: string;
 
   private constructor() {
-    this.baseUrl = import.meta.env.VITE_APP_URL || '';
-    if (!this.baseUrl) {
-      throw new Error('Missing required environment variable: VITE_APP_URL');
-    }
+    // No baseUrl needed - we'll use relative paths
   }
 
   public static getInstance(): APIClient {
@@ -38,10 +34,11 @@ export class APIClient {
       try {
         if (contentType?.includes('application/json')) {
           const errorData = await response.json();
-          errorMessage = errorData.error || errorMessage;
-          errorDetails = errorData.details;
+          errorMessage = errorData.error?.message || errorMessage;
+          errorDetails = errorData.error?.details;
         } else {
-          errorMessage = await response.text();
+          const text = await response.text();
+          errorMessage = text || errorMessage;
         }
       } catch (e) {
         console.error('Error parsing error response:', e);
@@ -56,14 +53,18 @@ export class APIClient {
     }
 
     if (contentType?.includes('application/json')) {
-      return response.json();
+      const text = await response.text();
+      if (!text) {
+        return {} as T;
+      }
+      return JSON.parse(text);
     }
 
     return response.text() as Promise<T>;
   }
 
   public async fetch<T>(endpoint: string, options: FetchOptions = {}): Promise<T> {
-    const url = `${this.baseUrl}${endpoint}`;
+    const url = endpoint.startsWith('http') ? endpoint : endpoint;
     const mergedOptions: RequestInit = {
       ...defaultOptions,
       ...options,

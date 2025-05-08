@@ -70,18 +70,43 @@ export const stripeService = {
   // Verify Stripe configuration
   async verifyStripeSetup(): Promise<{
     isConfigured: boolean;
-    accountId?: string;
-    details?: any;
+    message: string;
   }> {
     try {
       const response = await apiClient.get<{
-        isConfigured: boolean;
-        accountId?: string;
-        details?: any;
+        status: string;
+        data: {
+          isConfigured: boolean;
+          message: string;
+        }
       }>('/api/verify-stripe');
-      return response;
+      return response.data;
     } catch (error) {
       console.error('Error verifying Stripe setup:', error);
+      throw error;
+    }
+  },
+
+  // Verify subscription status
+  async verifySubscription(token: string, sessionId: string): Promise<{
+    id: string;
+    status: string;
+    currentPeriodEnd: number;
+  }> {
+    try {
+      const response = await apiClient.post<{
+        status: string;
+        data: {
+          subscription: {
+            id: string;
+            status: string;
+            currentPeriodEnd: number;
+          }
+        }
+      }>('/api/verify-stripe', { token, sessionId });
+      return response.data.subscription;
+    } catch (error) {
+      console.error('Error verifying subscription:', error);
       throw error;
     }
   }
