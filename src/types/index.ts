@@ -95,3 +95,12 @@ export interface FormErrors {
   termsAccepted?: string;
   general?: string;
 }
+
+export interface PaymentRecord {
+  stripe_session_id: string;
+  tier: string;
+  amount: number;
+  restaurant_id?: string;
+  customer_email?: string;
+  metadata?: Record<string, string>;
+}

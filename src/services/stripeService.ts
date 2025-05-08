@@ -1,32 +1,27 @@
 import { loadStripe } from '@stripe/stripe-js';
-import type { CheckoutSessionData } from '../types';
+import { apiClient } from '../lib/api-client';
+import type { CheckoutSessionData, PaymentRecord } from '../types';
+
+// Validate required environment variables
+const requiredEnvVars = {
+  VITE_STRIPE_PUBLIC_KEY: import.meta.env.VITE_STRIPE_PUBLIC_KEY,
+};
+
+Object.entries(requiredEnvVars).forEach(([key, value]) => {
+  if (!value) {
+    throw new Error(`Missing required environment variable: ${key}`);
+  }
+});
 
 // Initialize Stripe with the public key
-const stripePublicKey = import.meta.env.VITE_STRIPE_PUBLIC_KEY;
-const stripePromise = loadStripe(stripePublicKey);
+const stripePromise = loadStripe(requiredEnvVars.VITE_STRIPE_PUBLIC_KEY);
 
 export const stripeService = {
   async createCheckoutSession(data: CheckoutSessionData): Promise<string> {
     try {
-      // Make sure to include metadata about the type of checkout
-      const finalData = {
-        ...data,
-        metadata: {
-          ...(data.metadata || {}),
-          type: data.type || 'customer_subscription'
-        }
-      };
-      
-      const response = await fetch('/api/create-checkout-session', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(finalData),
-      });
-      
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error || 'Failed to create checkout session');
-      return result.id;
-    } catch (error: any) {
+      const response = await apiClient.post<{ url: string }>('/api/create-checkout-session', data);
+      return response.url;
+    } catch (error) {
       console.error('Error creating checkout session:', error);
       throw error;
     }
@@ -63,68 +58,31 @@ export const stripeService = {
   },
   
   // Optional helper if you want to track payments in your own DB
-  async recordPayment(sessionId: string, data: {
-    tier: string;
-    amount: number;
-    restaurantId?: string;
-    customerEmail?: string;
-  }): Promise<void> {
+  async recordPayment(data: PaymentRecord): Promise<void> {
     try {
-      const response = await fetch('/api/payments/record', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          stripe_session_id: sessionId,
-          tier: data.tier,
-          amount: data.amount,
-          restaurant_id: data.restaurantId,
-          customer_email: data.customerEmail
-        }),
-      });
-      
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error || 'Failed to record payment');
+      await apiClient.post('/api/record-payment', data);
     } catch (error) {
       console.error('Error recording payment:', error);
-      // Don't throw, as this is non-critical
+      throw error;
     }
   },
   
   // Verify Stripe configuration
   async verifyStripeSetup(): Promise<{
-    status: string;
-    livemode?: boolean;
-    config?: Record<string, string>;
-    balance?: any;
-    error?: string;
-    type?: string;
+    isConfigured: boolean;
+    accountId?: string;
     details?: any;
   }> {
     try {
-      const response = await fetch('/api/verify-stripe', {
-        method: 'GET',
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json() as { error?: string };
-        throw new Error(errorData.error || 'Failed to verify Stripe configuration');
-      }
-
-      const data = await response.json();
-      return data;
-    } catch (error: any) {
-      console.error('Error verifying Stripe:', error);
-      
-      return {
-        status: 'error',
-        error: error.message || 'Failed to verify Stripe configuration',
-        type: error.type || 'VERIFICATION_ERROR',
-        details: error.details || error
-      };
+      const response = await apiClient.get<{
+        isConfigured: boolean;
+        accountId?: string;
+        details?: any;
+      }>('/api/verify-stripe');
+      return response;
+    } catch (error) {
+      console.error('Error verifying Stripe setup:', error);
+      throw error;
     }
   }
 };

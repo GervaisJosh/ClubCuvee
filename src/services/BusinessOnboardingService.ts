@@ -1,20 +1,22 @@
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '../supabase';
 import Stripe from 'stripe';
 import type { Restaurant, RestaurantInvitation, MembershipTier } from '../types';
 
-// Initialize clients for server-side operations
-const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL!,
-  import.meta.env.VITE_SUPABASE_ANON_KEY!,
-  {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false
-    }
-  }
-);
+// Validate required environment variables
+const requiredEnvVars = {
+  VITE_STRIPE_PUBLIC_KEY: import.meta.env.VITE_STRIPE_PUBLIC_KEY,
+};
 
-const stripe = new Stripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY!, {
+Object.entries(requiredEnvVars).forEach(([key, value]) => {
+  if (!value) {
+    throw new Error(`Missing required environment variable: ${key}`);
+  }
+});
+
+// Initialize Stripe with the public key
+const stripe = new Stripe(requiredEnvVars.VITE_STRIPE_PUBLIC_KEY, {
+  apiVersion: '2025-02-24.acacia',
+  typescript: true,
   maxNetworkRetries: 3,
 });
 

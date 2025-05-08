@@ -1,13 +1,17 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from '../types/supabase';
 
-if (!import.meta.env.VITE_SUPABASE_URL) {
-  throw new Error('VITE_SUPABASE_URL is required');
-}
+// Validate required environment variables
+const requiredEnvVars = {
+  VITE_SUPABASE_URL: import.meta.env.VITE_SUPABASE_URL,
+  VITE_SUPABASE_ANON_KEY: import.meta.env.VITE_SUPABASE_ANON_KEY,
+};
 
-if (!import.meta.env.VITE_SUPABASE_ANON_KEY) {
-  throw new Error('VITE_SUPABASE_ANON_KEY is required');
-}
+Object.entries(requiredEnvVars).forEach(([key, value]) => {
+  if (!value) {
+    throw new Error(`Missing required environment variable: ${key}`);
+  }
+});
 
 // Create a global type for the window object to include our supabase instance
 declare global {
@@ -21,8 +25,15 @@ const createSupabaseClient = () => {
   // For SSR (server-side rendering) environments without window
   if (typeof window === 'undefined') {
     return createClient<Database>(
-      import.meta.env.VITE_SUPABASE_URL,
-      import.meta.env.VITE_SUPABASE_ANON_KEY
+      requiredEnvVars.VITE_SUPABASE_URL,
+      requiredEnvVars.VITE_SUPABASE_ANON_KEY,
+      {
+        auth: {
+          autoRefreshToken: true,
+          persistSession: true,
+          detectSessionInUrl: true
+        }
+      }
     );
   }
   
@@ -33,8 +44,15 @@ const createSupabaseClient = () => {
   
   // Create a new instance and store it on the window
   const instance = createClient<Database>(
-    import.meta.env.VITE_SUPABASE_URL,
-    import.meta.env.VITE_SUPABASE_ANON_KEY
+    requiredEnvVars.VITE_SUPABASE_URL,
+    requiredEnvVars.VITE_SUPABASE_ANON_KEY,
+    {
+      auth: {
+        autoRefreshToken: true,
+        persistSession: true,
+        detectSessionInUrl: true
+      }
+    }
   );
   window.__SUPABASE_INSTANCE = instance;
   
