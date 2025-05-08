@@ -39,9 +39,7 @@ export default async function handler(req: VercelRequest) {
   console.log(`${batchTag} Started at ${new Date().toISOString()}`);
 
   try {
-    const baseUrl = process.env.VERCEL_URL
-      ? `https://${process.env.VERCEL_URL}`
-      : process.env.BASE_URL || 'http://localhost:3000';
+    const baseUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : '/';
 
     // Initialize Pinecone with updated 2025 format
     console.time(`${batchTag} Pinecone init`);

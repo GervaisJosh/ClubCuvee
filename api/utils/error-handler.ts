@@ -12,12 +12,26 @@ export class APIError extends Error {
   }
 }
 
+// Helper to set common headers for all responses
+const setCommonHeaders = (res: VercelResponse) => {
+  res.setHeader('Content-Type', 'application/json');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+};
+
 export const errorHandler = (
   error: unknown,
-  _req: VercelRequest,
+  req: VercelRequest,
   res: VercelResponse
 ) => {
   console.error('API Error:', error);
+  setCommonHeaders(res);
+
+  // Handle preflight requests
+  if (req.method === 'OPTIONS') {
+    return res.status(204).end();
+  }
 
   if (error instanceof APIError) {
     return res.status(error.statusCode).json({
@@ -62,6 +76,11 @@ export const withErrorHandler = (
 ) => {
   return async (req: VercelRequest, res: VercelResponse) => {
     try {
+      setCommonHeaders(res);
+      // Handle preflight requests
+      if (req.method === 'OPTIONS') {
+        return res.status(204).end();
+      }
       await handler(req, res);
     } catch (error) {
       errorHandler(error, req, res);

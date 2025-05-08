@@ -38,7 +38,7 @@ export default defineConfig({
     // For full simulation of the Vercel environment, use `vercel dev` instead
     proxy: {
       '/api': {
-        target: 'http://localhost:3000', // Self-referential since API handlers are served by Vite
+        target: '/', // Self-referential since API handlers are served by Vite
         changeOrigin: true,
         secure: false,
         rewrite: (path) => path,

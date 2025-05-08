@@ -21,9 +21,6 @@ const validateInviteSchema = z.object({
 });
 
 export default withErrorHandler(async (req: VercelRequest, res: VercelResponse): Promise<void> => {
-  // Ensure JSON responses
-  res.setHeader('Content-Type', 'application/json');
-
   if (req.method === 'POST') {
     try {
       // Create new invite
@@ -34,7 +31,7 @@ export default withErrorHandler(async (req: VercelRequest, res: VercelResponse):
       expiresAt.setDate(expiresAt.getDate() + 7); // 7 days expiry
 
       const { error } = await supabase
-        .from('restaurant_invitations')
+        .from('restaurant_invites')
         .insert([{
           token,
           email: body.email,
@@ -48,12 +45,14 @@ export default withErrorHandler(async (req: VercelRequest, res: VercelResponse):
         throw new APIError(500, 'Failed to create invitation', 'DATABASE_ERROR');
       }
 
-      res.status(201).json({ token });
+      res.status(201).json({ 
+        status: 'success',
+        data: { token }
+      });
       return;
     } catch (error) {
       if (error instanceof z.ZodError) {
-        res.status(400).json({ error: 'Invalid request data', details: error.errors });
-        return;
+        throw new APIError(400, 'Invalid request data', 'VALIDATION_ERROR');
       }
       throw error;
     }
@@ -65,41 +64,43 @@ export default withErrorHandler(async (req: VercelRequest, res: VercelResponse):
       const { token } = validateInviteSchema.parse(req.query);
 
       const { data, error } = await supabase
-        .from('restaurant_invitations')
+        .from('restaurant_invites')
         .select('*')
         .eq('token', token)
         .single();
 
       if (error) {
-        throw new APIError(500, 'Failed to fetch invitation', 'DATABASE_ERROR');
+        throw new APIError(500, 'Failed to fetch invite', 'DATABASE_ERROR');
       }
 
       if (!data) {
-        throw new APIError(404, 'Invitation not found', 'INVITATION_NOT_FOUND');
+        throw new APIError(404, 'Invite not found', 'INVITE_NOT_FOUND');
       }
 
       if (data.status !== 'pending') {
-        throw new APIError(400, 'Invitation has already been used', 'INVITATION_USED');
+        throw new APIError(400, 'Invite has already been used', 'INVITE_USED');
       }
 
       if (new Date(data.expires_at) < new Date()) {
-        throw new APIError(400, 'Invitation has expired', 'INVITATION_EXPIRED');
+        throw new APIError(400, 'Invite has expired', 'INVITE_EXPIRED');
       }
 
       res.status(200).json({
-        email: data.email,
-        restaurantName: data.restaurant_name,
-        invitedBy: data.invited_by,
+        status: 'success',
+        data: {
+          email: data.email,
+          restaurantName: data.restaurant_name,
+          invitedBy: data.invited_by,
+        }
       });
       return;
     } catch (error) {
       if (error instanceof z.ZodError) {
-        res.status(400).json({ error: 'Invalid token format', details: error.errors });
-        return;
+        throw new APIError(400, 'Invalid request data', 'VALIDATION_ERROR');
       }
       throw error;
     }
   }
 
-  res.status(405).json({ error: 'Method not allowed' });
+  throw new APIError(405, 'Method not allowed', 'METHOD_NOT_ALLOWED');
 });
