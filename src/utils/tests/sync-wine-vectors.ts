@@ -186,7 +186,7 @@ async function syncWinesToPinecone() {
   try {
     console.time('[PINECONE] Client init');
     const pinecone = new Pinecone({ 
-      apiKey: process.env.VITE_PINECONE_API_KEY! 
+      apiKey: import.meta.env.VITE_PINECONE_API_KEY! 
     });
     const index = pinecone.Index(CONFIG.pinecone.indexName);
     console.timeEnd('[PINECONE] Client init');
@@ -232,7 +232,7 @@ async function syncWinesToPinecone() {
 
   } catch (error) {
     console.error('Sync failed:', error instanceof Error ? error.message : error);
-    process.exit(1);
+    throw error;
   } finally {
     console.timeEnd('Full sync duration');
   }

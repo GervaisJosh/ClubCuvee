@@ -24,6 +24,13 @@ import CustomerSignup from './pages/CustomerSignup';
 
 // Restaurant onboarding with lazy loading
 const RestaurantOnboarding = React.lazy(() => import('./pages/onboarding/token'));
+const OnboardToken = React.lazy(() => import('./pages/onboarding/OnboardToken'));
+const BusinessSetup = React.lazy(() => import('./pages/onboarding/BusinessSetup'));
+const OnboardingSuccess = React.lazy(() => import('./pages/onboarding/OnboardingSuccess'));
+
+// Private customer registration and dashboard
+const PrivateRegistration = React.lazy(() => import('./pages/customer/PrivateRegistration'));
+const ScopedCustomerDashboard = React.lazy(() => import('./pages/customer/ScopedCustomerDashboard'));
 
 const App = () => {
   // Initialize data check for development mode
@@ -59,10 +66,91 @@ const App = () => {
               <Route path="/about" element={<About />} />
               <Route path="/pricing" element={<Pricing />} />
               
-              {/* Customer signup */}
+              {/* Private customer registration flow */}
+              <Route 
+                path="/join/:token" 
+                element={
+                  <React.Suspense fallback={
+                    <div className="min-h-screen flex items-center justify-center bg-[#fdfaf7] px-6 py-10">
+                      <div className="text-center">
+                        <div className="h-12 w-12 animate-spin border-4 border-[#800020] border-t-transparent rounded-full mx-auto mb-6"></div>
+                        <p className="text-gray-600 text-lg">Loading invitation...</p>
+                      </div>
+                    </div>
+                  }>
+                    <PrivateRegistration />
+                  </React.Suspense>
+                }
+              />
+              
+              {/* Scoped customer dashboard */}
+              <Route 
+                path="/customer/dashboard" 
+                element={
+                  <React.Suspense fallback={
+                    <div className="min-h-screen flex items-center justify-center bg-[#fdfaf7] px-6 py-10">
+                      <div className="text-center">
+                        <div className="h-12 w-12 animate-spin border-4 border-[#800020] border-t-transparent rounded-full mx-auto mb-6"></div>
+                        <p className="text-gray-600 text-lg">Loading dashboard...</p>
+                      </div>
+                    </div>
+                  }>
+                    <ScopedCustomerDashboard />
+                  </React.Suspense>
+                }
+              />
+              
+              {/* Legacy customer signup - deprecated */}
               <Route path="/join/:restaurantId" element={<CustomerSignup />} />
               
-              {/* Restaurant onboarding flow */}
+              {/* Business onboarding flow */}
+              <Route 
+                path="/onboard/:token" 
+                element={
+                  <React.Suspense fallback={
+                    <div className="min-h-screen flex items-center justify-center bg-[#fdfaf7] px-6 md:px-10 py-10 md:py-20 overflow-x-hidden">
+                      <div className="text-center max-w-7xl w-full mx-auto">
+                        <div className="h-12 w-12 animate-spin border-4 border-[#872657] border-t-transparent rounded-full mx-auto mb-6"></div>
+                        <p className="text-gray-600 text-lg" style={{ fontFamily: 'TayBasal' }}>Loading your business registration...</p>
+                      </div>
+                    </div>
+                  }>
+                    <OnboardToken />
+                  </React.Suspense>
+                }
+              />
+              <Route 
+                path="/onboard/:token/setup" 
+                element={
+                  <React.Suspense fallback={
+                    <div className="min-h-screen flex items-center justify-center bg-[#fdfaf7] px-6 md:px-10 py-10 md:py-20 overflow-x-hidden">
+                      <div className="text-center max-w-7xl w-full mx-auto">
+                        <div className="h-12 w-12 animate-spin border-4 border-[#872657] border-t-transparent rounded-full mx-auto mb-6"></div>
+                        <p className="text-gray-600 text-lg" style={{ fontFamily: 'TayBasal' }}>Setting up your business...</p>
+                      </div>
+                    </div>
+                  }>
+                    <BusinessSetup />
+                  </React.Suspense>
+                }
+              />
+              <Route 
+                path="/onboard/:token/success" 
+                element={
+                  <React.Suspense fallback={
+                    <div className="min-h-screen flex items-center justify-center bg-[#fdfaf7] px-6 md:px-10 py-10 md:py-20 overflow-x-hidden">
+                      <div className="text-center max-w-7xl w-full mx-auto">
+                        <div className="h-12 w-12 animate-spin border-4 border-[#872657] border-t-transparent rounded-full mx-auto mb-6"></div>
+                        <p className="text-gray-600 text-lg" style={{ fontFamily: 'TayBasal' }}>Loading success page...</p>
+                      </div>
+                    </div>
+                  }>
+                    <OnboardingSuccess />
+                  </React.Suspense>
+                }
+              />
+
+              {/* Legacy restaurant onboarding flow */}
               <Route 
                 path="/onboarding/:restaurantRef" 
                 element={

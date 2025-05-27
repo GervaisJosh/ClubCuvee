@@ -9,6 +9,260 @@ export type Json =
 export interface Database {
   public: {
     Tables: {
+      businesses: {
+        Row: {
+          id: string
+          name: string
+          email: string
+          admin_user_id: string | null
+          stripe_customer_id: string | null
+          subscription_status: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          email: string
+          admin_user_id?: string | null
+          stripe_customer_id?: string | null
+          subscription_status?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          email?: string
+          admin_user_id?: string | null
+          stripe_customer_id?: string | null
+          subscription_status?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      onboarding_tokens: {
+        Row: {
+          id: string
+          token: string
+          email: string
+          stripe_price_id: string
+          business_id: string | null
+          status: string
+          stripe_session_id: string | null
+          expires_at: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          token: string
+          email: string
+          stripe_price_id: string
+          business_id?: string | null
+          status?: string
+          stripe_session_id?: string | null
+          expires_at: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          token?: string
+          email?: string
+          stripe_price_id?: string
+          business_id?: string | null
+          status?: string
+          stripe_session_id?: string | null
+          expires_at?: string
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      membership_tiers: {
+        Row: {
+          id: string
+          business_id: string
+          name: string
+          description: string | null
+          price_markup_percentage: number | null
+          stripe_product_id: string | null
+          stripe_price_id: string | null
+          is_active: boolean | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          business_id: string
+          name: string
+          description?: string | null
+          price_markup_percentage?: number | null
+          stripe_product_id?: string | null
+          stripe_price_id?: string | null
+          is_active?: boolean | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          business_id?: string
+          name?: string
+          description?: string | null
+          price_markup_percentage?: number | null
+          stripe_product_id?: string | null
+          stripe_price_id?: string | null
+          is_active?: boolean | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      subscriptions: {
+        Row: {
+          id: string
+          business_id: string
+          stripe_subscription_id: string
+          stripe_customer_id: string
+          stripe_price_id: string
+          status: string
+          current_period_start: string | null
+          current_period_end: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          business_id: string
+          stripe_subscription_id: string
+          stripe_customer_id: string
+          stripe_price_id: string
+          status: string
+          current_period_start?: string | null
+          current_period_end?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          business_id?: string
+          stripe_subscription_id?: string
+          stripe_customer_id?: string
+          stripe_price_id?: string
+          status?: string
+          current_period_start?: string | null
+          current_period_end?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      customer_memberships: {
+        Row: {
+          id: string
+          customer_user_id: string | null
+          business_id: string
+          tier_id: string | null
+          stripe_subscription_id: string | null
+          status: string | null
+          invitation_token: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          customer_user_id?: string | null
+          business_id: string
+          tier_id?: string | null
+          stripe_subscription_id?: string | null
+          status?: string | null
+          invitation_token?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          customer_user_id?: string | null
+          business_id?: string
+          tier_id?: string | null
+          stripe_subscription_id?: string | null
+          status?: string | null
+          invitation_token?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      customer_invitations: {
+        Row: {
+          id: string
+          token: string
+          business_id: string
+          email: string
+          tier_id: string | null
+          status: string
+          expires_at: string
+          created_at: string
+          updated_at: string
+          used_at: string | null
+          customer_user_id: string | null
+        }
+        Insert: {
+          id?: string
+          token: string
+          business_id: string
+          email: string
+          tier_id?: string | null
+          status?: string
+          expires_at: string
+          created_at?: string
+          updated_at?: string
+          used_at?: string | null
+          customer_user_id?: string | null
+        }
+        Update: {
+          id?: string
+          token?: string
+          business_id?: string
+          email?: string
+          tier_id?: string | null
+          status?: string
+          expires_at?: string
+          created_at?: string
+          updated_at?: string
+          used_at?: string | null
+          customer_user_id?: string | null
+        }
+      }
+      customer_profiles: {
+        Row: {
+          id: string
+          business_id: string
+          email: string
+          first_name: string | null
+          last_name: string | null
+          phone: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id: string
+          business_id: string
+          email: string
+          first_name?: string | null
+          last_name?: string | null
+          phone?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          business_id?: string
+          email?: string
+          first_name?: string | null
+          last_name?: string | null
+          phone?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
       restaurants: {
         Row: {
           id: string

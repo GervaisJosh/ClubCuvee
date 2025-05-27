@@ -23,7 +23,7 @@ const OnboardRestaurantCard: React.FC = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-admin-auth': process.env.NEXT_PUBLIC_ADMIN_SECRET || '',
+          'x-admin-auth': import.meta.env.VITE_ADMIN_SECRET || '',
         },
         body: JSON.stringify({ email, tier }),
       });

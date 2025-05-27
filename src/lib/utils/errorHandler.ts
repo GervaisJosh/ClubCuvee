@@ -48,7 +48,7 @@ export const sendErrorResponse = (
   // Handle unexpected errors
   console.error('Unexpected error:', error);
   return res.status(statusCode).json({
-    error: process.env.NODE_ENV === 'production' 
+    error: import.meta.env.PROD 
       ? 'An unexpected error occurred' 
       : error.message
   });

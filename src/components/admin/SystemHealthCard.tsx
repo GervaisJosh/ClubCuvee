@@ -24,7 +24,7 @@ const SystemHealthCard: React.FC = () => {
       try {
         const res = await fetch('/api/admin-system-check', {
           headers: {
-            'x-admin-auth': process.env.NEXT_PUBLIC_ADMIN_SECRET || '',
+            'x-admin-auth': import.meta.env.VITE_ADMIN_SECRET || '',
           },
         });
         const data = await res.json();
