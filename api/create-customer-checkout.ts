@@ -1,7 +1,7 @@
-import { NextRequest } from 'next/server';
+import { VercelRequest, VercelResponse } from '@vercel/node';
 import { stripe } from './utils/stripe';
 import { supabaseAdmin } from '../lib/supabaseAdmin';
-import { errorHandler } from './utils/errorHandler';
+import { withErrorHandler, APIError } from './utils/error-handler';
 
 interface CreateCustomerCheckoutRequest {
   business_id: string;
@@ -10,12 +10,9 @@ interface CreateCustomerCheckoutRequest {
   customer_name?: string;
 }
 
-export default async function handler(req: NextRequest) {
+export default withErrorHandler(async (req: VercelRequest, res: VercelResponse): Promise<void> => {
   if (req.method !== 'POST') {
-    return Response.json(
-      { success: false, error: 'Method not allowed' },
-      { status: 405 }
-    );
+    throw new APIError(405, 'Method not allowed', 'METHOD_NOT_ALLOWED');
   }
 
   try {
