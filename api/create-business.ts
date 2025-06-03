@@ -1,241 +1,244 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
-import Stripe from 'stripe';
-import { createClient } from '@supabase/supabase-js';
-import type { Database } from '../src/types/supabase';
-import { corsMiddleware } from './utils/supabase';
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2024-09-30.acacia',
-});
-
-const supabaseUrl = process.env.VITE_SUPABASE_URL;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-if (!supabaseUrl || !supabaseServiceKey) {
-  throw new Error('Missing required Supabase environment variables');
-}
-
-// Create admin client for user creation
-const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseServiceKey);
+import { NextRequest } from 'next/server';
+import { stripe } from './utils/stripe';
+import { supabaseAdmin } from '../lib/supabaseAdmin';
+import { errorHandler } from './utils/errorHandler';
 
 interface BusinessFormData {
   businessName: string;
   adminName: string;
   adminEmail: string;
   adminPassword: string;
-  tiers: {
-    name: string;
-    description: string;
-    priceMarkupPercentage: number;
-  }[];
+  confirmPassword: string;
+  tiers: TierFormData[];
 }
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // Apply CORS middleware
-  await corsMiddleware(req, res);
-  
+interface TierFormData {
+  name: string;
+  description: string;
+  priceMarkupPercentage: number;
+}
+
+export default async function handler(req: NextRequest) {
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+    return Response.json(
+      { success: false, error: 'Method not allowed' },
+      { status: 405 }
+    );
   }
 
   try {
-    const { token, sessionId, businessData }: {
-      token: string;
-      sessionId: string;
-      businessData: BusinessFormData;
-    } = req.body;
+    const body = await req.json();
+    const { token, sessionId, businessData }: { 
+      token: string; 
+      sessionId: string; 
+      businessData: BusinessFormData; 
+    } = body;
 
     if (!token || !sessionId || !businessData) {
-      return res.status(400).json({
-        error: 'Missing required fields',
-        message: 'Token, sessionId, and businessData are required'
-      });
+      return Response.json(
+        { success: false, error: 'Token, session ID, and business data are required' },
+        { status: 400 }
+      );
     }
 
-    // Validate the onboarding token
-    const { data: tokenData, error: tokenError } = await supabaseAdmin
-      .from('onboarding_tokens')
-      .select('*')
-      .eq('token', token)
-      .eq('status', 'payment_completed')
-      .single();
-
-    if (tokenError || !tokenData) {
-      return res.status(404).json({
-        error: 'Invalid token',
-        message: 'Token not found or payment not completed'
-      });
-    }
-
-    // Verify the Stripe session and get subscription details
-    const session = await stripe.checkout.sessions.retrieve(sessionId);
-    if (!session.subscription) {
-      return res.status(400).json({
-        error: 'No subscription found',
-        message: 'No subscription found in the checkout session'
-      });
-    }
-
-    const subscription = await stripe.subscriptions.retrieve(session.subscription as string);
-    const customer = await stripe.customers.retrieve(session.customer as string);
-
-    // Start a transaction
-    const businessId = crypto.randomUUID();
-
-    // 1. Create admin user in Supabase Auth
-    const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
-      email: businessData.adminEmail,
-      password: businessData.adminPassword,
-      email_confirm: true,
-      user_metadata: {
-        full_name: businessData.adminName,
-        role: 'business_admin',
-        business_id: businessId
-      }
+    // Validate the business invitation token
+    const { data: tokenValidation, error: validationError } = await supabaseAdmin.rpc('validate_business_invitation_token', {
+      p_token: token
     });
 
-    if (authError || !authUser.user) {
-      console.error('Error creating admin user:', authError);
-      return res.status(500).json({
-        error: 'Failed to create admin user',
-        message: authError?.message || 'Unknown error'
-      });
+    if (validationError || !tokenValidation || tokenValidation.length === 0) {
+      return Response.json(
+        { success: false, error: 'Invalid or expired business invitation token' },
+        { status: 400 }
+      );
     }
 
-    // 2. Create business record
-    const { data: business, error: businessError } = await supabaseAdmin
+    const tokenData = tokenValidation[0];
+    if (!tokenData.is_valid) {
+      return Response.json(
+        { success: false, error: 'Business invitation token is not valid' },
+        { status: 400 }
+      );
+    }
+
+    // Get temp business setup data to get Stripe details
+    const { data: tempSetupData, error: tempError } = await supabaseAdmin
+      .from('temp_business_setup')
+      .select('stripe_customer_id, stripe_subscription_id, pricing_tier')
+      .eq('invitation_token', token)
+      .single();
+
+    if (tempError || !tempSetupData) {
+      return Response.json(
+        { success: false, error: 'Business setup data not found. Please restart the process.' },
+        { status: 400 }
+      );
+    }
+
+    // Get invitation details for business email
+    const { data: inviteDetails, error: inviteError } = await supabaseAdmin
+      .from('business_invites')
+      .select('business_name, business_email, pricing_tier')
+      .eq('token', token)
+      .single();
+
+    if (inviteError || !inviteDetails) {
+      return Response.json(
+        { success: false, error: 'Invitation details not found' },
+        { status: 400 }
+      );
+    }
+
+    // Validate business data
+    if (!businessData.businessName?.trim()) {
+      return Response.json(
+        { success: false, error: 'Business name is required' },
+        { status: 400 }
+      );
+    }
+
+    if (!businessData.adminName?.trim()) {
+      return Response.json(
+        { success: false, error: 'Admin name is required' },
+        { status: 400 }
+      );
+    }
+
+    if (!businessData.adminEmail?.trim()) {
+      return Response.json(
+        { success: false, error: 'Admin email is required' },
+        { status: 400 }
+      );
+    }
+
+    if (!businessData.adminPassword) {
+      return Response.json(
+        { success: false, error: 'Admin password is required' },
+        { status: 400 }
+      );
+    }
+
+    if (businessData.adminPassword.length < 8) {
+      return Response.json(
+        { success: false, error: 'Password must be at least 8 characters long' },
+        { status: 400 }
+      );
+    }
+
+    if (businessData.adminPassword !== businessData.confirmPassword) {
+      return Response.json(
+        { success: false, error: 'Passwords do not match' },
+        { status: 400 }
+      );
+    }
+
+    // Create admin user in Supabase Auth
+    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+      email: businessData.adminEmail,
+      password: businessData.adminPassword,
+      user_metadata: {
+        name: businessData.adminName,
+        role: 'business_admin'
+      },
+      email_confirm: true
+    });
+
+    if (authError || !authData.user) {
+      console.error('Error creating admin user:', authError);
+      return Response.json(
+        { success: false, error: 'Failed to create admin user account' },
+        { status: 500 }
+      );
+    }
+
+    // Get the pricing tier ID for the business
+    const { data: pricingTierData, error: tierError } = await supabaseAdmin
+      .from('business_pricing_tiers')
+      .select('id')
+      .eq('stripe_product_id', (await stripe.subscriptions.retrieve(tempSetupData.stripe_subscription_id)).items.data[0].price.product)
+      .single();
+
+    let pricingTierId = null;
+    if (!tierError && pricingTierData) {
+      pricingTierId = pricingTierData.id;
+    }
+
+    // Create business record
+    const { data: businessData: newBusiness, error: businessError } = await supabaseAdmin
       .from('businesses')
       .insert({
-        id: businessId,
         name: businessData.businessName,
-        email: businessData.adminEmail,
-        admin_user_id: authUser.user.id,
-        stripe_customer_id: session.customer as string,
-        subscription_status: subscription.status
+        email: inviteDetails.business_email,
+        owner_id: authData.user.id,
+        stripe_customer_id: tempSetupData.stripe_customer_id,
+        stripe_subscription_id: tempSetupData.stripe_subscription_id,
+        subscription_status: 'active',
+        pricing_tier_id: pricingTierId,
+        created_at: new Date().toISOString()
       })
       .select()
       .single();
 
-    if (businessError) {
+    if (businessError || !newBusiness) {
       console.error('Error creating business:', businessError);
-      // Clean up auth user if business creation failed
-      await supabaseAdmin.auth.admin.deleteUser(authUser.user.id);
-      return res.status(500).json({
-        error: 'Failed to create business',
-        message: businessError.message
-      });
+      
+      // Clean up the auth user if business creation failed
+      await supabaseAdmin.auth.admin.deleteUser(authData.user.id);
+      
+      return Response.json(
+        { success: false, error: 'Failed to create business record' },
+        { status: 500 }
+      );
     }
 
-    // 3. Create subscription record
-    const { error: subscriptionError } = await supabaseAdmin
-      .from('subscriptions')
-      .insert({
-        business_id: businessId,
-        stripe_subscription_id: subscription.id,
-        stripe_customer_id: session.customer as string,
-        stripe_price_id: tokenData.stripe_price_id,
-        status: subscription.status,
-        current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
-        current_period_end: new Date(subscription.current_period_end * 1000).toISOString()
-      });
+    // Create restaurant membership tiers for customers
+    const tierInserts = businessData.tiers.map((tier, index) => ({
+      business_id: newBusiness.id,
+      name: tier.name,
+      description: tier.description,
+      price_cents: Math.round(2999 * (1 + tier.priceMarkupPercentage / 100)), // Base price $29.99 with markup
+      interval: 'month',
+      is_ready: false, // Will be set to true when Stripe products are created
+      created_at: new Date().toISOString()
+    }));
 
-    if (subscriptionError) {
-      console.error('Error creating subscription record:', subscriptionError);
-      // This is not critical, so we'll log but not fail
+    const { error: tiersError } = await supabaseAdmin
+      .from('restaurant_membership_tiers')
+      .insert(tierInserts);
+
+    if (tiersError) {
+      console.error('Error creating membership tiers:', tiersError);
+      // Don't fail the whole process for this
     }
 
-    // 4. Create membership tiers and corresponding Stripe products/prices
-    const tierInserts = [];
-    for (const tierData of businessData.tiers) {
-      try {
-        // Create Stripe product for this tier
-        const product = await stripe.products.create({
-          name: `${businessData.businessName} - ${tierData.name}`,
-          description: tierData.description,
-          metadata: {
-            business_id: businessId,
-            tier_name: tierData.name,
-            markup_percentage: tierData.priceMarkupPercentage.toString()
-          }
-        });
+    // Mark business invitation as used
+    const { error: markUsedError } = await supabaseAdmin.rpc('mark_business_invitation_used', {
+      p_token: token,
+      p_business_id: newBusiness.id
+    });
 
-        // Create a base price (we'll update this when they set up their wine inventory)
-        const price = await stripe.prices.create({
-          product: product.id,
-          unit_amount: 2999, // $29.99 as default monthly price
-          currency: 'usd',
-          recurring: {
-            interval: 'month'
-          },
-          metadata: {
-            business_id: businessId,
-            tier_name: tierData.name
-          }
-        });
-
-        tierInserts.push({
-          business_id: businessId,
-          name: tierData.name,
-          description: tierData.description,
-          price_markup_percentage: tierData.priceMarkupPercentage,
-          stripe_product_id: product.id,
-          stripe_price_id: price.id,
-          is_active: true
-        });
-      } catch (stripeError: any) {
-        console.error('Error creating Stripe product/price for tier:', stripeError);
-        // Continue with other tiers
-      }
+    if (markUsedError) {
+      console.error('Error marking invitation as used:', markUsedError);
+      // Don't fail for this
     }
 
-    if (tierInserts.length > 0) {
-      const { error: tiersError } = await supabaseAdmin
-        .from('membership_tiers')
-        .insert(tierInserts);
+    // Mark temp setup as completed
+    await supabaseAdmin
+      .from('temp_business_setup')
+      .update({ setup_completed: true })
+      .eq('invitation_token', token);
 
-      if (tiersError) {
-        console.error('Error creating membership tiers:', tiersError);
-        // This is not critical for the basic setup
-      }
-    }
-
-    // 5. Update onboarding token status
-    const { error: updateTokenError } = await supabaseAdmin
-      .from('onboarding_tokens')
-      .update({
-        business_id: businessId,
-        status: 'business_created',
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', tokenData.id);
-
-    if (updateTokenError) {
-      console.error('Error updating token status:', updateTokenError);
-    }
-
-    return res.status(201).json({
+    return Response.json({
       success: true,
       data: {
-        businessId: business.id,
-        adminUserId: authUser.user.id,
-        tiersCreated: tierInserts.length
+        businessId: newBusiness.id,
+        adminUserId: authData.user.id,
+        business: newBusiness
       }
     });
 
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error creating business:', error);
-
-    // Handle specific Stripe errors
-    if (error.type?.startsWith('Stripe')) {
-      return res.status(400).json({
-        error: 'Stripe error',
-        message: error.message
-      });
-    }
-
-    return res.status(500).json({
-      error: 'Internal server error',
-      message: error.message
-    });
+    return errorHandler(error);
   }
 }

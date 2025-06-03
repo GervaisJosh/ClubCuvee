@@ -8,6 +8,7 @@
   },
   "scripts": {
     "dev": "vite",
+    "dev:api": "vercel dev",
     "build": "vite build",
     "build:api": "tsx scripts/build-api.ts",
     "build:all": "rimraf dist && npm run build:api && npm run build",

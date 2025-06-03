@@ -13,12 +13,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   
   const navigationItems = [
-    { name: 'Dashboard', path: '/admin/dashboard', icon: Home },
-    { name: 'Onboarding Tester', path: '/admin/onboarding-tester', icon: Wine },
-    { name: 'Restaurants', path: '/admin/restaurants', icon: Users },
-    { name: 'Customers', path: '/admin/customers', icon: User },
-    { name: 'Analytics', path: '/admin/analytics', icon: BarChart2 },
-    { name: 'Settings', path: '/admin/settings', icon: Settings },
+    { name: 'Business Invitations', path: '/admin/business-invitations', icon: Wine },
   ];
 
   const toggleSidebar = () => {
@@ -40,7 +35,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
             </button>
             <h1 className="text-2xl font-bold" style={{ fontFamily: 'HV Florentino' }}>Club Cuvée</h1>
             <span className="hidden sm:inline-block text-sm bg-white text-[#872657] px-3 py-1 rounded-full font-semibold shadow-sm">
-              Admin Portal
+              Business Invitations
             </span>
           </div>
           <div className="flex items-center space-x-2 sm:space-x-4">

@@ -28,8 +28,7 @@ const OnboardToken = React.lazy(() => import('./pages/onboarding/OnboardToken'))
 const BusinessSetup = React.lazy(() => import('./pages/onboarding/BusinessSetup'));
 const OnboardingSuccess = React.lazy(() => import('./pages/onboarding/OnboardingSuccess'));
 
-// Private customer registration and dashboard
-const PrivateRegistration = React.lazy(() => import('./pages/customer/PrivateRegistration'));
+// Private customer dashboard
 const ScopedCustomerDashboard = React.lazy(() => import('./pages/customer/ScopedCustomerDashboard'));
 
 const App = () => {
@@ -66,7 +65,7 @@ const App = () => {
               <Route path="/about" element={<About />} />
               <Route path="/pricing" element={<Pricing />} />
               
-              {/* Private customer registration flow */}
+              {/* Business invitation redirect */}
               <Route 
                 path="/join/:token" 
                 element={
@@ -74,11 +73,11 @@ const App = () => {
                     <div className="min-h-screen flex items-center justify-center bg-[#fdfaf7] px-6 py-10">
                       <div className="text-center">
                         <div className="h-12 w-12 animate-spin border-4 border-[#800020] border-t-transparent rounded-full mx-auto mb-6"></div>
-                        <p className="text-gray-600 text-lg">Loading invitation...</p>
+                        <p className="text-gray-600 text-lg">Redirecting to business onboarding...</p>
                       </div>
                     </div>
                   }>
-                    <PrivateRegistration />
+                    <OnboardToken />
                   </React.Suspense>
                 }
               />

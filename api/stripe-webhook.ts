@@ -3,6 +3,7 @@ import { VercelRequest, VercelResponse } from '@vercel/node';
 import { withErrorHandler } from './utils/error-handler';
 import { verifyStripeWebhook, getSubscription } from './utils/stripe';
 import { createRestaurant, updateRestaurantInvite } from './utils/supabase';
+import { supabaseAdmin } from '../lib/supabaseAdmin';
 import { APIError } from './utils/error-handler';
 import Stripe from 'stripe';
 
@@ -29,27 +30,97 @@ export default withErrorHandler(async (req: VercelRequest, res: VercelResponse):
     case 'checkout.session.completed': {
       const session = event.data.object as Stripe.Checkout.Session;
       
-      if (!session.subscription || !session.metadata?.restaurantName) {
-        throw new APIError(400, 'Invalid session data', 'INVALID_SESSION');
-      }
+      // Handle business onboarding checkout
+      if (session.metadata?.type === 'business_onboarding') {
+        if (!session.subscription || !session.metadata?.business_invitation_token) {
+          throw new APIError(400, 'Invalid business onboarding session data', 'INVALID_SESSION');
+        }
 
-      // Get subscription details
-      const subscription = await getSubscription(session.subscription as string);
+        // Get subscription details
+        const subscription = await getSubscription(session.subscription as string);
 
-      // Create restaurant record
-      await createRestaurant({
-        name: session.metadata.restaurantName,
-        email: session.customer_email!,
-        subscription_id: subscription.id,
-        membership_tier: session.metadata.membershipTier,
-      });
-
-      // Mark invite as accepted
-      if (session.metadata.inviteToken) {
-        await updateRestaurantInvite(session.metadata.inviteToken, {
-          status: 'accepted',
-          accepted_at: new Date().toISOString(),
+        // Get the business invitation details to create the business
+        const { data: inviteData, error: inviteError } = await supabaseAdmin.rpc('validate_business_invitation_token', {
+          p_token: session.metadata.business_invitation_token
         });
+
+        if (inviteError || !inviteData || inviteData.length === 0) {
+          throw new APIError(400, 'Invalid business invitation token', 'INVALID_TOKEN');
+        }
+
+        const businessData = inviteData[0];
+
+        // Create business record
+        await createRestaurant({
+          name: businessData.business_name,
+          email: businessData.business_email,
+          subscription_id: subscription.id,
+          membership_tier: session.metadata.pricing_tier_key,
+        });
+
+        // Mark business invitation as used
+        const { error: markUsedError } = await supabaseAdmin.rpc('mark_business_invitation_used', {
+          p_token: session.metadata.business_invitation_token
+        });
+
+        if (markUsedError) {
+          console.error('Error marking business invitation as used:', markUsedError);
+        }
+      } 
+      // Handle legacy restaurant invitations (backward compatibility)
+      else if (session.metadata?.restaurantName) {
+        if (!session.subscription) {
+          throw new APIError(400, 'Invalid session data', 'INVALID_SESSION');
+        }
+
+        // Get subscription details
+        const subscription = await getSubscription(session.subscription as string);
+
+        // Create restaurant record
+        await createRestaurant({
+          name: session.metadata.restaurantName,
+          email: session.customer_email!,
+          subscription_id: subscription.id,
+          membership_tier: session.metadata.membershipTier,
+        });
+
+        // Mark invite as accepted
+        if (session.metadata.inviteToken) {
+          await updateRestaurantInvite(session.metadata.inviteToken, {
+            status: 'accepted',
+            accepted_at: new Date().toISOString(),
+          });
+        }
+      } 
+      // Handle customer membership signup
+      else if (session.metadata?.type === 'customer_membership') {
+        if (!session.subscription || !session.metadata?.business_id || !session.metadata?.tier_id) {
+          throw new APIError(400, 'Invalid customer membership session data', 'INVALID_SESSION');
+        }
+
+        // Get subscription details
+        const subscription = await getSubscription(session.subscription as string);
+
+        // Create customer membership record
+        const { error: membershipError } = await supabaseAdmin
+          .from('customer_memberships')
+          .insert({
+            customer_email: session.metadata.customer_email,
+            customer_name: session.metadata.customer_name || null,
+            business_id: session.metadata.business_id,
+            tier_id: session.metadata.tier_id,
+            stripe_customer_id: subscription.customer as string,
+            stripe_subscription_id: subscription.id,
+            status: 'active',
+            started_at: new Date().toISOString()
+          });
+
+        if (membershipError) {
+          console.error('Error creating customer membership:', membershipError);
+          throw new APIError(500, 'Failed to create customer membership', 'MEMBERSHIP_CREATION_FAILED');
+        }
+      } else {
+        throw new APIError(400, 'Unknown checkout session type', 'INVALID_SESSION');
       }
 
       break;

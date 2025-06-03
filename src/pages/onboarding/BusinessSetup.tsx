@@ -67,18 +67,28 @@ const BusinessSetup: React.FC = () => {
             status: string;
             currentPeriodEnd: number;
           };
-          tokenData: {
-            email: string;
-          };
+          pricing_tier: string;
         };
-      }>('/api/verify-onboarding-subscription', { token, sessionId });
+      }>('/api/verify-business-subscription', { token, sessionId });
 
       if (response.success && response.data.subscription.status === 'active') {
-        // Pre-fill the admin email from token data
-        setFormData(prev => ({
-          ...prev,
-          adminEmail: response.data.tokenData.email
-        }));
+        // Get the business invitation details to pre-fill admin email
+        const inviteResponse = await apiClient.post<{
+          success: boolean;
+          data: {
+            business_name: string;
+            business_email: string;
+            pricing_tier: string | null;
+          };
+        }>('/api/validate-business-invitation', { token });
+
+        if (inviteResponse.success) {
+          setFormData(prev => ({
+            ...prev,
+            businessName: inviteResponse.data.business_name,
+            adminEmail: inviteResponse.data.business_email
+          }));
+        }
       } else {
         setError('Payment verification failed. Please contact support.');
       }

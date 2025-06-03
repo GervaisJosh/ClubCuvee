@@ -10,6 +10,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const token = authHeader.split(' ')[1];
+  if (!token) {
+    return res.status(401).json({ error: 'Unauthorized: Invalid token format' });
+  }
   
   try {
     // Verify the JWT token and get the user

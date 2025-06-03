@@ -36,6 +36,8 @@
       "dest": "/index.html"
     }
   ],
+  "devCommand": "vite --port $PORT",
+  "installCommand": "npm install",
   "env": {
     "NODE_ENV": "production"
   }
