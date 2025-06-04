@@ -4,7 +4,7 @@ import { createClient } from '@supabase/supabase-js';
 import type { Database } from '../../src/types/supabase';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2024-09-30.acacia',
+  apiVersion: '2025-02-24.acacia',
 });
 
 const supabaseUrl = process.env.VITE_SUPABASE_URL;
@@ -286,21 +286,26 @@ async function updateSubscriptionStatus(subscriptionId: string, status: string) 
 
     // Update business status based on subscription
     if (status === 'active') {
-      const { error: businessError } = await supabase
-        .from('businesses')
-        .update({
-          subscription_status: 'active',
-          updated_at: new Date().toISOString()
-        })
-        .in('id', 
-          supabase
-            .from('subscriptions')
-            .select('business_id')
-            .eq('stripe_subscription_id', subscriptionId)
-        );
+      // First get the business IDs
+      const { data: subscriptionData } = await supabase
+        .from('subscriptions')
+        .select('business_id')
+        .eq('stripe_subscription_id', subscriptionId);
 
-      if (businessError) {
-        console.error('Error updating business status:', businessError);
+      if (subscriptionData && subscriptionData.length > 0) {
+        const businessIds = subscriptionData.map(sub => sub.business_id);
+        
+        const { error: businessError } = await supabase
+          .from('businesses')
+          .update({
+            subscription_status: 'active',
+            updated_at: new Date().toISOString()
+          })
+          .in('id', businessIds);
+
+        if (businessError) {
+          console.error('Error updating business status:', businessError);
+        }
       }
     }
   } catch (error) {

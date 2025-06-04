@@ -2,6 +2,17 @@ import { VercelRequest, VercelResponse } from '@vercel/node';
 import { supabaseAdmin } from '../../lib/supabaseAdmin';
 import { withErrorHandler, APIError } from '../utils/error-handler';
 
+interface RestaurantMembershipTier {
+  id: string;
+  name: string;
+  description: string;
+  price_cents: number;
+  interval: string;
+  stripe_product_id: string;
+  stripe_price_id: string;
+  is_ready: boolean;
+}
+
 export default withErrorHandler(async (req: VercelRequest, res: VercelResponse): Promise<void> => {
   if (req.method !== 'GET') {
     throw new APIError(405, 'Method not allowed', 'METHOD_NOT_ALLOWED');
@@ -35,7 +46,7 @@ export default withErrorHandler(async (req: VercelRequest, res: VercelResponse):
   }
 
   // Format price display for frontend
-  const formattedTiers = (tiers || []).map(tier => ({
+  const formattedTiers = (tiers || []).map((tier: RestaurantMembershipTier) => ({
     ...tier,
     price_display: `$${(tier.price_cents / 100).toFixed(2)}`,
     price_per_interval: `$${(tier.price_cents / 100).toFixed(2)}/${tier.interval}`

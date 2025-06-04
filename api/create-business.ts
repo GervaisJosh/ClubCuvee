@@ -23,13 +23,13 @@ export default withErrorHandler(async (req: VercelRequest, res: VercelResponse):
     throw new APIError(405, 'Method not allowed', 'METHOD_NOT_ALLOWED');
   }
 
-  const { token, sessionId, businessData }: { 
+  const { token, sessionId, businessData: formData }: { 
     token: string; 
     sessionId: string; 
     businessData: BusinessFormData; 
   } = req.body;
 
-  if (!token || !sessionId || !businessData) {
+  if (!token || !sessionId || !formData) {
     throw new APIError(400, 'Token, session ID, and business data are required', 'VALIDATION_ERROR');
   }
 
@@ -70,36 +70,36 @@ export default withErrorHandler(async (req: VercelRequest, res: VercelResponse):
   }
 
   // Validate business data
-  if (!businessData.businessName?.trim()) {
+  if (!formData.businessName?.trim()) {
     throw new APIError(400, 'Business name is required', 'VALIDATION_ERROR');
   }
 
-  if (!businessData.adminName?.trim()) {
+  if (!formData.adminName?.trim()) {
     throw new APIError(400, 'Admin name is required', 'VALIDATION_ERROR');
   }
 
-  if (!businessData.adminEmail?.trim()) {
+  if (!formData.adminEmail?.trim()) {
     throw new APIError(400, 'Admin email is required', 'VALIDATION_ERROR');
   }
 
-  if (!businessData.adminPassword) {
+  if (!formData.adminPassword) {
     throw new APIError(400, 'Admin password is required', 'VALIDATION_ERROR');
   }
 
-  if (businessData.adminPassword.length < 8) {
+  if (formData.adminPassword.length < 8) {
     throw new APIError(400, 'Password must be at least 8 characters long', 'VALIDATION_ERROR');
   }
 
-  if (businessData.adminPassword !== businessData.confirmPassword) {
+  if (formData.adminPassword !== formData.confirmPassword) {
     throw new APIError(400, 'Passwords do not match', 'VALIDATION_ERROR');
   }
 
   // Create admin user in Supabase Auth
   const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
-    email: businessData.adminEmail,
-    password: businessData.adminPassword,
+    email: formData.adminEmail,
+    password: formData.adminPassword,
     user_metadata: {
-      name: businessData.adminName,
+      name: formData.adminName,
       role: 'business_admin'
     },
     email_confirm: true
@@ -123,10 +123,10 @@ export default withErrorHandler(async (req: VercelRequest, res: VercelResponse):
   }
 
   // Create business record
-  const { data: businessData: newBusiness, error: businessError } = await supabaseAdmin
+  const { data: newBusiness, error: businessError } = await supabaseAdmin
     .from('businesses')
     .insert({
-      name: businessData.businessName,
+      name: formData.businessName,
       email: inviteDetails.business_email,
       owner_id: authData.user.id,
       stripe_customer_id: tempSetupData.stripe_customer_id,
@@ -148,7 +148,7 @@ export default withErrorHandler(async (req: VercelRequest, res: VercelResponse):
   }
 
   // Create restaurant membership tiers for customers
-  const tierInserts = businessData.tiers.map((tier, index) => ({
+  const tierInserts = formData.tiers.map((tier) => ({
     business_id: newBusiness.id,
     name: tier.name,
     description: tier.description,
