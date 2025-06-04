@@ -44,14 +44,7 @@ function apiDevPlugin() {
 export default defineConfig({
   plugins: [
     react(),
-    viteStaticCopy({
-      targets: [
-        {
-          src: 'api',
-          dest: './'
-        }
-      ]
-    }),
+    // Removed viteStaticCopy to prevent API folder conflicts with Vercel
     tsconfigPaths(),
     apiDevPlugin()
   ],
