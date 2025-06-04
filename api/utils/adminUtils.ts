@@ -36,16 +36,16 @@ export const setUserAdminStatus = async (userId: string, isAdmin: boolean) => {
 };
 
 /**
- * Checks if a user is an admin
- * @param userId The user ID to check
+ * Checks if a user is an admin by auth ID
+ * @param authId The auth user ID to check
  * @returns Object with isAdmin status and error message if applicable
  */
-export const checkUserAdminStatus = async (userId: string) => {
+export const checkUserAdminStatus = async (authId: string) => {
   try {
     const { data, error } = await supabaseAdmin
       .from('users')
       .select('is_admin')
-      .eq('local_id', userId) // Changed from 'id' to 'local_id'
+      .eq('auth_id', authId) // Use auth_id to match the auth user
       .single();
     
     if (error) {

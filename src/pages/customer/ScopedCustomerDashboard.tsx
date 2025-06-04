@@ -50,70 +50,60 @@ const ScopedCustomerDashboard: React.FC = () => {
       setLoading(true);
       setError(null);
 
-      // Load customer profile (with RLS enforcing business_id scoping)
-      const { data: profileData, error: profileError } = await supabase
-        .from('customer_profiles')
+      // Load customer profile using auth user with customer membership to get business scoping
+      const { data: membershipData, error: membershipError } = await supabase
+        .from('customer_memberships')
         .select(`
-          *,
-          businesses!inner(id, name, email)
+          id,
+          business_id,
+          status,
+          tier_id,
+          stripe_subscription_id,
+          created_at,
+          businesses!inner(id, name, email),
+          restaurant_membership_tiers(id, name, description)
         `)
-        .eq('id', user!.id)
+        .eq('customer_user_id', user!.id)
         .single();
 
-      if (profileError) {
-        throw new Error('Could not load customer profile: ' + profileError.message);
+      if (membershipError) {
+        throw new Error('Could not load customer membership: ' + membershipError.message);
       }
 
-      if (!profileData) {
-        throw new Error('Customer profile not found. You may not have access to any business.');
+      if (!membershipData) {
+        throw new Error('Customer membership not found. You may not have access to any business.');
       }
 
+      // Create profile from user auth info and membership data
       const customerProfile: CustomerProfile = {
-        id: profileData.id,
-        businessId: profileData.business_id,
-        businessName: profileData.businesses.name,
-        email: profileData.email,
-        firstName: profileData.first_name,
-        lastName: profileData.last_name,
-        phone: profileData.phone
+        id: user!.id,
+        businessId: membershipData.business_id,
+        businessName: membershipData.businesses.name,
+        email: user!.email || '',
+        firstName: user?.user_metadata?.first_name || null,
+        lastName: user?.user_metadata?.last_name || null,
+        phone: user?.user_metadata?.phone || null
       };
 
       setProfile(customerProfile);
       setBusinessInfo({
-        id: profileData.businesses.id,
-        name: profileData.businesses.name,
-        email: profileData.businesses.email
+        id: membershipData.businesses.id,
+        name: membershipData.businesses.name,
+        email: membershipData.businesses.email
       });
 
-      // Load customer membership (RLS ensures only user's own membership)
-      const { data: membershipData, error: membershipError } = await supabase
-        .from('customer_memberships')
-        .select(`
-          *,
-          membership_tiers!inner(id, name, description)
-        `)
-        .eq('customer_user_id', user!.id)
-        .eq('business_id', profileData.business_id)
-        .single();
+      // Set membership data
+      const customerMembership: CustomerMembership = {
+        id: membershipData.id,
+        tierId: membershipData.tier_id || '',
+        tierName: membershipData.restaurant_membership_tiers?.name || 'Unknown Tier',
+        tierDescription: membershipData.restaurant_membership_tiers?.description || '',
+        status: membershipData.status || 'inactive',
+        stripeSubscriptionId: membershipData.stripe_subscription_id || '',
+        createdAt: membershipData.created_at
+      };
 
-      if (membershipError && membershipError.code !== 'PGRST116') {
-        console.error('Error loading membership:', membershipError);
-        // Don't fail completely if membership isn't found
-      }
-
-      if (membershipData) {
-        const customerMembership: CustomerMembership = {
-          id: membershipData.id,
-          tierId: membershipData.tier_id || '',
-          tierName: membershipData.membership_tiers?.name || 'Unknown Tier',
-          tierDescription: membershipData.membership_tiers?.description || '',
-          status: membershipData.status || 'inactive',
-          stripeSubscriptionId: membershipData.stripe_subscription_id || '',
-          createdAt: membershipData.created_at
-        };
-
-        setMembership(customerMembership);
-      }
+      setMembership(customerMembership);
 
     } catch (err: any) {
       console.error('Error loading customer data:', err);

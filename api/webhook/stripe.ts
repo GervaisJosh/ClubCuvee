@@ -176,16 +176,18 @@ async function handlePrivateInvitationCheckout(session: Stripe.Checkout.Session,
       console.error('Error updating invitation status:', updateInviteError);
     }
 
-    // Find the customer user (they should have registered during the flow)
-    const { data: customerProfile, error: profileError } = await supabase
-      .from('customer_profiles')
-      .select('id')
-      .eq('email', invitation.email)
-      .eq('business_id', businessId)
-      .single();
+    // Find the customer user by email from auth.users
+    const { data: authUsers, error: userError } = await supabase.auth.admin.listUsers();
+    
+    if (userError || !authUsers.users) {
+      console.error('Error finding customer user:', userError);
+      return;
+    }
 
-    if (profileError || !customerProfile) {
-      console.error('Error finding customer profile:', profileError);
+    const customerUser = authUsers.users.find(user => user.email === invitation.email);
+    
+    if (!customerUser) {
+      console.error('Customer user not found for email:', invitation.email);
       return;
     }
 
@@ -193,7 +195,7 @@ async function handlePrivateInvitationCheckout(session: Stripe.Checkout.Session,
     const { error: membershipError } = await supabase
       .from('customer_memberships')
       .insert({
-        customer_user_id: customerProfile.id,
+        customer_user_id: customerUser.id,
         business_id: businessId,
         tier_id: tierId,
         stripe_subscription_id: subscription.id,

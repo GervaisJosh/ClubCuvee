@@ -231,36 +231,39 @@ export interface Database {
           customer_user_id?: string | null
         }
       }
-      customer_profiles: {
+      users: {
         Row: {
           id: string
-          business_id: string
           email: string
+          password_hash: string
+          wine_tier: number | null
           first_name: string | null
           last_name: string | null
-          phone: string | null
+          preferences: Json | null
+          is_admin: boolean | null
           created_at: string
-          updated_at: string
         }
         Insert: {
-          id: string
-          business_id: string
+          id?: string
           email: string
+          password_hash: string
+          wine_tier?: number | null
           first_name?: string | null
           last_name?: string | null
-          phone?: string | null
+          preferences?: Json | null
+          is_admin?: boolean | null
           created_at?: string
-          updated_at?: string
         }
         Update: {
           id?: string
-          business_id?: string
           email?: string
+          password_hash?: string
+          wine_tier?: number | null
           first_name?: string | null
           last_name?: string | null
-          phone?: string | null
+          preferences?: Json | null
+          is_admin?: boolean | null
           created_at?: string
-          updated_at?: string
         }
       }
       restaurants: {
