@@ -1,6 +1,6 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { randomUUID } from 'crypto';
-import { supabaseAdmin } from './utils/supabaseAdmin';
+import { supabaseAdmin } from '../lib/supabaseAdmin';
 import { withErrorHandler, APIError } from './utils/error-handler';
 
 export default withErrorHandler(async (req: VercelRequest, res: VercelResponse): Promise<void> => {
