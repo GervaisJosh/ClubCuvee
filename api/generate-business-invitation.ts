@@ -107,37 +107,6 @@ export default withErrorHandler(async (req: VercelRequest, res: VercelResponse):
     throw new APIError(405, 'Method not allowed', 'METHOD_NOT_ALLOWED');
   }
 
-  // Get authorization header
-  const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    throw new APIError(401, 'Missing or invalid authorization header', 'UNAUTHORIZED');
-  }
-
-  const token = authHeader.split(' ')[1];
-  if (!token) {
-    throw new APIError(401, 'Invalid authorization token format', 'UNAUTHORIZED');
-  }
-
-  // Verify the user session
-  const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
-  
-  if (authError || !user) {
-    console.error('Auth error:', authError);
-    throw new APIError(401, 'Invalid authentication token', 'UNAUTHORIZED');
-  }
-
-  // Check if user is admin by querying the user profile
-  const { data: userProfile, error: profileError } = await supabaseAdmin
-    .from('Users')
-    .select('is_admin')
-    .eq('auth_id', user.id)
-    .single();
-
-  if (profileError || !userProfile || !userProfile.is_admin) {
-    console.error('Admin check failed:', { profileError, userProfile, userId: user.id });
-    throw new APIError(403, 'Only admin users can generate business invitations', 'FORBIDDEN');
-  }
-
   // Parse request body
   const { business_name, business_email, pricing_tier } = req.body;
 
