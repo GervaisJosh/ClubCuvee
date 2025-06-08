@@ -26,19 +26,7 @@ __export(generate_business_invitation_exports, {
 });
 module.exports = __toCommonJS(generate_business_invitation_exports);
 var import_crypto = require("crypto");
-
-// lib/supabaseAdmin.ts
 var import_supabase_js = require("@supabase/supabase-js");
-var supabaseAdmin = (0, import_supabase_js.createClient)(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY,
-  {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false
-    }
-  }
-);
 
 // api/utils/error-handler.ts
 var import_zod = require("zod");
@@ -114,6 +102,16 @@ var withErrorHandler = (handler) => {
 
 // api/generate-business-invitation.ts
 var generate_business_invitation_default = withErrorHandler(async (req, res) => {
+  const supabaseAdmin = (0, import_supabase_js.createClient)(
+    process.env.SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_ROLE_KEY,
+    {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    }
+  );
   if (req.method !== "POST") {
     throw new APIError(405, "Method not allowed", "METHOD_NOT_ALLOWED");
   }

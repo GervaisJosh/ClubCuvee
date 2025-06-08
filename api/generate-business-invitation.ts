@@ -1,9 +1,21 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { randomUUID } from 'crypto';
-import { supabaseAdmin } from '../lib/supabaseAdmin';
+import { createClient } from '@supabase/supabase-js';
 import { withErrorHandler, APIError } from './utils/error-handler';
 
 export default withErrorHandler(async (req: VercelRequest, res: VercelResponse): Promise<void> => {
+  // Create Supabase admin client directly in the API (no external dependencies)
+  const supabaseAdmin = createClient(
+    process.env.SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    }
+  );
+
   if (req.method !== 'POST') {
     throw new APIError(405, 'Method not allowed', 'METHOD_NOT_ALLOWED');
   }
