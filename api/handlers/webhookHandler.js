@@ -66,9 +66,6 @@ var supabaseAdmin = (0, import_supabase_js.createClient)(
   }
 );
 
-// api/handlers/webhookHandler.ts
-var import_zod2 = require("zod");
-
 // api/utils/errorHandler.ts
 var import_zod = require("zod");
 var AppError = class _AppError extends Error {
@@ -244,7 +241,7 @@ async function handleCheckoutCompleted(session) {
   }
 }
 async function handleSubscriptionUpdated(subscription) {
-  const { customer_id, restaurant_id } = subscription.metadata || {};
+  const { customer_id } = subscription.metadata || {};
   if (!customer_id) {
     const customerId = subscription.customer;
     try {
@@ -303,7 +300,7 @@ async function handleSubscriptionDeleted(subscription) {
   }
   await updateSubscriptionCancellation(customer_id, subscription);
 }
-async function updateSubscriptionCancellation(customerId, subscription) {
+async function updateSubscriptionCancellation(_customerId, subscription) {
   const canceledAt = subscription.canceled_at ? new Date(subscription.canceled_at * 1e3).toISOString() : (/* @__PURE__ */ new Date()).toISOString();
   const { error: updateError } = await supabaseAdmin.from("customers").update({
     subscription_status: "canceled",
@@ -360,11 +357,6 @@ async function handlePaymentFailed(invoice) {
     console.error("Error processing payment failed event:", error);
   }
 }
-var InvitationSchema = import_zod2.z.object({
-  email: import_zod2.z.string().email(),
-  restaurant_name: import_zod2.z.string().min(1)
-  // ... other fields
-});
 var webhookHandler_default = handleWebhook;
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {

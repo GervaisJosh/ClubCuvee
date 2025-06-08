@@ -19,12 +19,25 @@ var __copyProps = (to, from, except, desc) => {
 };
 var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 
-// api/_middleware.ts
-var middleware_exports = {};
-__export(middleware_exports, {
-  default: () => middleware_default
+// api/validate-business-invitation.ts
+var validate_business_invitation_exports = {};
+__export(validate_business_invitation_exports, {
+  default: () => validate_business_invitation_default
 });
-module.exports = __toCommonJS(middleware_exports);
+module.exports = __toCommonJS(validate_business_invitation_exports);
+
+// lib/supabaseAdmin.ts
+var import_supabase_js = require("@supabase/supabase-js");
+var supabaseAdmin = (0, import_supabase_js.createClient)(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY,
+  {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  }
+);
 
 // api/utils/error-handler.ts
 var import_zod = require("zod");
@@ -98,30 +111,53 @@ var withErrorHandler = (handler) => {
   };
 };
 
-// api/_middleware.ts
-var ALLOWED_METHODS = ["GET", "POST", "PUT", "DELETE", "OPTIONS"];
-var ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS?.split(",") || ["*"];
-var middleware_default = withErrorHandler(async (req, res) => {
-  const origin = req.headers.origin || "";
-  if (origin && (ALLOWED_ORIGINS.includes("*") || ALLOWED_ORIGINS.includes(origin))) {
-    res.setHeader("Access-Control-Allow-Origin", origin);
+// api/validate-business-invitation.ts
+var validate_business_invitation_default = withErrorHandler(async (req, res) => {
+  if (req.method !== "POST") {
+    throw new APIError(405, "Method not allowed", "METHOD_NOT_ALLOWED");
   }
-  res.setHeader("Access-Control-Allow-Methods", ALLOWED_METHODS.join(","));
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
-  res.setHeader("Access-Control-Max-Age", "86400");
-  if (req.method === "OPTIONS") {
-    res.status(204).end();
-    return;
+  const { token } = req.body;
+  if (!token) {
+    throw new APIError(400, "Token is required", "VALIDATION_ERROR");
   }
-  if (!ALLOWED_METHODS.includes(req.method)) {
-    res.status(405).json({
-      error: {
-        message: `Method ${req.method} not allowed`,
-        code: "METHOD_NOT_ALLOWED"
-      }
-    });
-    return;
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  if (!uuidRegex.test(token)) {
+    throw new APIError(400, "Invalid token format", "VALIDATION_ERROR");
   }
-  res.setHeader("Content-Type", "application/json");
+  const { data, error } = await supabaseAdmin.rpc("validate_business_invitation_token", {
+    p_token: token
+  });
+  if (error) {
+    console.error("Error validating business invitation token:", error);
+    throw new APIError(500, "Failed to validate invitation token", "DATABASE_ERROR");
+  }
+  if (!data || data.length === 0) {
+    throw new APIError(404, "Invalid or expired invitation token", "NOT_FOUND");
+  }
+  const tokenData = data[0];
+  if (!tokenData.is_valid) {
+    let reason = "Invalid invitation token";
+    if (tokenData.used) {
+      reason = "This invitation has already been used";
+    } else if (new Date(tokenData.expires_at) < /* @__PURE__ */ new Date()) {
+      reason = "This invitation has expired";
+    }
+    throw new APIError(400, reason, "VALIDATION_ERROR");
+  }
+  const { data: inviteDetails, error: detailsError } = await supabaseAdmin.from("business_invites").select("business_name, business_email, pricing_tier, expires_at").eq("token", token).single();
+  if (detailsError) {
+    console.error("Error fetching invitation details:", detailsError);
+    throw new APIError(500, "Failed to fetch invitation details", "DATABASE_ERROR");
+  }
+  res.status(200).json({
+    success: true,
+    data: {
+      is_valid: true,
+      business_name: inviteDetails.business_name,
+      business_email: inviteDetails.business_email,
+      pricing_tier: inviteDetails.pricing_tier,
+      expires_at: inviteDetails.expires_at
+    }
+  });
 });
-//# sourceMappingURL=_middleware.js.map
+//# sourceMappingURL=validate-business-invitation.js.map

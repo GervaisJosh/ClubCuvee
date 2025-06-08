@@ -19,12 +19,25 @@ var __copyProps = (to, from, except, desc) => {
 };
 var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 
-// api/_middleware.ts
-var middleware_exports = {};
-__export(middleware_exports, {
-  default: () => middleware_default
+// api/public/business-tiers.ts
+var business_tiers_exports = {};
+__export(business_tiers_exports, {
+  default: () => business_tiers_default
 });
-module.exports = __toCommonJS(middleware_exports);
+module.exports = __toCommonJS(business_tiers_exports);
+
+// lib/supabaseAdmin.ts
+var import_supabase_js = require("@supabase/supabase-js");
+var supabaseAdmin = (0, import_supabase_js.createClient)(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY,
+  {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  }
+);
 
 // api/utils/error-handler.ts
 var import_zod = require("zod");
@@ -98,30 +111,38 @@ var withErrorHandler = (handler) => {
   };
 };
 
-// api/_middleware.ts
-var ALLOWED_METHODS = ["GET", "POST", "PUT", "DELETE", "OPTIONS"];
-var ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS?.split(",") || ["*"];
-var middleware_default = withErrorHandler(async (req, res) => {
-  const origin = req.headers.origin || "";
-  if (origin && (ALLOWED_ORIGINS.includes("*") || ALLOWED_ORIGINS.includes(origin))) {
-    res.setHeader("Access-Control-Allow-Origin", origin);
+// api/public/business-tiers.ts
+var business_tiers_default = withErrorHandler(async (req, res) => {
+  if (req.method !== "GET") {
+    throw new APIError(405, "Method not allowed", "METHOD_NOT_ALLOWED");
   }
-  res.setHeader("Access-Control-Allow-Methods", ALLOWED_METHODS.join(","));
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
-  res.setHeader("Access-Control-Max-Age", "86400");
-  if (req.method === "OPTIONS") {
-    res.status(204).end();
-    return;
+  const business_id = req.query.business_id;
+  if (!business_id) {
+    throw new APIError(400, "business_id parameter is required", "MISSING_BUSINESS_ID");
   }
-  if (!ALLOWED_METHODS.includes(req.method)) {
-    res.status(405).json({
-      error: {
-        message: `Method ${req.method} not allowed`,
-        code: "METHOD_NOT_ALLOWED"
-      }
-    });
-    return;
+  const { data: business, error: businessError } = await supabaseAdmin.from("businesses").select("id, name, email").eq("id", business_id).single();
+  if (businessError || !business) {
+    throw new APIError(404, "Business not found", "BUSINESS_NOT_FOUND");
   }
-  res.setHeader("Content-Type", "application/json");
+  const { data: tiers, error: tiersError } = await supabaseAdmin.rpc("get_restaurant_membership_tiers", {
+    p_business_id: business_id
+  });
+  if (tiersError) {
+    console.error("Error fetching restaurant membership tiers:", tiersError);
+    throw new APIError(500, "Failed to fetch membership tiers", "FETCH_TIERS_FAILED");
+  }
+  const formattedTiers = (tiers || []).map((tier) => ({
+    ...tier,
+    price_display: `$${(tier.price_cents / 100).toFixed(2)}`,
+    price_per_interval: `$${(tier.price_cents / 100).toFixed(2)}/${tier.interval}`
+  }));
+  res.status(200).json({
+    success: true,
+    data: {
+      business,
+      tiers: formattedTiers,
+      has_tiers: formattedTiers.length > 0
+    }
+  });
 });
-//# sourceMappingURL=_middleware.js.map
+//# sourceMappingURL=business-tiers.js.map

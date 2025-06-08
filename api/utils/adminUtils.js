@@ -61,9 +61,9 @@ var setUserAdminStatus = async (userId, isAdmin) => {
     };
   }
 };
-var checkUserAdminStatus = async (userId) => {
+var checkUserAdminStatus = async (authId) => {
   try {
-    const { data, error } = await supabaseAdmin.from("users").select("is_admin").eq("local_id", userId).single();
+    const { data, error } = await supabaseAdmin.from("users").select("is_admin").eq("auth_id", authId).single();
     if (error) {
       return {
         success: false,

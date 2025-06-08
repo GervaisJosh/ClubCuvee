@@ -60,9 +60,9 @@ var setUserAdminStatus = async (userId, isAdmin) => {
     };
   }
 };
-var checkUserAdminStatus = async (userId) => {
+var checkUserAdminStatus = async (authId) => {
   try {
-    const { data, error } = await supabaseAdmin.from("users").select("is_admin").eq("local_id", userId).single();
+    const { data, error } = await supabaseAdmin.from("users").select("is_admin").eq("auth_id", authId).single();
     if (error) {
       return {
         success: false,
@@ -90,6 +90,9 @@ async function handler(req, res) {
     return res.status(401).json({ error: "Unauthorized: Missing authentication token" });
   }
   const token = authHeader.split(" ")[1];
+  if (!token) {
+    return res.status(401).json({ error: "Unauthorized: Invalid token format" });
+  }
   try {
     const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
     if (authError || !user) {

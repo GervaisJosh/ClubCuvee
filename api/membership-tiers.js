@@ -143,12 +143,8 @@ var handler = async (req, res) => {
       // Required: Monthly price
       description,
       // Optional: Tier description
-      restaurant_id,
+      restaurant_id
       // Required: ID of the parent restaurant
-      stripe_price_id,
-      // Optional: Existing Stripe price ID (if reconnecting)
-      stripe_product_id
-      // Optional: Existing Stripe product ID (if reconnecting)
     } = req.body;
     if (!name || !price || !restaurant_id) {
       return res.status(400).json({
@@ -286,7 +282,10 @@ var handler = async (req, res) => {
     return res.status(200).json(tier);
   } catch (error) {
     console.error("Error processing membership tier:", error);
-    return sendApiError(res, error, 500);
+    return res.status(500).json({
+      error: "Internal server error",
+      message: error.message
+    });
   }
 };
 var membership_tiers_default = withErrorHandling(handler);

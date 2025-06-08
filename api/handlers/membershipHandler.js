@@ -342,7 +342,7 @@ async function createInvitationLink(req, res) {
         details: validation.errors
       });
     }
-    const { data: existingUser, error: userError } = await supabaseAdmin.from("restaurants").select("id").eq("admin_email", email).maybeSingle();
+    const { data: existingUser } = await supabaseAdmin.from("restaurants").select("id").eq("admin_email", email).maybeSingle();
     if (existingUser) {
       return res.status(400).json({
         error: "This email is already associated with a restaurant account"
@@ -394,7 +394,7 @@ async function createInvitationLink(req, res) {
     });
   }
 }
-async function verifyStripeSetup(req, res) {
+async function verifyStripeSetup(_req, res) {
   try {
     const stripeSecretKey2 = process.env.STRIPE_SECRET_KEY;
     if (!stripeSecretKey2) {
@@ -432,6 +432,7 @@ async function verifyStripeSetup(req, res) {
       }
     });
   } catch (error) {
+    console.error("Error verifying Stripe setup:", error);
     const statusCode = getErrorStatusCodeForStripe(error);
     return sendApiError(res, error, statusCode, true);
   }

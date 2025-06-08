@@ -28314,8 +28314,9 @@ OpenAI.BatchesPage = BatchesPage;
 OpenAI.Uploads = Uploads;
 
 // src/utils/embeddingService.ts
+var import_meta2 = {};
 var openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
+  apiKey: import_meta2.env.VITE_OPENAI_API_KEY
   // Ensure this is set in your environment
 });
 async function getOpenAIEmbedding(text) {
@@ -29073,7 +29074,7 @@ async function handler(req) {
   console.time(`${batchTag} Total processing`);
   console.log(`${batchTag} Started at ${(/* @__PURE__ */ new Date()).toISOString()}`);
   try {
-    const baseUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : process.env.BASE_URL || "http://localhost:3000";
+    const baseUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "/";
     console.time(`${batchTag} Pinecone init`);
     const pc = new import_pinecone.Pinecone({
       apiKey: process.env.VITE_PINECONE_API_KEY

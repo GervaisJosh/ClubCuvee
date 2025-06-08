@@ -59,12 +59,12 @@ var supabase = (0, import_supabase_js.createClient)(
   }
 );
 var getRestaurantInvite = async (token) => {
-  const { data, error } = await supabase.from("restaurant_invites").select("*").eq("token", token).single();
+  const { data, error } = await supabase.from("restaurant_invitations").select("*").eq("token", token).single();
   if (error) {
-    throw new APIError(500, "Failed to fetch restaurant invite", "DATABASE_ERROR");
+    throw new APIError(500, "Failed to fetch restaurant invitation", "DATABASE_ERROR");
   }
   if (!data) {
-    throw new APIError(404, "Invite not found", "INVITE_NOT_FOUND");
+    throw new APIError(404, "Invitation not found", "INVITATION_NOT_FOUND");
   }
   return data;
 };
@@ -76,9 +76,9 @@ var createRestaurant = async (data) => {
   return restaurant;
 };
 var updateRestaurantInvite = async (token, data) => {
-  const { error } = await supabase.from("restaurant_invites").update(data).eq("token", token);
+  const { error } = await supabase.from("restaurant_invitations").update(data).eq("token", token);
   if (error) {
-    throw new APIError(500, "Failed to update restaurant invite", "DATABASE_ERROR");
+    throw new APIError(500, "Failed to update restaurant invitation", "DATABASE_ERROR");
   }
 };
 // Annotate the CommonJS export names for ESM import in node:

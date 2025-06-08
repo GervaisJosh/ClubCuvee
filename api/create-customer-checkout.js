@@ -29,13 +29,15 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
 ));
 var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 
-// api/create-checkout-session.ts
-var create_checkout_session_exports = {};
-__export(create_checkout_session_exports, {
-  default: () => create_checkout_session_default
+// api/create-customer-checkout.ts
+var create_customer_checkout_exports = {};
+__export(create_customer_checkout_exports, {
+  default: () => create_customer_checkout_default
 });
-module.exports = __toCommonJS(create_checkout_session_exports);
-var import_zod2 = require("zod");
+module.exports = __toCommonJS(create_customer_checkout_exports);
+
+// api/utils/stripe.ts
+var import_stripe = __toESM(require("stripe"), 1);
 
 // api/utils/error-handler.ts
 var import_zod = require("zod");
@@ -110,7 +112,6 @@ var withErrorHandler = (handler) => {
 };
 
 // api/utils/stripe.ts
-var import_stripe = __toESM(require("stripe"), 1);
 if (!process.env.STRIPE_SECRET_KEY) {
   throw new Error("STRIPE_SECRET_KEY is required");
 }
@@ -121,43 +122,10 @@ var stripe = new import_stripe.default(process.env.STRIPE_SECRET_KEY, {
   apiVersion: "2025-02-24.acacia",
   typescript: true
 });
-var createCheckoutSession = async (data) => {
-  try {
-    const session = await stripe.checkout.sessions.create({
-      mode: "subscription",
-      payment_method_types: ["card"],
-      line_items: [
-        {
-          price: process.env[`STRIPE_PRICE_ID_${data.membershipTier.toUpperCase()}`],
-          quantity: 1
-        }
-      ],
-      customer_email: data.email,
-      metadata: {
-        restaurantName: data.restaurantName,
-        membershipTier: data.membershipTier
-      },
-      success_url: data.successUrl,
-      cancel_url: data.cancelUrl
-    });
-    return session;
-  } catch (err) {
-    if (err instanceof import_stripe.default.errors.StripeError) {
-      throw new APIError(400, err.message, "STRIPE_ERROR");
-    }
-    throw err;
-  }
-};
 
-// api/utils/supabase.ts
+// lib/supabaseAdmin.ts
 var import_supabase_js = require("@supabase/supabase-js");
-if (!process.env.SUPABASE_URL) {
-  throw new Error("SUPABASE_URL is required");
-}
-if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
-  throw new Error("SUPABASE_SERVICE_ROLE_KEY is required");
-}
-var supabase = (0, import_supabase_js.createClient)(
+var supabaseAdmin = (0, import_supabase_js.createClient)(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY,
   {
@@ -167,46 +135,77 @@ var supabase = (0, import_supabase_js.createClient)(
     }
   }
 );
-var getRestaurantInvite = async (token) => {
-  const { data, error } = await supabase.from("restaurant_invitations").select("*").eq("token", token).single();
-  if (error) {
-    throw new APIError(500, "Failed to fetch restaurant invitation", "DATABASE_ERROR");
-  }
-  if (!data) {
-    throw new APIError(404, "Invitation not found", "INVITATION_NOT_FOUND");
-  }
-  return data;
-};
-var updateRestaurantInvite = async (token, data) => {
-  const { error } = await supabase.from("restaurant_invitations").update(data).eq("token", token);
-  if (error) {
-    throw new APIError(500, "Failed to update restaurant invitation", "DATABASE_ERROR");
-  }
-};
 
-// api/create-checkout-session.ts
-var createCheckoutSchema = import_zod2.z.object({
-  token: import_zod2.z.string().uuid(),
-  membershipTier: import_zod2.z.string()
-});
-var create_checkout_session_default = withErrorHandler(async (req, res) => {
+// api/create-customer-checkout.ts
+var create_customer_checkout_default = withErrorHandler(async (req, res) => {
   if (req.method !== "POST") {
     throw new APIError(405, "Method not allowed", "METHOD_NOT_ALLOWED");
   }
-  const { token, membershipTier } = createCheckoutSchema.parse(req.body);
-  const invite = await getRestaurantInvite(token);
-  const session = await createCheckoutSession({
-    restaurantName: invite.restaurant_name,
-    email: invite.email,
-    membershipTier,
-    successUrl: `${process.env.FRONTEND_URL}/onboarding/${token}/success?session_id={CHECKOUT_SESSION_ID}`,
-    cancelUrl: `${process.env.FRONTEND_URL}/onboarding/${token}`
-  });
-  await updateRestaurantInvite(token, {
-    status: "in_progress"
+  const body = req.body;
+  const { business_id, tier_id, customer_email, customer_name } = body;
+  if (!business_id || !tier_id || !customer_email) {
+    throw new APIError(400, "Missing required fields: business_id, tier_id, customer_email", "MISSING_FIELDS");
+  }
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(customer_email)) {
+    throw new APIError(400, "Invalid email format", "INVALID_EMAIL");
+  }
+  const { data: business, error: businessError } = await supabaseAdmin.from("businesses").select("id, name").eq("id", business_id).single();
+  if (businessError || !business) {
+    throw new APIError(404, "Business not found", "BUSINESS_NOT_FOUND");
+  }
+  const { data: tier, error: tierError } = await supabaseAdmin.from("restaurant_membership_tiers").select("*").eq("id", tier_id).eq("business_id", business_id).eq("is_ready", true).single();
+  if (tierError || !tier) {
+    throw new APIError(404, "Membership tier not found or not ready for signup", "TIER_NOT_FOUND");
+  }
+  if (!tier.stripe_price_id) {
+    throw new APIError(400, "Membership tier is not configured for online signup", "TIER_NOT_CONFIGURED");
+  }
+  const session = await stripe.checkout.sessions.create({
+    mode: "subscription",
+    payment_method_types: ["card"],
+    customer_email,
+    line_items: [
+      {
+        price: tier.stripe_price_id,
+        quantity: 1
+      }
+    ],
+    success_url: `${process.env.VITE_APP_URL || "http://localhost:3000"}/join/${business_id}/success?session_id={CHECKOUT_SESSION_ID}`,
+    cancel_url: `${process.env.VITE_APP_URL || "http://localhost:3000"}/join/${business_id}?canceled=true`,
+    metadata: {
+      business_id,
+      tier_id,
+      customer_email,
+      customer_name: customer_name || "",
+      type: "customer_membership"
+    },
+    subscription_data: {
+      metadata: {
+        business_id,
+        tier_id,
+        customer_email,
+        customer_name: customer_name || ""
+      }
+    },
+    allow_promotion_codes: true,
+    // Allow customers to use discount codes
+    billing_address_collection: "auto"
   });
   res.status(200).json({
-    url: session.url
+    success: true,
+    data: {
+      sessionId: session.id,
+      checkoutUrl: session.url,
+      business,
+      tier: {
+        id: tier.id,
+        name: tier.name,
+        description: tier.description,
+        price_cents: tier.price_cents,
+        interval: tier.interval
+      }
+    }
   });
 });
-//# sourceMappingURL=create-checkout-session.js.map
+//# sourceMappingURL=create-customer-checkout.js.map

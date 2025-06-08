@@ -19,12 +19,25 @@ var __copyProps = (to, from, except, desc) => {
 };
 var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 
-// api/_middleware.ts
-var middleware_exports = {};
-__export(middleware_exports, {
-  default: () => middleware_default
+// api/mark-business-invitation-used.ts
+var mark_business_invitation_used_exports = {};
+__export(mark_business_invitation_used_exports, {
+  default: () => mark_business_invitation_used_default
 });
-module.exports = __toCommonJS(middleware_exports);
+module.exports = __toCommonJS(mark_business_invitation_used_exports);
+
+// lib/supabaseAdmin.ts
+var import_supabase_js = require("@supabase/supabase-js");
+var supabaseAdmin = (0, import_supabase_js.createClient)(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY,
+  {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  }
+);
 
 // api/utils/error-handler.ts
 var import_zod = require("zod");
@@ -98,30 +111,34 @@ var withErrorHandler = (handler) => {
   };
 };
 
-// api/_middleware.ts
-var ALLOWED_METHODS = ["GET", "POST", "PUT", "DELETE", "OPTIONS"];
-var ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS?.split(",") || ["*"];
-var middleware_default = withErrorHandler(async (req, res) => {
-  const origin = req.headers.origin || "";
-  if (origin && (ALLOWED_ORIGINS.includes("*") || ALLOWED_ORIGINS.includes(origin))) {
-    res.setHeader("Access-Control-Allow-Origin", origin);
+// api/mark-business-invitation-used.ts
+var mark_business_invitation_used_default = withErrorHandler(async (req, res) => {
+  if (req.method !== "POST") {
+    throw new APIError(405, "Method not allowed", "METHOD_NOT_ALLOWED");
   }
-  res.setHeader("Access-Control-Allow-Methods", ALLOWED_METHODS.join(","));
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
-  res.setHeader("Access-Control-Max-Age", "86400");
-  if (req.method === "OPTIONS") {
-    res.status(204).end();
-    return;
+  const { token, business_id } = req.body;
+  if (!token) {
+    throw new APIError(400, "Token is required", "VALIDATION_ERROR");
   }
-  if (!ALLOWED_METHODS.includes(req.method)) {
-    res.status(405).json({
-      error: {
-        message: `Method ${req.method} not allowed`,
-        code: "METHOD_NOT_ALLOWED"
-      }
-    });
-    return;
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  if (!uuidRegex.test(token)) {
+    throw new APIError(400, "Invalid token format", "VALIDATION_ERROR");
   }
-  res.setHeader("Content-Type", "application/json");
+  const { data, error } = await supabaseAdmin.rpc("mark_business_invitation_used", {
+    p_token: token,
+    p_business_id: business_id || null
+  });
+  if (error) {
+    console.error("Error marking business invitation as used:", error);
+    throw new APIError(500, "Failed to mark invitation as used", "DATABASE_ERROR");
+  }
+  res.status(200).json({
+    success: data,
+    // The function returns boolean
+    data: {
+      marked_used: data,
+      token
+    }
+  });
 });
-//# sourceMappingURL=_middleware.js.map
+//# sourceMappingURL=mark-business-invitation-used.js.map

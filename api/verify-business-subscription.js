@@ -29,13 +29,15 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
 ));
 var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 
-// api/create-checkout-session.ts
-var create_checkout_session_exports = {};
-__export(create_checkout_session_exports, {
-  default: () => create_checkout_session_default
+// api/verify-business-subscription.ts
+var verify_business_subscription_exports = {};
+__export(verify_business_subscription_exports, {
+  default: () => verify_business_subscription_default
 });
-module.exports = __toCommonJS(create_checkout_session_exports);
-var import_zod2 = require("zod");
+module.exports = __toCommonJS(verify_business_subscription_exports);
+
+// api/utils/stripe.ts
+var import_stripe = __toESM(require("stripe"), 1);
 
 // api/utils/error-handler.ts
 var import_zod = require("zod");
@@ -110,7 +112,6 @@ var withErrorHandler = (handler) => {
 };
 
 // api/utils/stripe.ts
-var import_stripe = __toESM(require("stripe"), 1);
 if (!process.env.STRIPE_SECRET_KEY) {
   throw new Error("STRIPE_SECRET_KEY is required");
 }
@@ -121,43 +122,10 @@ var stripe = new import_stripe.default(process.env.STRIPE_SECRET_KEY, {
   apiVersion: "2025-02-24.acacia",
   typescript: true
 });
-var createCheckoutSession = async (data) => {
-  try {
-    const session = await stripe.checkout.sessions.create({
-      mode: "subscription",
-      payment_method_types: ["card"],
-      line_items: [
-        {
-          price: process.env[`STRIPE_PRICE_ID_${data.membershipTier.toUpperCase()}`],
-          quantity: 1
-        }
-      ],
-      customer_email: data.email,
-      metadata: {
-        restaurantName: data.restaurantName,
-        membershipTier: data.membershipTier
-      },
-      success_url: data.successUrl,
-      cancel_url: data.cancelUrl
-    });
-    return session;
-  } catch (err) {
-    if (err instanceof import_stripe.default.errors.StripeError) {
-      throw new APIError(400, err.message, "STRIPE_ERROR");
-    }
-    throw err;
-  }
-};
 
-// api/utils/supabase.ts
+// lib/supabaseAdmin.ts
 var import_supabase_js = require("@supabase/supabase-js");
-if (!process.env.SUPABASE_URL) {
-  throw new Error("SUPABASE_URL is required");
-}
-if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
-  throw new Error("SUPABASE_SERVICE_ROLE_KEY is required");
-}
-var supabase = (0, import_supabase_js.createClient)(
+var supabaseAdmin = (0, import_supabase_js.createClient)(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY,
   {
@@ -167,46 +135,64 @@ var supabase = (0, import_supabase_js.createClient)(
     }
   }
 );
-var getRestaurantInvite = async (token) => {
-  const { data, error } = await supabase.from("restaurant_invitations").select("*").eq("token", token).single();
-  if (error) {
-    throw new APIError(500, "Failed to fetch restaurant invitation", "DATABASE_ERROR");
-  }
-  if (!data) {
-    throw new APIError(404, "Invitation not found", "INVITATION_NOT_FOUND");
-  }
-  return data;
-};
-var updateRestaurantInvite = async (token, data) => {
-  const { error } = await supabase.from("restaurant_invitations").update(data).eq("token", token);
-  if (error) {
-    throw new APIError(500, "Failed to update restaurant invitation", "DATABASE_ERROR");
-  }
-};
 
-// api/create-checkout-session.ts
-var createCheckoutSchema = import_zod2.z.object({
-  token: import_zod2.z.string().uuid(),
-  membershipTier: import_zod2.z.string()
-});
-var create_checkout_session_default = withErrorHandler(async (req, res) => {
+// api/verify-business-subscription.ts
+var verify_business_subscription_default = withErrorHandler(async (req, res) => {
   if (req.method !== "POST") {
     throw new APIError(405, "Method not allowed", "METHOD_NOT_ALLOWED");
   }
-  const { token, membershipTier } = createCheckoutSchema.parse(req.body);
-  const invite = await getRestaurantInvite(token);
-  const session = await createCheckoutSession({
-    restaurantName: invite.restaurant_name,
-    email: invite.email,
-    membershipTier,
-    successUrl: `${process.env.FRONTEND_URL}/onboarding/${token}/success?session_id={CHECKOUT_SESSION_ID}`,
-    cancelUrl: `${process.env.FRONTEND_URL}/onboarding/${token}`
+  const { token, sessionId } = req.body;
+  if (!token || !sessionId) {
+    throw new APIError(400, "Token and session ID are required", "VALIDATION_ERROR");
+  }
+  const { data: tokenValidation, error: validationError } = await supabaseAdmin.rpc("validate_business_invitation_token", {
+    p_token: token
   });
-  await updateRestaurantInvite(token, {
-    status: "in_progress"
+  if (validationError || !tokenValidation || tokenValidation.length === 0) {
+    throw new APIError(400, "Invalid or expired business invitation token", "VALIDATION_ERROR");
+  }
+  const tokenData = tokenValidation[0];
+  if (!tokenData.is_valid) {
+    throw new APIError(400, "Business invitation token is not valid", "VALIDATION_ERROR");
+  }
+  const session = await stripe.checkout.sessions.retrieve(sessionId);
+  if (!session) {
+    throw new APIError(404, "Checkout session not found", "NOT_FOUND");
+  }
+  if (session.payment_status !== "paid" || session.metadata?.business_invitation_token !== token) {
+    throw new APIError(400, "Payment verification failed", "VALIDATION_ERROR");
+  }
+  let subscription = null;
+  if (session.subscription) {
+    subscription = await stripe.subscriptions.retrieve(session.subscription);
+  }
+  if (!subscription) {
+    throw new APIError(404, "Subscription not found", "NOT_FOUND");
+  }
+  const { error: tempDataError } = await supabaseAdmin.from("temp_business_setup").upsert({
+    invitation_token: token,
+    stripe_customer_id: session.customer,
+    stripe_subscription_id: subscription.id,
+    pricing_tier: session.metadata?.pricing_tier || "neighborhood_cellar",
+    setup_completed: false,
+    created_at: (/* @__PURE__ */ new Date()).toISOString()
+  }, {
+    onConflict: "invitation_token"
   });
+  if (tempDataError) {
+    console.error("Error storing temp business setup data:", tempDataError);
+  }
   res.status(200).json({
-    url: session.url
+    success: true,
+    data: {
+      subscription: {
+        id: subscription.id,
+        status: subscription.status,
+        currentPeriodEnd: subscription.current_period_end,
+        customerId: session.customer
+      },
+      pricing_tier: session.metadata?.pricing_tier || "neighborhood_cellar"
+    }
   });
 });
-//# sourceMappingURL=create-checkout-session.js.map
+//# sourceMappingURL=verify-business-subscription.js.map

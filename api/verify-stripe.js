@@ -47,10 +47,21 @@ var APIError = class extends Error {
     this.name = "APIError";
   }
 };
+var setCommonHeaders = (res) => {
+  res.setHeader("Content-Type", "application/json");
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+};
 var errorHandler = (error, req, res) => {
   console.error("API Error:", error);
+  setCommonHeaders(res);
+  if (req.method === "OPTIONS") {
+    return res.status(204).end();
+  }
   if (error instanceof APIError) {
     return res.status(error.statusCode).json({
+      status: "error",
       error: {
         message: error.message,
         code: error.code
@@ -59,6 +70,7 @@ var errorHandler = (error, req, res) => {
   }
   if (error instanceof import_zod.ZodError) {
     return res.status(400).json({
+      status: "error",
       error: {
         message: "Validation error",
         code: "VALIDATION_ERROR",
@@ -68,6 +80,7 @@ var errorHandler = (error, req, res) => {
   }
   if (error instanceof Error && error.name === "StripeError") {
     return res.status(400).json({
+      status: "error",
       error: {
         message: error.message,
         code: "STRIPE_ERROR"
@@ -75,6 +88,7 @@ var errorHandler = (error, req, res) => {
     });
   }
   return res.status(500).json({
+    status: "error",
     error: {
       message: "Internal server error",
       code: "INTERNAL_ERROR"
@@ -84,6 +98,10 @@ var errorHandler = (error, req, res) => {
 var withErrorHandler = (handler) => {
   return async (req, res) => {
     try {
+      setCommonHeaders(res);
+      if (req.method === "OPTIONS") {
+        return res.status(204).end();
+      }
       await handler(req, res);
     } catch (error) {
       errorHandler(error, req, res);
@@ -133,12 +151,12 @@ var supabase = (0, import_supabase_js.createClient)(
   }
 );
 var getRestaurantInvite = async (token) => {
-  const { data, error } = await supabase.from("restaurant_invites").select("*").eq("token", token).single();
+  const { data, error } = await supabase.from("restaurant_invitations").select("*").eq("token", token).single();
   if (error) {
-    throw new APIError(500, "Failed to fetch restaurant invite", "DATABASE_ERROR");
+    throw new APIError(500, "Failed to fetch restaurant invitation", "DATABASE_ERROR");
   }
   if (!data) {
-    throw new APIError(404, "Invite not found", "INVITE_NOT_FOUND");
+    throw new APIError(404, "Invitation not found", "INVITATION_NOT_FOUND");
   }
   return data;
 };
@@ -149,22 +167,51 @@ var verifyStripeSchema = import_zod2.z.object({
   sessionId: import_zod2.z.string()
 });
 var verify_stripe_default = withErrorHandler(async (req, res) => {
-  if (req.method !== "POST") {
-    throw new APIError(405, "Method not allowed", "METHOD_NOT_ALLOWED");
+  if (req.method === "OPTIONS") {
+    res.status(204).end();
+    return;
   }
-  const { token, sessionId } = verifyStripeSchema.parse(req.body);
-  await getRestaurantInvite(token);
-  const subscription = await getSubscription(sessionId);
-  if (subscription.status !== "active") {
-    throw new APIError(400, "Subscription is not active", "INVALID_SUBSCRIPTION");
-  }
-  res.status(200).json({
-    status: "success",
-    subscription: {
-      id: subscription.id,
-      status: subscription.status,
-      currentPeriodEnd: subscription.current_period_end
+  if (req.method === "GET") {
+    try {
+      const isConfigured = !!process.env.STRIPE_SECRET_KEY;
+      res.status(200).json({
+        status: "success",
+        data: {
+          isConfigured,
+          message: isConfigured ? "Stripe is configured" : "Stripe is not configured"
+        }
+      });
+      return;
+    } catch (error) {
+      throw new APIError(500, "Failed to verify Stripe configuration", "STRIPE_ERROR");
     }
-  });
+  }
+  if (req.method === "POST") {
+    try {
+      const { token, sessionId } = verifyStripeSchema.parse(req.body);
+      await getRestaurantInvite(token);
+      const subscription = await getSubscription(sessionId);
+      if (subscription.status !== "active") {
+        throw new APIError(400, "Subscription is not active", "INVALID_SUBSCRIPTION");
+      }
+      res.status(200).json({
+        status: "success",
+        data: {
+          subscription: {
+            id: subscription.id,
+            status: subscription.status,
+            currentPeriodEnd: subscription.current_period_end
+          }
+        }
+      });
+      return;
+    } catch (error) {
+      if (error instanceof import_zod2.z.ZodError) {
+        throw new APIError(400, "Invalid request data", "VALIDATION_ERROR");
+      }
+      throw error;
+    }
+  }
+  throw new APIError(405, "Method not allowed", "METHOD_NOT_ALLOWED");
 });
 //# sourceMappingURL=verify-stripe.js.map

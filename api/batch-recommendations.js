@@ -12834,7 +12834,6 @@ async function handler(request) {
   try {
     console.time(`[PINECONE] Client init`);
     const pc = new import_pinecone.Pinecone({ apiKey: process.env.VITE_PINECONE_API_KEY });
-    const wineIndex = pc.Index("wine-knowledgebase", process.env.VITE_PINECONE_HOST);
     console.timeEnd(`[PINECONE] Client init`);
     console.time(`[SUPABASE] Batch cleanup`);
     const { error: deleteError } = await supabase.from("recommendation_batches").delete().neq("batch_id", -1);
