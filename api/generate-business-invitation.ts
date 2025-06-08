@@ -1,7 +1,94 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { randomUUID } from 'crypto';
 import { createClient } from '@supabase/supabase-js';
-import { withErrorHandler, APIError } from './utils/error-handler';
+import { ZodError } from 'zod';
+
+// Inline error handling (no external dependencies)
+class APIError extends Error {
+  constructor(
+    public statusCode: number,
+    message: string,
+    public code?: string
+  ) {
+    super(message);
+    this.name = 'APIError';
+  }
+}
+
+const setCommonHeaders = (res: VercelResponse) => {
+  res.setHeader('Content-Type', 'application/json');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+};
+
+const errorHandler = (
+  error: unknown,
+  req: VercelRequest,
+  res: VercelResponse
+) => {
+  console.error('API Error:', error);
+  setCommonHeaders(res);
+
+  if (req.method === 'OPTIONS') {
+    return res.status(204).end();
+  }
+
+  if (error instanceof APIError) {
+    return res.status(error.statusCode).json({
+      status: 'error',
+      error: {
+        message: error.message,
+        code: error.code,
+      },
+    });
+  }
+
+  if (error instanceof ZodError) {
+    return res.status(400).json({
+      status: 'error',
+      error: {
+        message: 'Validation error',
+        code: 'VALIDATION_ERROR',
+        details: error.errors,
+      },
+    });
+  }
+
+  if (error instanceof Error && error.name === 'StripeError') {
+    return res.status(400).json({
+      status: 'error',
+      error: {
+        message: error.message,
+        code: 'STRIPE_ERROR',
+      },
+    });
+  }
+
+  return res.status(500).json({
+    status: 'error',
+    error: {
+      message: 'Internal server error',
+      code: 'INTERNAL_ERROR',
+    },
+  });
+};
+
+const withErrorHandler = (
+  handler: (req: VercelRequest, res: VercelResponse) => Promise<void>
+) => {
+  return async (req: VercelRequest, res: VercelResponse) => {
+    try {
+      setCommonHeaders(res);
+      if (req.method === 'OPTIONS') {
+        return res.status(204).end();
+      }
+      await handler(req, res);
+    } catch (error) {
+      errorHandler(error, req, res);
+    }
+  };
+};
 
 export default withErrorHandler(async (req: VercelRequest, res: VercelResponse): Promise<void> => {
   // Create Supabase admin client directly in the API (no external dependencies)

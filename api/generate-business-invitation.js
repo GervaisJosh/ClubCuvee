@@ -27,8 +27,6 @@ __export(generate_business_invitation_exports, {
 module.exports = __toCommonJS(generate_business_invitation_exports);
 var import_crypto = require("crypto");
 var import_supabase_js = require("@supabase/supabase-js");
-
-// api/utils/error-handler.ts
 var import_zod = require("zod");
 var APIError = class extends Error {
   constructor(statusCode, message, code) {
@@ -99,8 +97,6 @@ var withErrorHandler = (handler) => {
     }
   };
 };
-
-// api/generate-business-invitation.ts
 var generate_business_invitation_default = withErrorHandler(async (req, res) => {
   const supabaseAdmin = (0, import_supabase_js.createClient)(
     process.env.SUPABASE_URL,
