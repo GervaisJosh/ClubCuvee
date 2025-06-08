@@ -98,10 +98,10 @@ var validate_business_invitation_default = withErrorHandler(async (req, res) => 
       }
     }
   );
-  if (req.method !== "GET") {
+  if (!["GET", "POST"].includes(req.method)) {
     throw new APIError(405, "Method not allowed", "METHOD_NOT_ALLOWED");
   }
-  const token = req.query.token;
+  const token = req.method === "GET" ? req.query.token : req.body?.token;
   if (!token) {
     throw new APIError(400, "Token is required", "VALIDATION_ERROR");
   }
@@ -116,13 +116,23 @@ var validate_business_invitation_default = withErrorHandler(async (req, res) => 
   if (inviteDetails.status === "completed") {
     throw new APIError(400, "This invitation has already been used", "VALIDATION_ERROR");
   }
+  let pricing_tier_id = null;
+  if (inviteDetails.tier && inviteDetails.tier !== "standard") {
+    const { data: tierData, error: tierError } = await supabaseAdmin.from("business_pricing_tiers").select("id").eq("name", inviteDetails.tier).eq("is_active", true).single();
+    if (!tierError && tierData) {
+      pricing_tier_id = tierData.id;
+    }
+  }
   res.status(200).json({
     success: true,
     data: {
       is_valid: true,
-      restaurant_name: inviteDetails.restaurant_name,
-      email: inviteDetails.email,
-      tier: inviteDetails.tier,
+      business_name: inviteDetails.restaurant_name,
+      // Frontend expects business_name
+      business_email: inviteDetails.email,
+      // Frontend expects business_email  
+      pricing_tier: pricing_tier_id,
+      // Frontend expects UUID, not tier name
       expires_at: inviteDetails.expires_at
     }
   });

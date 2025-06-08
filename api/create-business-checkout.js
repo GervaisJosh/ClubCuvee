@@ -35,11 +35,8 @@ __export(create_business_checkout_exports, {
   default: () => create_business_checkout_default
 });
 module.exports = __toCommonJS(create_business_checkout_exports);
-
-// api/utils/stripe.ts
+var import_supabase_js = require("@supabase/supabase-js");
 var import_stripe = __toESM(require("stripe"), 1);
-
-// api/utils/error-handler.ts
 var import_zod = require("zod");
 var APIError = class extends Error {
   constructor(statusCode, message, code) {
@@ -80,15 +77,6 @@ var errorHandler = (error, req, res) => {
       }
     });
   }
-  if (error instanceof Error && error.name === "StripeError") {
-    return res.status(400).json({
-      status: "error",
-      error: {
-        message: error.message,
-        code: "STRIPE_ERROR"
-      }
-    });
-  }
   return res.status(500).json({
     status: "error",
     error: {
@@ -110,103 +98,85 @@ var withErrorHandler = (handler) => {
     }
   };
 };
-
-// api/utils/stripe.ts
-if (!process.env.STRIPE_SECRET_KEY) {
-  throw new Error("STRIPE_SECRET_KEY is required");
-}
-if (!process.env.STRIPE_WEBHOOK_SECRET) {
-  throw new Error("STRIPE_WEBHOOK_SECRET is required");
-}
-var stripe = new import_stripe.default(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: "2025-02-24.acacia",
-  typescript: true
-});
-
-// lib/supabaseAdmin.ts
-var import_supabase_js = require("@supabase/supabase-js");
-var supabaseAdmin = (0, import_supabase_js.createClient)(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY,
-  {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false
-    }
-  }
-);
-
-// api/create-business-checkout.ts
 var create_business_checkout_default = withErrorHandler(async (req, res) => {
+  const supabaseAdmin = (0, import_supabase_js.createClient)(
+    process.env.SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_ROLE_KEY,
+    {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    }
+  );
+  const stripe = new import_stripe.default(process.env.STRIPE_SECRET_KEY, {
+    apiVersion: "2025-02-24.acacia",
+    typescript: true
+  });
   if (req.method !== "POST") {
     throw new APIError(405, "Method not allowed", "METHOD_NOT_ALLOWED");
   }
   const { token, tier_id } = req.body;
-  if (!token) {
-    throw new APIError(400, "Token is required", "VALIDATION_ERROR");
+  if (!token || !tier_id) {
+    throw new APIError(400, "Token and tier_id are required", "VALIDATION_ERROR");
   }
-  if (!tier_id) {
-    throw new APIError(400, "Pricing tier ID is required", "VALIDATION_ERROR");
+  const { data: invite, error: inviteError } = await supabaseAdmin.from("restaurant_invitations").select("restaurant_name, email, tier, expires_at, status").eq("token", token).single();
+  if (inviteError || !invite) {
+    console.error("Error fetching invitation details:", inviteError);
+    throw new APIError(404, "Invalid or expired invitation token", "NOT_FOUND");
   }
-  const { data: tokenValidation, error: validationError } = await supabaseAdmin.rpc("validate_business_invitation_token", {
-    p_token: token
-  });
-  if (validationError || !tokenValidation || tokenValidation.length === 0) {
-    throw new APIError(400, "Invalid or expired business invitation token", "VALIDATION_ERROR");
+  if (new Date(invite.expires_at) < /* @__PURE__ */ new Date()) {
+    throw new APIError(400, "This invitation has expired", "VALIDATION_ERROR");
   }
-  const tokenData = tokenValidation[0];
-  if (!tokenData.is_valid) {
-    throw new APIError(400, "Business invitation token is not valid", "VALIDATION_ERROR");
+  if (invite.status === "completed") {
+    throw new APIError(400, "This invitation has already been used", "VALIDATION_ERROR");
   }
-  const { data: tierData, error: tierError } = await supabaseAdmin.rpc("get_pricing_tier_details", {
-    p_tier_id: tier_id
-  });
-  if (tierError || !tierData || tierData.length === 0) {
+  const { data: pricingTier, error: tierError } = await supabaseAdmin.from("business_pricing_tiers").select("id, name, stripe_price_id, monthly_price_cents, is_custom").eq("id", tier_id).eq("is_active", true).single();
+  if (tierError || !pricingTier) {
+    console.error("Error fetching pricing tier:", tierError);
     throw new APIError(400, "Invalid pricing tier selected", "VALIDATION_ERROR");
   }
-  const selectedTier = tierData[0];
-  if (selectedTier.tier_key === "custom") {
-    throw new APIError(400, "Custom tier requires manual setup. Please contact us directly.", "VALIDATION_ERROR");
+  if (pricingTier.is_custom || !pricingTier.stripe_price_id) {
+    throw new APIError(400, "Custom tiers require manual setup - please contact support", "VALIDATION_ERROR");
   }
-  if (!selectedTier.stripe_price_id) {
-    throw new APIError(400, "Pricing tier is not configured for online checkout", "VALIDATION_ERROR");
-  }
-  const protocol = req.headers["x-forwarded-proto"] || "http";
-  const host = req.headers.host;
-  const baseUrl = `${protocol}://${host}`;
-  const session = await stripe.checkout.sessions.create({
-    mode: "subscription",
-    payment_method_types: ["card"],
-    line_items: [
-      {
-        price: selectedTier.stripe_price_id,
-        quantity: 1
-      }
-    ],
-    success_url: `${baseUrl}/onboard/${token}?success=true&session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: `${baseUrl}/onboard/${token}?canceled=true`,
-    metadata: {
-      business_invitation_token: token,
-      pricing_tier_id: tier_id,
-      pricing_tier_key: selectedTier.tier_key,
-      type: "business_onboarding"
-    },
-    subscription_data: {
+  const baseUrl = process.env.BASE_URL || process.env.NEXT_PUBLIC_BASE_URL || "https://club-cuvee.com";
+  try {
+    const session = await stripe.checkout.sessions.create({
+      mode: "subscription",
+      payment_method_types: ["card"],
+      line_items: [
+        {
+          price: pricingTier.stripe_price_id,
+          quantity: 1
+        }
+      ],
+      customer_email: invite.email,
       metadata: {
-        business_invitation_token: token,
-        pricing_tier_id: tier_id,
-        pricing_tier_key: selectedTier.tier_key
+        restaurantName: invite.restaurant_name,
+        membershipTier: pricingTier.name,
+        invitationToken: token,
+        pricingTierId: pricingTier.id
+      },
+      success_url: `${baseUrl}/onboard/${token}?success=true&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${baseUrl}/onboard/${token}?canceled=true`
+    });
+    await supabaseAdmin.from("restaurant_invitations").update({
+      status: "accepted",
+      payment_session_id: session.id,
+      updated_at: (/* @__PURE__ */ new Date()).toISOString()
+    }).eq("token", token);
+    res.status(200).json({
+      success: true,
+      data: {
+        sessionId: session.id,
+        checkoutUrl: session.url
       }
+    });
+  } catch (err) {
+    if (err instanceof import_stripe.default.errors.StripeError) {
+      throw new APIError(400, err.message, "STRIPE_ERROR");
     }
-  });
-  res.status(200).json({
-    success: true,
-    data: {
-      sessionId: session.id,
-      checkoutUrl: session.url,
-      tokenData,
-      selectedTier
-    }
-  });
+    throw err;
+  }
 });
 //# sourceMappingURL=create-business-checkout.js.map
