@@ -168,9 +168,9 @@ export default withErrorHandler(async (req: VercelRequest, res: VercelResponse):
   }
 
   const invitationData = data;
-  const protocol = req.headers['x-forwarded-proto'] || 'http';
-  const host = req.headers.host;
-  const fullInvitationUrl = `${protocol}://${host}/onboarding/${invitationData.token}`;
+  // Use production domain for invitation URLs
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.VERCEL_URL || 'https://club-cuvee.com';
+  const fullInvitationUrl = `${baseUrl}/onboarding/${invitationData.token}`;
 
   res.status(200).json({
     success: true,

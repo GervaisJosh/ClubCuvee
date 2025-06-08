@@ -1,73 +1,137 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
-import { supabaseAdmin } from '../lib/supabaseAdmin';
-import { withErrorHandler, APIError } from './utils/error-handler';
+import { createClient } from '@supabase/supabase-js';
+import { ZodError } from 'zod';
+
+// Inline error handling and supabase client (no external dependencies)
+class APIError extends Error {
+  constructor(
+    public statusCode: number,
+    message: string,
+    public code?: string
+  ) {
+    super(message);
+    this.name = 'APIError';
+  }
+}
+
+const setCommonHeaders = (res: VercelResponse) => {
+  res.setHeader('Content-Type', 'application/json');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+};
+
+const errorHandler = (
+  error: unknown,
+  req: VercelRequest,
+  res: VercelResponse
+) => {
+  console.error('API Error:', error);
+  setCommonHeaders(res);
+
+  if (req.method === 'OPTIONS') {
+    return res.status(204).end();
+  }
+
+  if (error instanceof APIError) {
+    return res.status(error.statusCode).json({
+      status: 'error',
+      error: {
+        message: error.message,
+        code: error.code,
+      },
+    });
+  }
+
+  if (error instanceof ZodError) {
+    return res.status(400).json({
+      status: 'error',
+      error: {
+        message: 'Validation error',
+        code: 'VALIDATION_ERROR',
+        details: error.errors,
+      },
+    });
+  }
+
+  return res.status(500).json({
+    status: 'error',
+    error: {
+      message: 'Internal server error',
+      code: 'INTERNAL_ERROR',
+    },
+  });
+};
+
+const withErrorHandler = (
+  handler: (req: VercelRequest, res: VercelResponse) => Promise<void>
+) => {
+  return async (req: VercelRequest, res: VercelResponse) => {
+    try {
+      setCommonHeaders(res);
+      if (req.method === 'OPTIONS') {
+        return res.status(204).end();
+      }
+      await handler(req, res);
+    } catch (error) {
+      errorHandler(error, req, res);
+    }
+  };
+};
 
 export default withErrorHandler(async (req: VercelRequest, res: VercelResponse): Promise<void> => {
-  if (req.method !== 'POST') {
+  // Create Supabase admin client directly in the API (no external dependencies)
+  const supabaseAdmin = createClient(
+    process.env.SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    }
+  );
+
+  if (req.method !== 'GET') {
     throw new APIError(405, 'Method not allowed', 'METHOD_NOT_ALLOWED');
   }
 
-  // Parse request body
-  const { token } = req.body;
+  // Get token from query params (for GET requests from onboarding page)
+  const token = req.query.token as string;
 
   if (!token) {
     throw new APIError(400, 'Token is required', 'VALIDATION_ERROR');
   }
 
-  // Validate token format (should be UUID)
-  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-  if (!uuidRegex.test(token)) {
-    throw new APIError(400, 'Invalid token format', 'VALIDATION_ERROR');
-  }
-
-  // Call the database function to validate business invitation token
-  const { data, error } = await supabaseAdmin.rpc('validate_business_invitation_token', {
-    p_token: token
-  });
-
-  if (error) {
-    console.error('Error validating business invitation token:', error);
-    throw new APIError(500, 'Failed to validate invitation token', 'DATABASE_ERROR');
-  }
-
-  if (!data || data.length === 0) {
-    throw new APIError(404, 'Invalid or expired invitation token', 'NOT_FOUND');
-  }
-
-  const tokenData = data[0];
-
-  // Check if token is valid
-  if (!tokenData.is_valid) {
-    let reason = 'Invalid invitation token';
-    
-    if (tokenData.used) {
-      reason = 'This invitation has already been used';
-    } else if (new Date(tokenData.expires_at) < new Date()) {
-      reason = 'This invitation has expired';
-    }
-
-    throw new APIError(400, reason, 'VALIDATION_ERROR');
-  }
-
-  // Get additional invitation details
+  // Query restaurant_invitations table directly (the correct table)
   const { data: inviteDetails, error: detailsError } = await supabaseAdmin
-    .from('business_invites')
-    .select('business_name, business_email, pricing_tier, expires_at')
+    .from('restaurant_invitations')
+    .select('restaurant_name, email, tier, expires_at, status')
     .eq('token', token)
     .single();
 
-  if (detailsError) {
+  if (detailsError || !inviteDetails) {
     console.error('Error fetching invitation details:', detailsError);
-    throw new APIError(500, 'Failed to fetch invitation details', 'DATABASE_ERROR');
+    throw new APIError(404, 'Invalid or expired invitation token', 'NOT_FOUND');
+  }
+
+  // Check if token is expired
+  if (new Date(inviteDetails.expires_at) < new Date()) {
+    throw new APIError(400, 'This invitation has expired', 'VALIDATION_ERROR');
+  }
+
+  // Check if token is already used
+  if (inviteDetails.status === 'completed') {
+    throw new APIError(400, 'This invitation has already been used', 'VALIDATION_ERROR');
   }
 
   res.status(200).json({
     success: true,
     data: {
       is_valid: true,
-      business_name: inviteDetails.business_name,
-      business_email: inviteDetails.business_email,
-      pricing_tier: inviteDetails.pricing_tier,
+      restaurant_name: inviteDetails.restaurant_name,
+      email: inviteDetails.email,
+      tier: inviteDetails.tier,
       expires_at: inviteDetails.expires_at
     }
   });

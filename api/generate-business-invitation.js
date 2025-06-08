@@ -147,9 +147,8 @@ var generate_business_invitation_default = withErrorHandler(async (req, res) => 
     throw new APIError(500, "Failed to generate invitation token", "DATABASE_ERROR");
   }
   const invitationData = data;
-  const protocol = req.headers["x-forwarded-proto"] || "http";
-  const host = req.headers.host;
-  const fullInvitationUrl = `${protocol}://${host}/onboarding/${invitationData.token}`;
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.VERCEL_URL || "https://club-cuvee.com";
+  const fullInvitationUrl = `${baseUrl}/onboarding/${invitationData.token}`;
   res.status(200).json({
     success: true,
     data: {

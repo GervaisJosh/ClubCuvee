@@ -35,9 +35,8 @@ __export(create_checkout_session_exports, {
   default: () => create_checkout_session_default
 });
 module.exports = __toCommonJS(create_checkout_session_exports);
-var import_zod2 = require("zod");
-
-// api/utils/error-handler.ts
+var import_supabase_js = require("@supabase/supabase-js");
+var import_stripe = __toESM(require("stripe"), 1);
 var import_zod = require("zod");
 var APIError = class extends Error {
   constructor(statusCode, message, code) {
@@ -78,15 +77,6 @@ var errorHandler = (error, req, res) => {
       }
     });
   }
-  if (error instanceof Error && error.name === "StripeError") {
-    return res.status(400).json({
-      status: "error",
-      error: {
-        message: error.message,
-        code: "STRIPE_ERROR"
-      }
-    });
-  }
   return res.status(500).json({
     status: "error",
     error: {
@@ -108,105 +98,91 @@ var withErrorHandler = (handler) => {
     }
   };
 };
-
-// api/utils/stripe.ts
-var import_stripe = __toESM(require("stripe"), 1);
-if (!process.env.STRIPE_SECRET_KEY) {
-  throw new Error("STRIPE_SECRET_KEY is required");
-}
-if (!process.env.STRIPE_WEBHOOK_SECRET) {
-  throw new Error("STRIPE_WEBHOOK_SECRET is required");
-}
-var stripe = new import_stripe.default(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: "2025-02-24.acacia",
-  typescript: true
-});
-var createCheckoutSession = async (data) => {
+var TIER_MAPPING = {
+  "basic": "Neighborhood Cellar",
+  "premium": "Neighborhood Cellar",
+  // Map both basic and premium to Neighborhood Cellar for now
+  "enterprise": "World Class Club"
+};
+var create_checkout_session_default = withErrorHandler(async (req, res) => {
+  const supabaseAdmin = (0, import_supabase_js.createClient)(
+    process.env.SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_ROLE_KEY,
+    {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    }
+  );
+  const stripe = new import_stripe.default(process.env.STRIPE_SECRET_KEY, {
+    apiVersion: "2025-02-24.acacia",
+    typescript: true
+  });
+  if (req.method !== "POST") {
+    throw new APIError(405, "Method not allowed", "METHOD_NOT_ALLOWED");
+  }
+  const { token, membershipTier } = req.body;
+  if (!token || !membershipTier) {
+    throw new APIError(400, "Token and membershipTier are required", "VALIDATION_ERROR");
+  }
+  const { data: invite, error: inviteError } = await supabaseAdmin.from("restaurant_invitations").select("restaurant_name, email, tier, expires_at, status").eq("token", token).single();
+  if (inviteError || !invite) {
+    console.error("Error fetching invitation details:", inviteError);
+    throw new APIError(404, "Invalid or expired invitation token", "NOT_FOUND");
+  }
+  if (new Date(invite.expires_at) < /* @__PURE__ */ new Date()) {
+    throw new APIError(400, "This invitation has expired", "VALIDATION_ERROR");
+  }
+  if (invite.status === "completed") {
+    throw new APIError(400, "This invitation has already been used", "VALIDATION_ERROR");
+  }
+  const dbTierName = TIER_MAPPING[membershipTier];
+  if (!dbTierName) {
+    throw new APIError(400, "Invalid membership tier", "VALIDATION_ERROR");
+  }
+  const { data: pricingTier, error: tierError } = await supabaseAdmin.from("business_pricing_tiers").select("id, name, stripe_price_id, monthly_price_cents, is_custom").eq("name", dbTierName).eq("is_active", true).single();
+  if (tierError || !pricingTier) {
+    console.error("Error fetching pricing tier:", tierError);
+    throw new APIError(400, "Invalid pricing tier selected", "VALIDATION_ERROR");
+  }
+  if (pricingTier.is_custom || !pricingTier.stripe_price_id) {
+    throw new APIError(400, "Custom tiers require manual setup - please contact support", "VALIDATION_ERROR");
+  }
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.VERCEL_URL || "https://club-cuvee.com";
   try {
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
       payment_method_types: ["card"],
       line_items: [
         {
-          price: process.env[`STRIPE_PRICE_ID_${data.membershipTier.toUpperCase()}`],
+          price: pricingTier.stripe_price_id,
           quantity: 1
         }
       ],
-      customer_email: data.email,
+      customer_email: invite.email,
       metadata: {
-        restaurantName: data.restaurantName,
-        membershipTier: data.membershipTier
+        restaurantName: invite.restaurant_name,
+        membershipTier: dbTierName,
+        invitationToken: token,
+        pricingTierId: pricingTier.id
       },
-      success_url: data.successUrl,
-      cancel_url: data.cancelUrl
+      success_url: `${baseUrl}/onboarding/${token}/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${baseUrl}/onboarding/${token}`
     });
-    return session;
+    await supabaseAdmin.from("restaurant_invitations").update({
+      status: "accepted",
+      payment_session_id: session.id,
+      updated_at: (/* @__PURE__ */ new Date()).toISOString()
+    }).eq("token", token);
+    res.status(200).json({
+      url: session.url
+    });
   } catch (err) {
     if (err instanceof import_stripe.default.errors.StripeError) {
       throw new APIError(400, err.message, "STRIPE_ERROR");
     }
     throw err;
   }
-};
-
-// api/utils/supabase.ts
-var import_supabase_js = require("@supabase/supabase-js");
-if (!process.env.SUPABASE_URL) {
-  throw new Error("SUPABASE_URL is required");
-}
-if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
-  throw new Error("SUPABASE_SERVICE_ROLE_KEY is required");
-}
-var supabase = (0, import_supabase_js.createClient)(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY,
-  {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false
-    }
-  }
-);
-var getRestaurantInvite = async (token) => {
-  const { data, error } = await supabase.from("restaurant_invitations").select("*").eq("token", token).single();
-  if (error) {
-    throw new APIError(500, "Failed to fetch restaurant invitation", "DATABASE_ERROR");
-  }
-  if (!data) {
-    throw new APIError(404, "Invitation not found", "INVITATION_NOT_FOUND");
-  }
-  return data;
-};
-var updateRestaurantInvite = async (token, data) => {
-  const { error } = await supabase.from("restaurant_invitations").update(data).eq("token", token);
-  if (error) {
-    throw new APIError(500, "Failed to update restaurant invitation", "DATABASE_ERROR");
-  }
-};
-
-// api/create-checkout-session.ts
-var createCheckoutSchema = import_zod2.z.object({
-  token: import_zod2.z.string().uuid(),
-  membershipTier: import_zod2.z.string()
-});
-var create_checkout_session_default = withErrorHandler(async (req, res) => {
-  if (req.method !== "POST") {
-    throw new APIError(405, "Method not allowed", "METHOD_NOT_ALLOWED");
-  }
-  const { token, membershipTier } = createCheckoutSchema.parse(req.body);
-  const invite = await getRestaurantInvite(token);
-  const session = await createCheckoutSession({
-    restaurantName: invite.restaurant_name,
-    email: invite.email,
-    membershipTier,
-    successUrl: `${process.env.FRONTEND_URL}/onboarding/${token}/success?session_id={CHECKOUT_SESSION_ID}`,
-    cancelUrl: `${process.env.FRONTEND_URL}/onboarding/${token}`
-  });
-  await updateRestaurantInvite(token, {
-    status: "in_progress"
-  });
-  res.status(200).json({
-    url: session.url
-  });
 });
 //# sourceMappingURL=create-checkout-session.js.map

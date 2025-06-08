@@ -25,21 +25,7 @@ __export(validate_business_invitation_exports, {
   default: () => validate_business_invitation_default
 });
 module.exports = __toCommonJS(validate_business_invitation_exports);
-
-// lib/supabaseAdmin.ts
 var import_supabase_js = require("@supabase/supabase-js");
-var supabaseAdmin = (0, import_supabase_js.createClient)(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY,
-  {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false
-    }
-  }
-);
-
-// api/utils/error-handler.ts
 var import_zod = require("zod");
 var APIError = class extends Error {
   constructor(statusCode, message, code) {
@@ -80,15 +66,6 @@ var errorHandler = (error, req, res) => {
       }
     });
   }
-  if (error instanceof Error && error.name === "StripeError") {
-    return res.status(400).json({
-      status: "error",
-      error: {
-        message: error.message,
-        code: "STRIPE_ERROR"
-      }
-    });
-  }
   return res.status(500).json({
     status: "error",
     error: {
@@ -110,52 +87,42 @@ var withErrorHandler = (handler) => {
     }
   };
 };
-
-// api/validate-business-invitation.ts
 var validate_business_invitation_default = withErrorHandler(async (req, res) => {
-  if (req.method !== "POST") {
+  const supabaseAdmin = (0, import_supabase_js.createClient)(
+    process.env.SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_ROLE_KEY,
+    {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    }
+  );
+  if (req.method !== "GET") {
     throw new APIError(405, "Method not allowed", "METHOD_NOT_ALLOWED");
   }
-  const { token } = req.body;
+  const token = req.query.token;
   if (!token) {
     throw new APIError(400, "Token is required", "VALIDATION_ERROR");
   }
-  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-  if (!uuidRegex.test(token)) {
-    throw new APIError(400, "Invalid token format", "VALIDATION_ERROR");
-  }
-  const { data, error } = await supabaseAdmin.rpc("validate_business_invitation_token", {
-    p_token: token
-  });
-  if (error) {
-    console.error("Error validating business invitation token:", error);
-    throw new APIError(500, "Failed to validate invitation token", "DATABASE_ERROR");
-  }
-  if (!data || data.length === 0) {
+  const { data: inviteDetails, error: detailsError } = await supabaseAdmin.from("restaurant_invitations").select("restaurant_name, email, tier, expires_at, status").eq("token", token).single();
+  if (detailsError || !inviteDetails) {
+    console.error("Error fetching invitation details:", detailsError);
     throw new APIError(404, "Invalid or expired invitation token", "NOT_FOUND");
   }
-  const tokenData = data[0];
-  if (!tokenData.is_valid) {
-    let reason = "Invalid invitation token";
-    if (tokenData.used) {
-      reason = "This invitation has already been used";
-    } else if (new Date(tokenData.expires_at) < /* @__PURE__ */ new Date()) {
-      reason = "This invitation has expired";
-    }
-    throw new APIError(400, reason, "VALIDATION_ERROR");
+  if (new Date(inviteDetails.expires_at) < /* @__PURE__ */ new Date()) {
+    throw new APIError(400, "This invitation has expired", "VALIDATION_ERROR");
   }
-  const { data: inviteDetails, error: detailsError } = await supabaseAdmin.from("business_invites").select("business_name, business_email, pricing_tier, expires_at").eq("token", token).single();
-  if (detailsError) {
-    console.error("Error fetching invitation details:", detailsError);
-    throw new APIError(500, "Failed to fetch invitation details", "DATABASE_ERROR");
+  if (inviteDetails.status === "completed") {
+    throw new APIError(400, "This invitation has already been used", "VALIDATION_ERROR");
   }
   res.status(200).json({
     success: true,
     data: {
       is_valid: true,
-      business_name: inviteDetails.business_name,
-      business_email: inviteDetails.business_email,
-      pricing_tier: inviteDetails.pricing_tier,
+      restaurant_name: inviteDetails.restaurant_name,
+      email: inviteDetails.email,
+      tier: inviteDetails.tier,
       expires_at: inviteDetails.expires_at
     }
   });

@@ -17,7 +17,7 @@ export default function OnboardingPage() {
   useEffect(() => {
     const validateInvite = async () => {
       try {
-        const response = await fetch(`/api/restaurant-invite?token=${token}`);
+        const response = await fetch(`/api/validate-business-invitation?token=${token}`);
         if (!response.ok) {
           const data = await response.json();
           throw new APIError(response.status, data.error.message, data.error.code);
@@ -25,8 +25,8 @@ export default function OnboardingPage() {
         const data = await response.json();
         setFormData((prev: OnboardingFormData) => ({
           ...prev,
-          restaurantName: data.restaurantName,
-          email: data.email,
+          restaurantName: data.data.restaurant_name,
+          email: data.data.email,
         }));
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to validate invite');
