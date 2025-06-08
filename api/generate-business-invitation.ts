@@ -1,4 +1,5 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
+import { randomUUID } from 'crypto';
 import { supabaseAdmin } from '../lib/supabaseAdmin';
 import { withErrorHandler, APIError } from './utils/error-handler';
 
@@ -28,7 +29,7 @@ export default withErrorHandler(async (req: VercelRequest, res: VercelResponse):
 
   // Check if user is admin by querying the user profile
   const { data: userProfile, error: profileError } = await supabaseAdmin
-    .from('users')
+    .from('Users')
     .select('is_admin')
     .eq('auth_id', user.id)
     .single();
@@ -72,26 +73,36 @@ export default withErrorHandler(async (req: VercelRequest, res: VercelResponse):
     }
   }
 
-  // Call the database function to generate business invitation
-  const { data, error } = await supabaseAdmin.rpc('generate_business_invitation', {
-    p_business_name: business_name,
-    p_business_email: business_email,
-    p_pricing_tier: pricing_tier || null
-  });
+  // Generate invitation token and insert into restaurant_invitations
+  const invitationToken = randomUUID();
+  const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days from now
+  
+  const { data, error } = await supabaseAdmin
+    .from('restaurant_invitations')
+    .insert({
+      token: invitationToken,
+      email: business_email,
+      restaurant_name: business_name,
+      tier: pricing_tier || 'standard',
+      expires_at: expiresAt.toISOString(),
+      status: 'pending'
+    })
+    .select('token, expires_at')
+    .single();
 
   if (error) {
-    console.error('Error generating business invitation:', error);
-    throw new APIError(500, 'Failed to generate business invitation', 'DATABASE_ERROR');
+    console.error('Error generating restaurant invitation:', error);
+    throw new APIError(500, 'Failed to generate restaurant invitation', 'DATABASE_ERROR');
   }
 
-  if (!data || data.length === 0) {
+  if (!data) {
     throw new APIError(500, 'Failed to generate invitation token', 'DATABASE_ERROR');
   }
 
-  const invitationData = data[0];
+  const invitationData = data;
   const protocol = req.headers['x-forwarded-proto'] || 'http';
   const host = req.headers.host;
-  const fullInvitationUrl = `${protocol}://${host}/join/${invitationData.token}`;
+  const fullInvitationUrl = `${protocol}://${host}/onboarding/${invitationData.token}`;
 
   res.status(200).json({
     success: true,
