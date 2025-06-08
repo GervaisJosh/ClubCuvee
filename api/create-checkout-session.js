@@ -149,7 +149,7 @@ var create_checkout_session_default = withErrorHandler(async (req, res) => {
   if (pricingTier.is_custom || !pricingTier.stripe_price_id) {
     throw new APIError(400, "Custom tiers require manual setup - please contact support", "VALIDATION_ERROR");
   }
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.VERCEL_URL || "https://club-cuvee.com";
+  const baseUrl = process.env.BASE_URL || process.env.NEXT_PUBLIC_BASE_URL || "https://club-cuvee.com";
   try {
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",

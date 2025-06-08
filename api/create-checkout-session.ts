@@ -161,8 +161,8 @@ export default withErrorHandler(async (req: VercelRequest, res: VercelResponse):
     throw new APIError(400, 'Custom tiers require manual setup - please contact support', 'VALIDATION_ERROR');
   }
 
-  // Create Stripe checkout session
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.VERCEL_URL || 'https://club-cuvee.com';
+  // Create Stripe checkout session - use consistent URL logic
+  const baseUrl = process.env.BASE_URL || process.env.NEXT_PUBLIC_BASE_URL || 'https://club-cuvee.com';
   
   try {
     const session = await stripe.checkout.sessions.create({
