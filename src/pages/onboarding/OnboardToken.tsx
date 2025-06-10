@@ -17,8 +17,8 @@ interface BusinessInviteData {
 interface PricingTier {
   id: string;
   name: string;
+  description: string;
   price_cents: number;
-  stripe_product_id: string;
   stripe_price_id: string;
 }
 
@@ -82,8 +82,13 @@ const OnboardToken: React.FC = () => {
 
       setInviteData(tokenResponse.data);
 
-      // Load pricing tiers using the correct RPC function
-      const { data: tiersData, error: tiersError } = await supabase.rpc('get_active_business_pricing_tiers');
+      // Load pricing tiers from business_pricing_tiers table
+      const { data: tiersData, error: tiersError } = await supabase
+        .from('business_pricing_tiers')
+        .select('id, name, description, monthly_price_cents, stripe_price_id')
+        .eq('is_active', true)
+        .eq('is_custom', false)
+        .order('monthly_price_cents', { ascending: true });
       
       if (tiersError) {
         console.error('Error loading pricing tiers:', tiersError);
@@ -91,17 +96,18 @@ const OnboardToken: React.FC = () => {
         return;
       }
 
-      setPricingTiers(tiersData || []);
+      // Transform data to match component interface
+      const formattedTiers = tiersData?.map(tier => ({
+        id: tier.id,
+        name: tier.name,
+        description: tier.description,
+        price_cents: tier.monthly_price_cents,
+        stripe_price_id: tier.stripe_price_id
+      })) || [];
 
-      // Pre-select suggested tier if provided (pricing_tier is now a UUID)
-      if (tokenResponse.data.pricing_tier && tiersData) {
-        const suggestedTier = tiersData.find((tier: PricingTier) => 
-          tier.id === tokenResponse.data.pricing_tier
-        );
-        if (suggestedTier) {
-          setSelectedTierId(suggestedTier.id);
-        }
-      }
+      setPricingTiers(formattedTiers);
+
+      // NO pre-selection - let business choose their own tier
 
     } catch (err: any) {
       console.error('Error validating token and loading data:', err);
@@ -255,15 +261,18 @@ const OnboardToken: React.FC = () => {
     <div className="min-h-screen bg-[#fdfaf7] px-6 py-10">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">
-            Welcome to Club Cuvée
-          </h1>
-          <p className="text-xl text-gray-600 mb-2">
-            Complete your business registration for <strong>{inviteData.business_name}</strong>
+        <div className="text-center mb-12">
+          <div className="mb-6">
+            <h1 className="text-5xl font-bold bg-gradient-to-r from-[#800020] to-[#a00030] bg-clip-text text-transparent mb-4">
+              Welcome to Club Cuvée
+            </h1>
+            <div className="w-24 h-1 bg-gradient-to-r from-[#800020] to-[#a00030] mx-auto rounded-full"></div>
+          </div>
+          <p className="text-2xl text-gray-700 mb-3">
+            Start your luxury wine club journey with <strong className="text-[#800020]">{inviteData.business_name}</strong>
           </p>
-          <p className="text-gray-500">
-            Invitation sent to: {inviteData.business_email}
+          <p className="text-gray-600 bg-gray-50 inline-block px-4 py-2 rounded-full">
+            {inviteData.business_email}
           </p>
         </div>
 
@@ -280,19 +289,24 @@ const OnboardToken: React.FC = () => {
         )}
 
         {/* Main Content */}
-        <Card className="p-8 mb-8">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">
-            Choose Your Club Cuvée Plan
-          </h2>
+        <Card className="p-8 mb-8 bg-gradient-to-br from-white to-gray-50 border-gray-200 shadow-xl">
+          <div className="text-center mb-8">
+            <h2 className="text-3xl font-bold text-gray-900 mb-3">
+              Select Your Club Cuvée Subscription
+            </h2>
+            <p className="text-gray-600 text-lg">
+              Choose the perfect plan to grow your wine business
+            </p>
+          </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            {pricingTiers.map((tier) => (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-8">
+            {pricingTiers.map((tier, index) => (
               <div
                 key={tier.id}
-                className={`border rounded-lg p-6 cursor-pointer transition-all relative ${
+                className={`group relative bg-white border-2 rounded-xl p-8 cursor-pointer transition-all duration-300 hover:scale-105 ${
                   selectedTierId === tier.id
-                    ? 'border-[#800020] bg-[#800020]/5 shadow-lg'
-                    : 'border-gray-200 hover:border-gray-300 hover:shadow-md'
+                    ? 'border-[#800020] shadow-2xl shadow-[#800020]/20 bg-gradient-to-br from-[#800020]/5 to-white'
+                    : 'border-gray-200 hover:border-[#800020]/30 hover:shadow-xl'
                 }`}
                 onClick={() => setSelectedTierId(tier.id)}
               >
@@ -306,26 +320,37 @@ const OnboardToken: React.FC = () => {
                     className="sr-only"
                   />
                   
-                  {/* Suggested badge */}
-                  {inviteData.pricing_tier && tier.id === inviteData.pricing_tier && (
-                    <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
-                      <span className="bg-[#800020] text-white px-3 py-1 rounded-full text-xs font-medium flex items-center">
-                        <Star className="w-3 h-3 mr-1" />
-                        Suggested
+                  {/* Popular badge for middle tier */}
+                  {index === 1 && (
+                    <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
+                      <span className="bg-gradient-to-r from-[#800020] to-[#a00030] text-white px-4 py-2 rounded-full text-sm font-semibold shadow-lg">
+                        Most Popular
                       </span>
                     </div>
                   )}
                   
-                  <h3 className="text-xl font-bold text-gray-900 mb-2">{tier.name}</h3>
-                  <div className="mb-4">
-                    <div className="text-3xl font-bold text-[#800020]">
-                      {formatPrice(tier.price_cents)}
-                    </div>
-                    <div className="text-sm text-gray-500">per month</div>
+                  <div className="mb-6">
+                    <h3 className="text-2xl font-bold text-gray-900 mb-3">{tier.name}</h3>
+                    <p className="text-gray-600 text-sm leading-relaxed">{tier.description}</p>
                   </div>
                   
-                  {selectedTierId === tier.id && (
-                    <CheckCircle className="w-6 h-6 text-[#800020] mx-auto" />
+                  <div className="mb-6">
+                    <div className="text-4xl font-bold text-[#800020] mb-2">
+                      {formatPrice(tier.price_cents)}
+                    </div>
+                    <div className="text-gray-500 font-medium">per month</div>
+                  </div>
+                  
+                  {selectedTierId === tier.id ? (
+                    <div className="flex items-center justify-center space-x-2 text-[#800020]">
+                      <CheckCircle className="w-6 h-6" />
+                      <span className="font-semibold">Selected</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-center space-x-2 text-gray-400 group-hover:text-[#800020] transition-colors">
+                      <div className="w-6 h-6 border-2 border-current rounded-full"></div>
+                      <span className="font-medium">Select Plan</span>
+                    </div>
                   )}
                 </div>
               </div>
@@ -334,9 +359,9 @@ const OnboardToken: React.FC = () => {
 
 
           {error && (
-            <div className="p-3 bg-red-50 border border-red-200 rounded-md mb-6">
+            <div className="p-4 bg-red-50 border border-red-200 rounded-lg mb-6">
               <p className="text-sm text-red-600 flex items-center">
-                <AlertCircle className="w-4 h-4 mr-2" />
+                <AlertCircle className="w-5 h-5 mr-3" />
                 {error}
               </p>
             </div>
@@ -344,50 +369,89 @@ const OnboardToken: React.FC = () => {
 
           {/* Action Button */}
           <div className="text-center">
-            <Button
-              onClick={handleTierSelection}
-              disabled={!selectedTierId || processingPayment}
-              className="px-8 py-3"
-            >
-              <CreditCard className="w-5 h-5 mr-2" />
-              {processingPayment ? 'Starting Checkout...' : 'Proceed to Payment'}
-            </Button>
-          </div>
-
-          {selectedTier && (
-            <p className="text-xs text-gray-500 text-center mt-4">
-              Secure payment processing by Stripe • Cancel anytime
-            </p>
-          )}
+            {selectedTierId ? (
+              <div className="space-y-4">
+                <div className="p-4 bg-[#800020]/5 border border-[#800020]/20 rounded-lg">
+                  <p className="text-sm text-gray-700 mb-2">
+                    <strong>Selected Plan:</strong> {pricingTiers.find(t => t.id === selectedTierId)?.name}
+                  </p>
+                  <p className="text-2xl font-bold text-[#800020]">
+                    {formatPrice(pricingTiers.find(t => t.id === selectedTierId)?.price_cents || 0)} / month
+                  </p>
+                </div>
+                
+                <button
+                  onClick={handleTierSelection}
+                  disabled={processingPayment}
+                  className="w-full bg-gradient-to-r from-[#800020] to-[#a00030] text-white font-semibold py-4 px-8 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 disabled:opacity-50 disabled:transform-none disabled:hover:shadow-lg"
+                >
+                  {processingPayment ? (
+                    <div className="flex items-center justify-center space-x-3">
+                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      <span>Starting Secure Checkout...</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-center space-x-3">
+                      <CreditCard className="w-5 h-5" />
+                      <span>Proceed to Secure Payment</span>
+                    </div>
+                  )}
+                </button>
+                
+                <p className="text-xs text-gray-500 flex items-center justify-center space-x-2">
+                  <span>🔒 Secure payment processing by Stripe</span>
+                  <span>•</span>
+                  <span>Cancel anytime</span>
+                </p>
+              </div>
+            ) : (
+              <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg">
+                <p className="text-gray-600 text-center">
+                  Please select a subscription plan to continue
+                </p>
+              </div>
+            )}
         </Card>
 
         {/* What's Next */}
-        <Card className="p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">What happens next?</h3>
-          <div className="space-y-3 text-sm text-gray-600">
+        <Card className="p-8 bg-gradient-to-r from-gray-50 to-gray-100 border-gray-200">
+          <h3 className="text-2xl font-bold text-gray-900 mb-6 text-center">Your Onboarding Journey</h3>
+          <div className="space-y-6">
             <div className="flex items-start">
-              <div className="w-6 h-6 bg-[#800020] text-white rounded-full flex items-center justify-center text-xs mr-3 mt-0.5">
+              <div className="w-8 h-8 bg-gradient-to-r from-[#800020] to-[#a00030] text-white rounded-full flex items-center justify-center text-sm font-bold mr-4 mt-1">
                 1
               </div>
-              <p>Complete your subscription payment via Stripe</p>
+              <div>
+                <p className="font-semibold text-gray-900 mb-1">Secure Payment Processing</p>
+                <p className="text-gray-600">Complete your subscription payment through our secure Stripe integration</p>
+              </div>
             </div>
             <div className="flex items-start">
-              <div className="w-6 h-6 bg-[#800020] text-white rounded-full flex items-center justify-center text-xs mr-3 mt-0.5">
+              <div className="w-8 h-8 bg-gradient-to-r from-[#800020] to-[#a00030] text-white rounded-full flex items-center justify-center text-sm font-bold mr-4 mt-1">
                 2
               </div>
-              <p>Set up your business profile and wine club tiers</p>
+              <div>
+                <p className="font-semibold text-gray-900 mb-1">Business Profile Setup</p>
+                <p className="text-gray-600">Create your account, set business details, and configure your wine club tiers</p>
+              </div>
             </div>
             <div className="flex items-start">
-              <div className="w-6 h-6 bg-[#800020] text-white rounded-full flex items-center justify-center text-xs mr-3 mt-0.5">
+              <div className="w-8 h-8 bg-gradient-to-r from-[#800020] to-[#a00030] text-white rounded-full flex items-center justify-center text-sm font-bold mr-4 mt-1">
                 3
               </div>
-              <p>Upload your wine inventory and configure recommendations</p>
+              <div>
+                <p className="font-semibold text-gray-900 mb-1">Wine Inventory & AI Setup</p>
+                <p className="text-gray-600">Upload your wine inventory and let our AI create personalized recommendations</p>
+              </div>
             </div>
             <div className="flex items-start">
-              <div className="w-6 h-6 bg-[#800020] text-white rounded-full flex items-center justify-center text-xs mr-3 mt-0.5">
+              <div className="w-8 h-8 bg-gradient-to-r from-[#800020] to-[#a00030] text-white rounded-full flex items-center justify-center text-sm font-bold mr-4 mt-1">
                 4
               </div>
-              <p>Start accepting customer memberships immediately</p>
+              <div>
+                <p className="font-semibold text-gray-900 mb-1">Launch Your Wine Club</p>
+                <p className="text-gray-600">Start accepting customer memberships and grow your recurring revenue</p>
+              </div>
             </div>
           </div>
         </Card>

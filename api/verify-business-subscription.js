@@ -35,11 +35,8 @@ __export(verify_business_subscription_exports, {
   default: () => verify_business_subscription_default
 });
 module.exports = __toCommonJS(verify_business_subscription_exports);
-
-// api/utils/stripe.ts
+var import_supabase_js = require("@supabase/supabase-js");
 var import_stripe = __toESM(require("stripe"), 1);
-
-// api/utils/error-handler.ts
 var import_zod = require("zod");
 var APIError = class extends Error {
   constructor(statusCode, message, code) {
@@ -80,15 +77,6 @@ var errorHandler = (error, req, res) => {
       }
     });
   }
-  if (error instanceof Error && error.name === "StripeError") {
-    return res.status(400).json({
-      status: "error",
-      error: {
-        message: error.message,
-        code: "STRIPE_ERROR"
-      }
-    });
-  }
   return res.status(500).json({
     status: "error",
     error: {
@@ -110,89 +98,76 @@ var withErrorHandler = (handler) => {
     }
   };
 };
-
-// api/utils/stripe.ts
-if (!process.env.STRIPE_SECRET_KEY) {
-  throw new Error("STRIPE_SECRET_KEY is required");
-}
-if (!process.env.STRIPE_WEBHOOK_SECRET) {
-  throw new Error("STRIPE_WEBHOOK_SECRET is required");
-}
-var stripe = new import_stripe.default(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: "2025-02-24.acacia",
-  typescript: true
-});
-
-// lib/supabaseAdmin.ts
-var import_supabase_js = require("@supabase/supabase-js");
-var supabaseAdmin = (0, import_supabase_js.createClient)(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY,
-  {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false
-    }
-  }
-);
-
-// api/verify-business-subscription.ts
 var verify_business_subscription_default = withErrorHandler(async (req, res) => {
+  const supabaseAdmin = (0, import_supabase_js.createClient)(
+    process.env.SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_ROLE_KEY,
+    {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    }
+  );
+  const stripe = new import_stripe.default(process.env.STRIPE_SECRET_KEY, {
+    apiVersion: "2025-02-24.acacia",
+    typescript: true
+  });
   if (req.method !== "POST") {
     throw new APIError(405, "Method not allowed", "METHOD_NOT_ALLOWED");
   }
   const { token, sessionId } = req.body;
   if (!token || !sessionId) {
-    throw new APIError(400, "Token and session ID are required", "VALIDATION_ERROR");
+    throw new APIError(400, "Token and sessionId are required", "VALIDATION_ERROR");
   }
-  const { data: tokenValidation, error: validationError } = await supabaseAdmin.rpc("validate_business_invitation_token", {
-    p_token: token
-  });
-  if (validationError || !tokenValidation || tokenValidation.length === 0) {
-    throw new APIError(400, "Invalid or expired business invitation token", "VALIDATION_ERROR");
-  }
-  const tokenData = tokenValidation[0];
-  if (!tokenData.is_valid) {
-    throw new APIError(400, "Business invitation token is not valid", "VALIDATION_ERROR");
-  }
-  const session = await stripe.checkout.sessions.retrieve(sessionId);
-  if (!session) {
-    throw new APIError(404, "Checkout session not found", "NOT_FOUND");
-  }
-  if (session.payment_status !== "paid" || session.metadata?.business_invitation_token !== token) {
-    throw new APIError(400, "Payment verification failed", "VALIDATION_ERROR");
-  }
-  let subscription = null;
-  if (session.subscription) {
-    subscription = await stripe.subscriptions.retrieve(session.subscription);
-  }
-  if (!subscription) {
-    throw new APIError(404, "Subscription not found", "NOT_FOUND");
-  }
-  const { error: tempDataError } = await supabaseAdmin.from("temp_business_setup").upsert({
-    invitation_token: token,
-    stripe_customer_id: session.customer,
-    stripe_subscription_id: subscription.id,
-    pricing_tier: session.metadata?.pricing_tier || "neighborhood_cellar",
-    setup_completed: false,
-    created_at: (/* @__PURE__ */ new Date()).toISOString()
-  }, {
-    onConflict: "invitation_token"
-  });
-  if (tempDataError) {
-    console.error("Error storing temp business setup data:", tempDataError);
-  }
-  res.status(200).json({
-    success: true,
-    data: {
-      subscription: {
-        id: subscription.id,
-        status: subscription.status,
-        currentPeriodEnd: subscription.current_period_end,
-        customerId: session.customer
-      },
-      pricing_tier: session.metadata?.pricing_tier || "neighborhood_cellar"
+  try {
+    const { data: invite, error: inviteError } = await supabaseAdmin.from("restaurant_invitations").select("restaurant_name, email, tier, expires_at, status, payment_session_id").eq("token", token).single();
+    if (inviteError || !invite) {
+      console.error("Error fetching invitation details:", inviteError);
+      throw new APIError(404, "Invalid invitation token", "NOT_FOUND");
     }
-  });
+    if (invite.payment_session_id !== sessionId) {
+      throw new APIError(400, "Session ID does not match invitation", "VALIDATION_ERROR");
+    }
+    const session = await stripe.checkout.sessions.retrieve(sessionId);
+    if (!session) {
+      throw new APIError(404, "Checkout session not found", "NOT_FOUND");
+    }
+    if (session.payment_status !== "paid") {
+      throw new APIError(400, "Payment not completed", "PAYMENT_INCOMPLETE");
+    }
+    const subscriptionId = session.subscription;
+    if (!subscriptionId) {
+      throw new APIError(400, "No subscription found for this session", "NO_SUBSCRIPTION");
+    }
+    const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+    await supabaseAdmin.from("restaurant_invitations").update({
+      status: "paid",
+      updated_at: (/* @__PURE__ */ new Date()).toISOString()
+    }).eq("token", token);
+    res.status(200).json({
+      success: true,
+      data: {
+        subscription: {
+          id: subscription.id,
+          status: subscription.status,
+          currentPeriodEnd: subscription.current_period_end,
+          customerId: subscription.customer,
+          priceId: subscription.items.data[0]?.price.id
+        },
+        pricing_tier: invite.tier,
+        session: {
+          id: session.id,
+          payment_status: session.payment_status,
+          customer_email: session.customer_details?.email
+        }
+      }
+    });
+  } catch (err) {
+    if (err instanceof import_stripe.default.errors.StripeError) {
+      throw new APIError(400, err.message, "STRIPE_ERROR");
+    }
+    throw err;
+  }
 });
 //# sourceMappingURL=verify-business-subscription.js.map
