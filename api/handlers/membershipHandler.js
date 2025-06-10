@@ -370,7 +370,7 @@ async function createInvitationLink(req, res) {
     }
     const deployUrl = process.env.VERCEL_URL || process.env.FRONTEND_URL;
     const baseUrl = deployUrl ? deployUrl.startsWith("http") ? deployUrl : `https://${deployUrl}` : "https://your-deployment-url.vercel.app";
-    const invitationUrl = `${baseUrl}/onboarding/${token}`;
+    const invitationUrl = `${baseUrl}/onboard/${token}`;
     return res.status(200).json({
       success: true,
       invitation: {

@@ -172,7 +172,7 @@ export default withErrorHandler(async (req: VercelRequest, res: VercelResponse):
   // Environment variable priority: BASE_URL -> NEXT_PUBLIC_BASE_URL -> production fallback
   // Note: VERCEL_URL is preview/branch deployments, we want production domain for invitations
   const baseUrl = process.env.BASE_URL || process.env.NEXT_PUBLIC_BASE_URL || 'https://club-cuvee.com';
-  const fullInvitationUrl = `${baseUrl}/onboarding/${invitationData.token}`;
+  const fullInvitationUrl = `${baseUrl}/onboard/${invitationData.token}`;
 
   res.status(200).json({
     success: true,

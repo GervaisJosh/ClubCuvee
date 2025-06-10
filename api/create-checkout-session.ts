@@ -181,8 +181,8 @@ export default withErrorHandler(async (req: VercelRequest, res: VercelResponse):
         invitationToken: token,
         pricingTierId: pricingTier.id,
       },
-      success_url: `${baseUrl}/onboarding/${token}/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${baseUrl}/onboarding/${token}`,
+      success_url: `${baseUrl}/onboard/${token}/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${baseUrl}/onboard/${token}`,
     });
 
     // Mark invite as in progress and store session ID

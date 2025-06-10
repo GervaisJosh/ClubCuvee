@@ -351,7 +351,7 @@ export async function createInvitationLink(req: VercelRequest, res: VercelRespon
       ? (deployUrl.startsWith('http') ? deployUrl : `https://${deployUrl}`) 
       : 'https://your-deployment-url.vercel.app';
     
-    const invitationUrl = `${baseUrl}/onboarding/${token}`;
+    const invitationUrl = `${baseUrl}/onboard/${token}`;
     
     // Here's where you'd send an email with the invitation link
     // Commented out for future implementation

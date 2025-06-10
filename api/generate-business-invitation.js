@@ -148,7 +148,7 @@ var generate_business_invitation_default = withErrorHandler(async (req, res) => 
   }
   const invitationData = data;
   const baseUrl = process.env.BASE_URL || process.env.NEXT_PUBLIC_BASE_URL || "https://club-cuvee.com";
-  const fullInvitationUrl = `${baseUrl}/onboarding/${invitationData.token}`;
+  const fullInvitationUrl = `${baseUrl}/onboard/${invitationData.token}`;
   res.status(200).json({
     success: true,
     data: {
