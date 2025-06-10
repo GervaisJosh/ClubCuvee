@@ -87,7 +87,6 @@ const OnboardToken: React.FC = () => {
         .from('business_pricing_tiers')
         .select('id, name, description, monthly_price_cents, stripe_price_id')
         .eq('is_active', true)
-        .eq('is_custom', false)
         .order('monthly_price_cents', { ascending: true });
       
       if (tiersError) {
