@@ -411,6 +411,7 @@ const OnboardToken: React.FC = () => {
                 </p>
               </div>
             )}
+          </div>
         </Card>
 
         {/* What's Next */}
