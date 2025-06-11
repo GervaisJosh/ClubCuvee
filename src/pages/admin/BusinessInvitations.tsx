@@ -167,7 +167,7 @@ const BusinessInvitations: React.FC = () => {
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">Business Invitations</h1>
         <p className="text-gray-600">
-          Generate private onboarding links for new business registrations with optional pricing tiers.
+          Generate private onboarding links for new business registrations. Businesses will choose their pricing tier during setup.
         </p>
       </div>
 
@@ -212,28 +212,6 @@ const BusinessInvitations: React.FC = () => {
               />
             </div>
 
-            <div>
-              <label htmlFor="pricing_tier" className="block text-sm font-medium text-gray-700 mb-2">
-                Suggested Pricing Tier (Optional)
-              </label>
-              <select
-                id="pricing_tier"
-                name="pricing_tier"
-                value={formData.pricing_tier}
-                onChange={handleInputChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-[#800020] focus:border-transparent"
-              >
-                <option value="">Let business choose during setup</option>
-                {pricingTiers.map(tier => (
-                  <option key={tier.id} value={tier.id}>
-                    {tier.name} - ${(tier.price_cents / 100).toFixed(0)}/month
-                  </option>
-                ))}
-              </select>
-              <p className="text-xs text-gray-500 mt-1">
-                Business can still select a different tier during onboarding
-              </p>
-            </div>
 
             {error && (
               <div className="p-3 bg-red-50 border border-red-200 rounded-md">
