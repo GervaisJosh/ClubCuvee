@@ -105,7 +105,11 @@ export default withErrorHandler(async (req: VercelRequest, res: VercelResponse):
 
   const { token, tier_id } = req.body;
 
+  // DEBUG: Log incoming request data
+  console.log('🔍 DEBUG - Incoming request data:', { token, tier_id, body: req.body });
+
   if (!token || !tier_id) {
+    console.log('❌ DEBUG - Missing required fields:', { token: !!token, tier_id: !!tier_id });
     throw new APIError(400, 'Token and tier_id are required', 'VALIDATION_ERROR');
   }
 
@@ -132,20 +136,49 @@ export default withErrorHandler(async (req: VercelRequest, res: VercelResponse):
   }
 
   // Get pricing tier details from database using tier_id (UUID)
+  console.log('🔍 DEBUG - Querying pricing tier with ID:', tier_id);
+  
   const { data: pricingTier, error: tierError } = await supabaseAdmin
     .from('business_pricing_tiers')
-    .select('id, name, stripe_price_id, monthly_price_cents, is_custom')
+    .select('id, name, stripe_price_id, price_cents')
     .eq('id', tier_id)
     .eq('is_active', true)
     .single();
 
+  console.log('🔍 DEBUG - Pricing tier query result:', { 
+    pricingTier, 
+    tierError, 
+    queryParams: { id: tier_id, is_active: true }
+  });
+
   if (tierError || !pricingTier) {
-    console.error('Error fetching pricing tier:', tierError);
+    console.error('❌ DEBUG - Error fetching pricing tier:', tierError);
+    console.log('❌ DEBUG - Query failed with tier_id:', tier_id);
+    
+    // Check if any tiers exist at all
+    const { data: allTiers, error: allTiersError } = await supabaseAdmin
+      .from('business_pricing_tiers')
+      .select('id, name, is_active')
+      .limit(10);
+    
+    console.log('🔍 DEBUG - All available tiers in database:', { allTiers, allTiersError });
+    
     throw new APIError(400, 'Invalid pricing tier selected', 'VALIDATION_ERROR');
   }
 
-  if (pricingTier.is_custom || !pricingTier.stripe_price_id) {
-    throw new APIError(400, 'Custom tiers require manual setup - please contact support', 'VALIDATION_ERROR');
+  console.log('🔍 DEBUG - Found pricing tier:', {
+    id: pricingTier.id,
+    name: pricingTier.name,
+    stripe_price_id: pricingTier.stripe_price_id,
+    price_cents: pricingTier.price_cents
+  });
+
+  if (!pricingTier.stripe_price_id) {
+    console.log('❌ DEBUG - Pricing tier validation failed:', {
+      has_stripe_price_id: !!pricingTier.stripe_price_id,
+      stripe_price_id: pricingTier.stripe_price_id
+    });
+    throw new APIError(400, 'This tier is not available for online signup', 'VALIDATION_ERROR');
   }
 
   // Create Stripe checkout session - use consistent URL logic

@@ -117,7 +117,9 @@ var create_business_checkout_default = withErrorHandler(async (req, res) => {
     throw new APIError(405, "Method not allowed", "METHOD_NOT_ALLOWED");
   }
   const { token, tier_id } = req.body;
+  console.log("\u{1F50D} DEBUG - Incoming request data:", { token, tier_id, body: req.body });
   if (!token || !tier_id) {
+    console.log("\u274C DEBUG - Missing required fields:", { token: !!token, tier_id: !!tier_id });
     throw new APIError(400, "Token and tier_id are required", "VALIDATION_ERROR");
   }
   const { data: invite, error: inviteError } = await supabaseAdmin.from("restaurant_invitations").select("restaurant_name, email, tier, expires_at, status").eq("token", token).single();
@@ -131,13 +133,32 @@ var create_business_checkout_default = withErrorHandler(async (req, res) => {
   if (invite.status === "completed") {
     throw new APIError(400, "This invitation has already been used", "VALIDATION_ERROR");
   }
-  const { data: pricingTier, error: tierError } = await supabaseAdmin.from("business_pricing_tiers").select("id, name, stripe_price_id, monthly_price_cents, is_custom").eq("id", tier_id).eq("is_active", true).single();
+  console.log("\u{1F50D} DEBUG - Querying pricing tier with ID:", tier_id);
+  const { data: pricingTier, error: tierError } = await supabaseAdmin.from("business_pricing_tiers").select("id, name, stripe_price_id, price_cents").eq("id", tier_id).eq("is_active", true).single();
+  console.log("\u{1F50D} DEBUG - Pricing tier query result:", {
+    pricingTier,
+    tierError,
+    queryParams: { id: tier_id, is_active: true }
+  });
   if (tierError || !pricingTier) {
-    console.error("Error fetching pricing tier:", tierError);
+    console.error("\u274C DEBUG - Error fetching pricing tier:", tierError);
+    console.log("\u274C DEBUG - Query failed with tier_id:", tier_id);
+    const { data: allTiers, error: allTiersError } = await supabaseAdmin.from("business_pricing_tiers").select("id, name, is_active").limit(10);
+    console.log("\u{1F50D} DEBUG - All available tiers in database:", { allTiers, allTiersError });
     throw new APIError(400, "Invalid pricing tier selected", "VALIDATION_ERROR");
   }
-  if (pricingTier.is_custom || !pricingTier.stripe_price_id) {
-    throw new APIError(400, "Custom tiers require manual setup - please contact support", "VALIDATION_ERROR");
+  console.log("\u{1F50D} DEBUG - Found pricing tier:", {
+    id: pricingTier.id,
+    name: pricingTier.name,
+    stripe_price_id: pricingTier.stripe_price_id,
+    price_cents: pricingTier.price_cents
+  });
+  if (!pricingTier.stripe_price_id) {
+    console.log("\u274C DEBUG - Pricing tier validation failed:", {
+      has_stripe_price_id: !!pricingTier.stripe_price_id,
+      stripe_price_id: pricingTier.stripe_price_id
+    });
+    throw new APIError(400, "This tier is not available for online signup", "VALIDATION_ERROR");
   }
   const baseUrl = process.env.BASE_URL || process.env.NEXT_PUBLIC_BASE_URL || "https://club-cuvee.com";
   try {

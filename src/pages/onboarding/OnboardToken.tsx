@@ -85,9 +85,9 @@ const OnboardToken: React.FC = () => {
       // Load pricing tiers from business_pricing_tiers table
       const { data: tiersData, error: tiersError } = await supabase
         .from('business_pricing_tiers')
-        .select('id, name, description, monthly_price_cents, stripe_price_id')
+        .select('id, name, price_cents, stripe_price_id')
         .eq('is_active', true)
-        .order('monthly_price_cents', { ascending: true });
+        .order('price_cents', { ascending: true });
       
       if (tiersError) {
         console.error('Error loading pricing tiers:', tiersError);
@@ -99,8 +99,8 @@ const OnboardToken: React.FC = () => {
       const formattedTiers = tiersData?.map(tier => ({
         id: tier.id,
         name: tier.name,
-        description: tier.description,
-        price_cents: tier.monthly_price_cents,
+        description: tier.description || `${tier.name} subscription plan`,
+        price_cents: tier.price_cents,
         stripe_price_id: tier.stripe_price_id
       })) || [];
 
@@ -169,6 +169,13 @@ const OnboardToken: React.FC = () => {
     try {
       setProcessingPayment(true);
       setError(null);
+
+      // DEBUG: Log the data being sent to API
+      console.log('🔍 DEBUG - Frontend sending checkout data:', {
+        token,
+        tier_id: selectedTierId,
+        selectedTier: selectedTier
+      });
 
       const response = await apiClient.post<CheckoutResponse>(
         '/api/create-business-checkout',
