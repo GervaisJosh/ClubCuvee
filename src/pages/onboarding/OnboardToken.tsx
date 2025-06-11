@@ -85,9 +85,9 @@ const OnboardToken: React.FC = () => {
       // Load pricing tiers from business_pricing_tiers table
       const { data: tiersData, error: tiersError } = await supabase
         .from('business_pricing_tiers')
-        .select('id, name, price_cents, stripe_price_id')
+        .select('id, name, description, monthly_price_cents, stripe_price_id')
         .eq('is_active', true)
-        .order('price_cents', { ascending: true });
+        .order('monthly_price_cents', { ascending: true });
       
       if (tiersError) {
         console.error('Error loading pricing tiers:', tiersError);
@@ -100,7 +100,7 @@ const OnboardToken: React.FC = () => {
         id: tier.id,
         name: tier.name,
         description: tier.description || `${tier.name} subscription plan`,
-        price_cents: tier.price_cents,
+        price_cents: tier.monthly_price_cents,
         stripe_price_id: tier.stripe_price_id
       })) || [];
 

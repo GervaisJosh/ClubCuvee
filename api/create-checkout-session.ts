@@ -147,7 +147,7 @@ export default withErrorHandler(async (req: VercelRequest, res: VercelResponse):
   // Get pricing tier details from database
   const { data: pricingTier, error: tierError } = await supabaseAdmin
     .from('business_pricing_tiers')
-    .select('id, name, stripe_price_id, monthly_price_cents, is_custom')
+    .select('id, name, stripe_price_id, monthly_price_cents')
     .eq('name', dbTierName)
     .eq('is_active', true)
     .single();
@@ -157,8 +157,8 @@ export default withErrorHandler(async (req: VercelRequest, res: VercelResponse):
     throw new APIError(400, 'Invalid pricing tier selected', 'VALIDATION_ERROR');
   }
 
-  if (pricingTier.is_custom || !pricingTier.stripe_price_id) {
-    throw new APIError(400, 'Custom tiers require manual setup - please contact support', 'VALIDATION_ERROR');
+  if (!pricingTier.stripe_price_id) {
+    throw new APIError(400, 'This tier is not available for online signup', 'VALIDATION_ERROR');
   }
 
   // Create Stripe checkout session - use consistent URL logic

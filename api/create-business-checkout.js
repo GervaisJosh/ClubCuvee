@@ -134,7 +134,7 @@ var create_business_checkout_default = withErrorHandler(async (req, res) => {
     throw new APIError(400, "This invitation has already been used", "VALIDATION_ERROR");
   }
   console.log("\u{1F50D} DEBUG - Querying pricing tier with ID:", tier_id);
-  const { data: pricingTier, error: tierError } = await supabaseAdmin.from("business_pricing_tiers").select("id, name, stripe_price_id, price_cents").eq("id", tier_id).eq("is_active", true).single();
+  const { data: pricingTier, error: tierError } = await supabaseAdmin.from("business_pricing_tiers").select("id, name, stripe_price_id, monthly_price_cents").eq("id", tier_id).eq("is_active", true).single();
   console.log("\u{1F50D} DEBUG - Pricing tier query result:", {
     pricingTier,
     tierError,
@@ -151,7 +151,7 @@ var create_business_checkout_default = withErrorHandler(async (req, res) => {
     id: pricingTier.id,
     name: pricingTier.name,
     stripe_price_id: pricingTier.stripe_price_id,
-    price_cents: pricingTier.price_cents
+    monthly_price_cents: pricingTier.monthly_price_cents
   });
   if (!pricingTier.stripe_price_id) {
     console.log("\u274C DEBUG - Pricing tier validation failed:", {

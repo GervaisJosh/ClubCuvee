@@ -141,13 +141,13 @@ var create_checkout_session_default = withErrorHandler(async (req, res) => {
   if (!dbTierName) {
     throw new APIError(400, "Invalid membership tier", "VALIDATION_ERROR");
   }
-  const { data: pricingTier, error: tierError } = await supabaseAdmin.from("business_pricing_tiers").select("id, name, stripe_price_id, monthly_price_cents, is_custom").eq("name", dbTierName).eq("is_active", true).single();
+  const { data: pricingTier, error: tierError } = await supabaseAdmin.from("business_pricing_tiers").select("id, name, stripe_price_id, monthly_price_cents").eq("name", dbTierName).eq("is_active", true).single();
   if (tierError || !pricingTier) {
     console.error("Error fetching pricing tier:", tierError);
     throw new APIError(400, "Invalid pricing tier selected", "VALIDATION_ERROR");
   }
-  if (pricingTier.is_custom || !pricingTier.stripe_price_id) {
-    throw new APIError(400, "Custom tiers require manual setup - please contact support", "VALIDATION_ERROR");
+  if (!pricingTier.stripe_price_id) {
+    throw new APIError(400, "This tier is not available for online signup", "VALIDATION_ERROR");
   }
   const baseUrl = process.env.BASE_URL || process.env.NEXT_PUBLIC_BASE_URL || "https://club-cuvee.com";
   try {

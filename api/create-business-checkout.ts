@@ -140,7 +140,7 @@ export default withErrorHandler(async (req: VercelRequest, res: VercelResponse):
   
   const { data: pricingTier, error: tierError } = await supabaseAdmin
     .from('business_pricing_tiers')
-    .select('id, name, stripe_price_id, price_cents')
+    .select('id, name, stripe_price_id, monthly_price_cents')
     .eq('id', tier_id)
     .eq('is_active', true)
     .single();
@@ -170,7 +170,7 @@ export default withErrorHandler(async (req: VercelRequest, res: VercelResponse):
     id: pricingTier.id,
     name: pricingTier.name,
     stripe_price_id: pricingTier.stripe_price_id,
-    price_cents: pricingTier.price_cents
+    monthly_price_cents: pricingTier.monthly_price_cents
   });
 
   if (!pricingTier.stripe_price_id) {
