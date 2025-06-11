@@ -264,29 +264,24 @@ export default withErrorHandler(async (req: VercelRequest, res: VercelResponse):
       throw new APIError(500, 'Failed to create business record', 'DATABASE_ERROR');
     }
 
-    // 7. Create the admin user profile
+    // 7. Create the business admin user profile
     const { error: profileError } = await supabaseAdmin
-      .from('users')
+      .from('business_users')
       .insert({
-        id: authUser.user.id,
         auth_id: authUser.user.id,
+        business_id: businessId,
         email: businessData.email.trim(),
         full_name: businessData.businessOwnerName.trim(),
-        business_id: businessId,
-        is_admin: true,
-        tier: 'admin',
-        has_seen_tutorial: false,
-        has_completed_survey: false,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+        role: 'admin',
+        is_active: true
       });
 
     if (profileError) {
-      console.error('Error creating user profile:', profileError);
+      console.error('Error creating business user profile:', profileError);
       // Clean up created records if profile creation fails
       await supabaseAdmin.auth.admin.deleteUser(authUser.user.id);
       await supabaseAdmin.from('businesses').delete().eq('id', businessId);
-      throw new APIError(500, 'Failed to create user profile', 'DATABASE_ERROR');
+      throw new APIError(500, 'Failed to create business user profile', 'DATABASE_ERROR');
     }
 
     // 8. Create customer membership tiers for this business

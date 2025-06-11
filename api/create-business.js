@@ -209,24 +209,19 @@ var create_business_default = withErrorHandler(async (req, res) => {
       await supabaseAdmin.auth.admin.deleteUser(authUser.user.id);
       throw new APIError(500, "Failed to create business record", "DATABASE_ERROR");
     }
-    const { error: profileError } = await supabaseAdmin.from("users").insert({
-      id: authUser.user.id,
+    const { error: profileError } = await supabaseAdmin.from("business_users").insert({
       auth_id: authUser.user.id,
+      business_id: businessId,
       email: businessData.email.trim(),
       full_name: businessData.businessOwnerName.trim(),
-      business_id: businessId,
-      is_admin: true,
-      tier: "admin",
-      has_seen_tutorial: false,
-      has_completed_survey: false,
-      created_at: (/* @__PURE__ */ new Date()).toISOString(),
-      updated_at: (/* @__PURE__ */ new Date()).toISOString()
+      role: "admin",
+      is_active: true
     });
     if (profileError) {
-      console.error("Error creating user profile:", profileError);
+      console.error("Error creating business user profile:", profileError);
       await supabaseAdmin.auth.admin.deleteUser(authUser.user.id);
       await supabaseAdmin.from("businesses").delete().eq("id", businessId);
-      throw new APIError(500, "Failed to create user profile", "DATABASE_ERROR");
+      throw new APIError(500, "Failed to create business user profile", "DATABASE_ERROR");
     }
     const tierInserts = businessData.customerTiers.map((tier, index) => ({
       id: (0, import_crypto.randomUUID)(),
