@@ -238,7 +238,7 @@ export default withErrorHandler(async (req: VercelRequest, res: VercelResponse):
       .insert({
         id: businessId,
         name: businessData.businessName.trim(),
-        owner_name: businessData.businessOwnerName.trim(),
+        owner_id: authUser.user.id,
         email: businessData.email.trim(),
         phone: businessData.phone?.trim() || null,
         website: businessData.website?.trim() || null,

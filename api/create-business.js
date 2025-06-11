@@ -188,7 +188,7 @@ var create_business_default = withErrorHandler(async (req, res) => {
     const { data: business, error: businessError } = await supabaseAdmin.from("businesses").insert({
       id: businessId,
       name: businessData.businessName.trim(),
-      owner_name: businessData.businessOwnerName.trim(),
+      owner_id: authUser.user.id,
       email: businessData.email.trim(),
       phone: businessData.phone?.trim() || null,
       website: businessData.website?.trim() || null,
