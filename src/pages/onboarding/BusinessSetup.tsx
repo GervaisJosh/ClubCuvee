@@ -78,26 +78,7 @@ const BusinessSetup: React.FC = () => {
     phone: '',
     website: '',
     description: '',
-    customerTiers: [
-      { 
-        name: 'Bronze Club', 
-        description: 'Perfect introduction to premium wines', 
-        monthlyPrice: 49,
-        benefits: ['2 premium bottles monthly', 'Tasting notes', 'Member discounts']
-      },
-      { 
-        name: 'Silver Reserve', 
-        description: 'Curated selection for wine enthusiasts', 
-        monthlyPrice: 89,
-        benefits: ['4 premium bottles monthly', 'Exclusive varietals', 'Priority events', 'Free shipping']
-      },
-      { 
-        name: 'Gold Cellar', 
-        description: 'Luxury experience for connoisseurs', 
-        monthlyPrice: 149,
-        benefits: ['6 premium bottles monthly', 'Rare & vintage wines', 'Sommelier consultations', 'VIP experiences']
-      }
-    ]
+    customerTiers: []
   });
   
   const [showPassword, setShowPassword] = useState(false);
@@ -223,8 +204,8 @@ const BusinessSetup: React.FC = () => {
       customerTiers: [...prev.customerTiers, { 
         name: '', 
         description: '', 
-        monthlyPrice: 99,
-        benefits: ['Curated wine selection', 'Tasting notes']
+        monthlyPrice: 49,
+        benefits: ['']
       }]
     }));
   };
@@ -551,7 +532,24 @@ const BusinessSetup: React.FC = () => {
             </div>
             
             <div className="space-y-8">
-              {formData.customerTiers.map((tier, tierIndex) => {
+              {formData.customerTiers.length === 0 ? (
+                <div className="text-center py-12 border-2 border-dashed border-gray-300 rounded-xl bg-gray-50">
+                  <Wine className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-xl font-semibold text-gray-600 mb-2">Create Your Wine Club Tiers</h3>
+                  <p className="text-gray-500 mb-6 max-w-md mx-auto">
+                    Design membership tiers that reflect your unique wine offerings and create value for your customers.
+                  </p>
+                  <Button 
+                    type="button" 
+                    onClick={addTier} 
+                    className="bg-[#800020] hover:bg-[#a00030] text-white px-6 py-3 rounded-lg transition-all duration-200 flex items-center space-x-2 mx-auto"
+                  >
+                    <Plus className="h-5 w-5" />
+                    <span>Create Your First Tier</span>
+                  </Button>
+                </div>
+              ) : (
+                formData.customerTiers.map((tier, tierIndex) => {
                 const tierError = validationErrors[`tier_${tierIndex}_name`] || 
                                 validationErrors[`tier_${tierIndex}_description`] || 
                                 validationErrors[`tier_${tierIndex}_price`] || 
@@ -611,20 +609,22 @@ const BusinessSetup: React.FC = () => {
                           Monthly Price <span className="text-red-500">*</span>
                         </label>
                         <div className="relative">
-                          <DollarSign className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400 h-5 w-5" />
+                          <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-medium">$</span>
                           <input
                             type="number"
                             min="10"
                             max="999"
+                            step="1"
                             value={tier.monthlyPrice}
                             onChange={(e) => handleTierChange(tierIndex, 'monthlyPrice', parseFloat(e.target.value) || 0)}
-                            className={`w-full pl-10 pr-4 py-3 border-2 rounded-lg transition-all duration-200 ${
+                            className={`w-full pl-8 pr-20 py-3 border-2 rounded-lg transition-all duration-200 ${
                               validationErrors[`tier_${tierIndex}_price`] 
                                 ? 'border-red-300 bg-red-50 focus:border-red-500 focus:ring-red-500/20' 
                                 : 'border-gray-200 bg-white focus:border-[#800020] focus:ring-[#800020]/20'
                             } focus:outline-none focus:ring-4`}
                             placeholder="49"
                           />
+                          <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm">/month</span>
                         </div>
                         {validationErrors[`tier_${tierIndex}_price`] && (
                           <p className="text-sm text-red-600 flex items-center space-x-1">
@@ -708,7 +708,8 @@ const BusinessSetup: React.FC = () => {
                     </div>
                   </div>
                 );
-              })}
+                })
+              )}
             </div>
             
             <div className="mt-8 p-6 bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl">

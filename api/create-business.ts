@@ -243,7 +243,7 @@ export default withErrorHandler(async (req: VercelRequest, res: VercelResponse):
         phone: businessData.phone?.trim() || null,
         website: businessData.website?.trim() || null,
         description: businessData.description?.trim() || null,
-        address: businessData.businessAddress?.trim() || null,
+        business_address: businessData.businessAddress?.trim() || null,
         city: businessData.city?.trim() || null,
         state: businessData.state?.trim() || null,
         zip_code: businessData.zipCode?.trim() || null,
