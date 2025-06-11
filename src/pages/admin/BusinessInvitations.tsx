@@ -20,7 +20,6 @@ interface BusinessInvite {
 interface InvitationFormData {
   business_name: string;
   business_email: string;
-  pricing_tier: string;
 }
 
 interface GeneratedInvitation {
@@ -32,7 +31,7 @@ interface GeneratedInvitation {
 interface PricingTier {
   id: string;
   name: string;
-  price_cents: number;
+  monthly_price_cents: number;
   stripe_product_id: string;
   stripe_price_id: string;
 }
@@ -40,43 +39,21 @@ interface PricingTier {
 const BusinessInvitations: React.FC = () => {
   const { user, session } = useAuth();
   const [invites, setInvites] = useState<BusinessInvite[]>([]);
-  const [pricingTiers, setPricingTiers] = useState<PricingTier[]>([]);
   const [formData, setFormData] = useState<InvitationFormData>({
     business_name: '',
-    business_email: '',
-    pricing_tier: ''
+    business_email: ''
   });
   
   const [loading, setLoading] = useState(false);
   const [loadingInvites, setLoadingInvites] = useState(true);
-  const [loadingTiers, setLoadingTiers] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [generatedInvitation, setGeneratedInvitation] = useState<GeneratedInvitation | null>(null);
   const [copySuccess, setCopySuccess] = useState<string | null>(null);
 
   useEffect(() => {
     loadInvites();
-    loadPricingTiers();
   }, []);
 
-  const loadPricingTiers = async () => {
-    try {
-      setLoadingTiers(true);
-      const { data: tiersData, error } = await supabase.rpc('get_active_business_pricing_tiers');
-      
-      if (error) {
-        console.error('Error loading pricing tiers:', error);
-        setError('Failed to load pricing tiers');
-      } else {
-        setPricingTiers(tiersData || []);
-      }
-    } catch (err) {
-      console.error('Error loading pricing tiers:', err);
-      setError('Failed to load pricing tiers');
-    } finally {
-      setLoadingTiers(false);
-    }
-  };
 
   const loadInvites = async () => {
     try {
@@ -127,8 +104,7 @@ const BusinessInvitations: React.FC = () => {
         data: GeneratedInvitation;
       }>('/api/generate-business-invitation', {
         business_name: formData.business_name,
-        business_email: formData.business_email,
-        pricing_tier: formData.pricing_tier || null
+        business_email: formData.business_email
       }, {
         headers: {
           'Authorization': `Bearer ${session.access_token}`
@@ -139,8 +115,7 @@ const BusinessInvitations: React.FC = () => {
         setGeneratedInvitation(response.data);
         setFormData({ 
           business_name: '', 
-          business_email: '', 
-          pricing_tier: '' 
+          business_email: ''
         });
         // Reload invites to show the new one
         await loadInvites();
@@ -180,9 +155,7 @@ const BusinessInvitations: React.FC = () => {
   };
 
   const getTierLabel = (tier: string | null) => {
-    if (!tier) return 'Any Tier';
-    const tierOption = pricingTiers.find(t => t.id === tier);
-    return tierOption ? tierOption.name : tier;
+    return 'Business chooses during setup';
   };
 
   const isExpired = (expiresAt: string) => {
