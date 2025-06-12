@@ -99,18 +99,21 @@ var withErrorHandling = (handler2) => {
 };
 var handler = async (req, res) => {
   if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
+    res.status(405).json({ error: "Method not allowed" });
+    return;
   }
   try {
     const { businessId, customerEmail } = req.body;
     if (!businessId) {
-      return res.status(400).json({ error: "Business ID is required" });
+      res.status(400).json({ error: "Business ID is required" });
+      return;
     }
     const { data: business, error: businessError } = await supabaseAdmin.from("businesses").select("id, name").eq("id", businessId).single();
     if (businessError || !business) {
-      return res.status(404).json({
+      res.status(404).json({
         error: "Business not found"
       });
+      return;
     }
     const token = import_crypto.default.randomBytes(32).toString("hex");
     const expiresAt = /* @__PURE__ */ new Date();
@@ -127,13 +130,14 @@ var handler = async (req, res) => {
     const { data: invitation, error: insertError } = await supabaseAdmin.from("customer_invitations").insert([invitationData]).select().single();
     if (insertError) {
       console.error("Error creating customer invitation:", insertError);
-      return res.status(500).json({
+      res.status(500).json({
         error: "Failed to create customer invitation"
       });
+      return;
     }
     const baseUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : process.env.BASE_URL || "http://localhost:3000";
     const customerUrl = `${baseUrl}/customer/join/${token}`;
-    return res.status(200).json({
+    res.status(200).json({
       success: true,
       invitation: {
         id: invitation.id,
@@ -147,12 +151,14 @@ var handler = async (req, res) => {
       },
       customerUrl
     });
+    return;
   } catch (error) {
     console.error("Error in generate-customer-invitation:", error);
-    return res.status(500).json({
+    res.status(500).json({
       error: "Internal server error",
       message: error.message
     });
+    return;
   }
 };
 var generate_customer_invitation_default = withErrorHandling(handler);

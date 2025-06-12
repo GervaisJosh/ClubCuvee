@@ -88,12 +88,14 @@ var withErrorHandling = (handler2) => {
 };
 var handler = async (req, res) => {
   if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
+    res.status(405).json({ error: "Method not allowed" });
+    return;
   }
   try {
     const { token } = req.body;
     if (!token) {
-      return res.status(400).json({ error: "Token is required" });
+      res.status(400).json({ error: "Token is required" });
+      return;
     }
     const { data: invitation, error: invitationError } = await supabaseAdmin.from("customer_invitations").select(`
         *,
@@ -105,9 +107,10 @@ var handler = async (req, res) => {
         )
       `).eq("token", token).eq("status", "pending").single();
     if (invitationError || !invitation) {
-      return res.status(404).json({
+      res.status(404).json({
         error: "Invalid or expired customer invitation"
       });
+      return;
     }
     const now = /* @__PURE__ */ new Date();
     const expiryDate = new Date(invitation.expires_at);
@@ -116,17 +119,19 @@ var handler = async (req, res) => {
         status: "expired",
         updated_at: (/* @__PURE__ */ new Date()).toISOString()
       }).eq("token", token);
-      return res.status(410).json({
+      res.status(410).json({
         error: "This invitation has expired"
       });
+      return;
     }
     const business = invitation.businesses;
     const { data: membershipTiers, error: tiersError } = await supabaseAdmin.from("membership_tiers").select("*").eq("business_id", business.id).eq("is_active", true).order("monthly_price_cents", { ascending: true });
     if (tiersError) {
       console.error("Error fetching membership tiers:", tiersError);
-      return res.status(500).json({
+      res.status(500).json({
         error: "Failed to fetch membership tiers"
       });
+      return;
     }
     const response = {
       business: {
@@ -148,13 +153,15 @@ var handler = async (req, res) => {
         status: invitation.status
       }
     };
-    return res.status(200).json(response);
+    res.status(200).json(response);
+    return;
   } catch (error) {
     console.error("Error in validate-customer-invitation:", error);
-    return res.status(500).json({
+    res.status(500).json({
       error: "Internal server error",
       message: error.message
     });
+    return;
   }
 };
 var validate_customer_invitation_default = withErrorHandling(handler);

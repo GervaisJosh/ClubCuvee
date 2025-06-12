@@ -103,21 +103,25 @@ var stripe = new import_stripe.default(process.env.STRIPE_SECRET_KEY, {
 });
 var handler = async (req, res) => {
   if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
+    res.status(405).json({ error: "Method not allowed" });
+    return;
   }
   try {
     const { sessionId, token } = req.body;
     if (!sessionId || !token) {
-      return res.status(400).json({ error: "Session ID and token are required" });
+      res.status(400).json({ error: "Session ID and token are required" });
+      return;
     }
     const session = await stripe.checkout.sessions.retrieve(sessionId, {
       expand: ["subscription", "customer"]
     });
     if (session.payment_status !== "paid") {
-      return res.status(400).json({ error: "Payment not completed" });
+      res.status(400).json({ error: "Payment not completed" });
+      return;
     }
     if (!session.subscription) {
-      return res.status(400).json({ error: "No subscription found" });
+      res.status(400).json({ error: "No subscription found" });
+      return;
     }
     const { data: invitation, error: invitationError } = await supabaseAdmin.from("customer_invitations").select(`
         *,
@@ -128,9 +132,10 @@ var handler = async (req, res) => {
         )
       `).eq("token", token).eq("status", "pending").single();
     if (invitationError || !invitation) {
-      return res.status(404).json({
+      res.status(404).json({
         error: "Invalid or expired customer invitation"
       });
+      return;
     }
     const business = invitation.businesses;
     const metadata = session.metadata || {};
@@ -149,21 +154,24 @@ var handler = async (req, res) => {
       tier_id: metadata.tier_id || subscriptionMetadata.tier_id || ""
     };
     if (!customerData.email || !customerData.name || !customerData.tier_id) {
-      return res.status(400).json({
+      res.status(400).json({
         error: "Missing required customer data from payment session"
       });
+      return;
     }
     const { data: tier, error: tierError } = await supabaseAdmin.from("membership_tiers").select("*").eq("id", customerData.tier_id).eq("business_id", business.id).single();
     if (tierError || !tier) {
-      return res.status(404).json({
+      res.status(404).json({
         error: "Membership tier not found"
       });
+      return;
     }
     const { data: existingCustomer } = await supabaseAdmin.from("customers").select("id").eq("email", customerData.email).eq("business_id", business.id).single();
     if (existingCustomer) {
-      return res.status(409).json({
+      res.status(409).json({
         error: "Customer already exists for this business"
       });
+      return;
     }
     const customerRecord = {
       business_id: business.id,
@@ -188,9 +196,10 @@ var handler = async (req, res) => {
     const { data: customer, error: customerError } = await supabaseAdmin.from("customers").insert([customerRecord]).select().single();
     if (customerError) {
       console.error("Error creating customer:", customerError);
-      return res.status(500).json({
+      res.status(500).json({
         error: "Failed to create customer record"
       });
+      return;
     }
     await supabaseAdmin.from("customer_invitations").update({
       status: "used",
@@ -218,13 +227,15 @@ var handler = async (req, res) => {
         amount: subscription.items.data[0]?.price.unit_amount || 0
       }
     };
-    return res.status(200).json(response);
+    res.status(200).json(response);
+    return;
   } catch (error) {
     console.error("Error in verify-customer-payment:", error);
-    return res.status(500).json({
+    res.status(500).json({
       error: "Internal server error",
       message: error.message
     });
+    return;
   }
 };
 var verify_customer_payment_default = withErrorHandling(handler);

@@ -88,31 +88,36 @@ var withErrorHandling = (handler2) => {
 };
 var handler = async (req, res) => {
   if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
+    res.status(405).json({ error: "Method not allowed" });
+    return;
   }
   try {
     const { token } = req.body;
     if (!token) {
-      return res.status(400).json({ error: "Token is required" });
+      res.status(400).json({ error: "Token is required" });
+      return;
     }
     const { data: invitation, error: invitationError } = await supabaseAdmin.from("restaurant_invitations").select("*").eq("token", token).eq("status", "completed").single();
     if (invitationError || !invitation) {
-      return res.status(404).json({
+      res.status(404).json({
         error: "Invitation not found or not completed"
       });
+      return;
     }
     const { data: business, error: businessError } = await supabaseAdmin.from("businesses").select("id, name, website, email, status, created_at, updated_at").eq("id", invitation.business_id).single();
     if (businessError || !business) {
-      return res.status(404).json({
+      res.status(404).json({
         error: "Business not found"
       });
+      return;
     }
     const { data: membershipTiers, error: tiersError } = await supabaseAdmin.from("membership_tiers").select("*").eq("business_id", business.id).order("created_at", { ascending: true });
     if (tiersError) {
       console.error("Error fetching membership tiers:", tiersError);
-      return res.status(500).json({
+      res.status(500).json({
         error: "Failed to fetch membership tiers"
       });
+      return;
     }
     const response = {
       business: {
@@ -130,13 +135,15 @@ var handler = async (req, res) => {
         created_at: invitation.created_at
       }
     };
-    return res.status(200).json(response);
+    res.status(200).json(response);
+    return;
   } catch (error) {
     console.error("Error in get-business-by-token:", error);
-    return res.status(500).json({
+    res.status(500).json({
       error: "Internal server error",
       message: error.message
     });
+    return;
   }
 };
 var get_business_by_token_default = withErrorHandling(handler);

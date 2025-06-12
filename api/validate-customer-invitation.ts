@@ -79,16 +79,18 @@ const withErrorHandling = (
   };
 };
 
-const handler = async (req: VercelRequest, res: VercelResponse) => {
+const handler = async (req: VercelRequest, res: VercelResponse): Promise<void> => {
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+    res.status(405).json({ error: 'Method not allowed' });
+    return;
   }
 
   try {
     const { token } = req.body;
 
     if (!token) {
-      return res.status(400).json({ error: 'Token is required' });
+      res.status(400).json({ error: 'Token is required' });
+      return;
     }
 
     // Get customer invitation with business and tier data
@@ -108,9 +110,10 @@ const handler = async (req: VercelRequest, res: VercelResponse) => {
       .single();
 
     if (invitationError || !invitation) {
-      return res.status(404).json({ 
+      res.status(404).json({ 
         error: 'Invalid or expired customer invitation' 
       });
+      return;
     }
 
     // Check if invitation has expired
@@ -127,9 +130,10 @@ const handler = async (req: VercelRequest, res: VercelResponse) => {
         })
         .eq('token', token);
         
-      return res.status(410).json({ 
+      res.status(410).json({ 
         error: 'This invitation has expired' 
       });
+      return;
     }
 
     const business = invitation.businesses;
@@ -144,9 +148,10 @@ const handler = async (req: VercelRequest, res: VercelResponse) => {
 
     if (tiersError) {
       console.error('Error fetching membership tiers:', tiersError);
-      return res.status(500).json({ 
+      res.status(500).json({ 
         error: 'Failed to fetch membership tiers' 
       });
+      return;
     }
 
     // Format the response
@@ -171,13 +176,15 @@ const handler = async (req: VercelRequest, res: VercelResponse) => {
       }
     };
 
-    return res.status(200).json(response);
+    res.status(200).json(response);
+    return;
   } catch (error: any) {
     console.error('Error in validate-customer-invitation:', error);
-    return res.status(500).json({ 
+    res.status(500).json({ 
       error: 'Internal server error',
       message: error.message 
     });
+    return;
   }
 };
 

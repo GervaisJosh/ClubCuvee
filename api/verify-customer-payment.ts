@@ -85,16 +85,18 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   typescript: true,
 });
 
-const handler = async (req: VercelRequest, res: VercelResponse) => {
+const handler = async (req: VercelRequest, res: VercelResponse): Promise<void> => {
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+    res.status(405).json({ error: 'Method not allowed' });
+    return;
   }
 
   try {
     const { sessionId, token } = req.body;
 
     if (!sessionId || !token) {
-      return res.status(400).json({ error: 'Session ID and token are required' });
+      res.status(400).json({ error: 'Session ID and token are required' });
+      return;
     }
 
     // Get the Stripe checkout session
@@ -103,11 +105,13 @@ const handler = async (req: VercelRequest, res: VercelResponse) => {
     });
 
     if (session.payment_status !== 'paid') {
-      return res.status(400).json({ error: 'Payment not completed' });
+      res.status(400).json({ error: 'Payment not completed' });
+      return;
     }
 
     if (!session.subscription) {
-      return res.status(400).json({ error: 'No subscription found' });
+      res.status(400).json({ error: 'No subscription found' });
+      return;
     }
 
     // Validate the invitation token
@@ -126,9 +130,10 @@ const handler = async (req: VercelRequest, res: VercelResponse) => {
       .single();
 
     if (invitationError || !invitation) {
-      return res.status(404).json({ 
+      res.status(404).json({ 
         error: 'Invalid or expired customer invitation' 
       });
+      return;
     }
 
     const business = invitation.businesses;
@@ -153,9 +158,10 @@ const handler = async (req: VercelRequest, res: VercelResponse) => {
     };
 
     if (!customerData.email || !customerData.name || !customerData.tier_id) {
-      return res.status(400).json({ 
+      res.status(400).json({ 
         error: 'Missing required customer data from payment session' 
       });
+      return;
     }
 
     // Get the membership tier details
@@ -167,9 +173,10 @@ const handler = async (req: VercelRequest, res: VercelResponse) => {
       .single();
 
     if (tierError || !tier) {
-      return res.status(404).json({ 
+      res.status(404).json({ 
         error: 'Membership tier not found' 
       });
+      return;
     }
 
     // Check if customer already exists (prevent duplicates)
@@ -181,9 +188,10 @@ const handler = async (req: VercelRequest, res: VercelResponse) => {
       .single();
 
     if (existingCustomer) {
-      return res.status(409).json({ 
+      res.status(409).json({ 
         error: 'Customer already exists for this business' 
       });
+      return;
     }
 
     // Create customer record
@@ -216,9 +224,10 @@ const handler = async (req: VercelRequest, res: VercelResponse) => {
 
     if (customerError) {
       console.error('Error creating customer:', customerError);
-      return res.status(500).json({ 
+      res.status(500).json({ 
         error: 'Failed to create customer record' 
       });
+      return;
     }
 
     // Mark the invitation as used
@@ -254,13 +263,15 @@ const handler = async (req: VercelRequest, res: VercelResponse) => {
       }
     };
 
-    return res.status(200).json(response);
+    res.status(200).json(response);
+    return;
   } catch (error: any) {
     console.error('Error in verify-customer-payment:', error);
-    return res.status(500).json({ 
+    res.status(500).json({ 
       error: 'Internal server error',
       message: error.message 
     });
+    return;
   }
 };
 

@@ -79,16 +79,18 @@ const withErrorHandling = (
   };
 };
 
-const handler = async (req: VercelRequest, res: VercelResponse) => {
+const handler = async (req: VercelRequest, res: VercelResponse): Promise<void> => {
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+    res.status(405).json({ error: 'Method not allowed' });
+    return;
   }
 
   try {
     const { token } = req.body;
 
     if (!token) {
-      return res.status(400).json({ error: 'Token is required' });
+      res.status(400).json({ error: 'Token is required' });
+      return;
     }
 
     // Get business data through the invitation token
@@ -100,9 +102,10 @@ const handler = async (req: VercelRequest, res: VercelResponse) => {
       .single();
 
     if (invitationError || !invitation) {
-      return res.status(404).json({ 
+      res.status(404).json({ 
         error: 'Invitation not found or not completed' 
       });
+      return;
     }
 
     // Get business data using business_id from invitation
@@ -113,9 +116,10 @@ const handler = async (req: VercelRequest, res: VercelResponse) => {
       .single();
 
     if (businessError || !business) {
-      return res.status(404).json({ 
+      res.status(404).json({ 
         error: 'Business not found' 
       });
+      return;
     }
 
     // Get membership tiers for this business
@@ -127,9 +131,10 @@ const handler = async (req: VercelRequest, res: VercelResponse) => {
 
     if (tiersError) {
       console.error('Error fetching membership tiers:', tiersError);
-      return res.status(500).json({ 
+      res.status(500).json({ 
         error: 'Failed to fetch membership tiers' 
       });
+      return;
     }
 
     // Format the response
@@ -150,13 +155,15 @@ const handler = async (req: VercelRequest, res: VercelResponse) => {
       }
     };
 
-    return res.status(200).json(response);
+    res.status(200).json(response);
+    return;
   } catch (error: any) {
     console.error('Error in get-business-by-token:', error);
-    return res.status(500).json({ 
+    res.status(500).json({ 
       error: 'Internal server error',
       message: error.message 
     });
+    return;
   }
 };
 

@@ -80,16 +80,18 @@ const withErrorHandling = (
   };
 };
 
-const handler = async (req: VercelRequest, res: VercelResponse) => {
+const handler = async (req: VercelRequest, res: VercelResponse): Promise<void> => {
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+    res.status(405).json({ error: 'Method not allowed' });
+    return;
   }
 
   try {
     const { businessId, customerEmail } = req.body;
 
     if (!businessId) {
-      return res.status(400).json({ error: 'Business ID is required' });
+      res.status(400).json({ error: 'Business ID is required' });
+      return;
     }
 
     // Verify that the business exists
@@ -100,9 +102,10 @@ const handler = async (req: VercelRequest, res: VercelResponse) => {
       .single();
 
     if (businessError || !business) {
-      return res.status(404).json({ 
+      res.status(404).json({ 
         error: 'Business not found' 
       });
+      return;
     }
 
     // Generate a secure token
@@ -131,9 +134,10 @@ const handler = async (req: VercelRequest, res: VercelResponse) => {
 
     if (insertError) {
       console.error('Error creating customer invitation:', insertError);
-      return res.status(500).json({ 
+      res.status(500).json({ 
         error: 'Failed to create customer invitation' 
       });
+      return;
     }
 
     // Generate the customer registration URL
@@ -143,7 +147,7 @@ const handler = async (req: VercelRequest, res: VercelResponse) => {
     
     const customerUrl = `${baseUrl}/customer/join/${token}`;
 
-    return res.status(200).json({
+    res.status(200).json({
       success: true,
       invitation: {
         id: invitation.id,
@@ -157,12 +161,14 @@ const handler = async (req: VercelRequest, res: VercelResponse) => {
       },
       customerUrl
     });
+    return;
   } catch (error: any) {
     console.error('Error in generate-customer-invitation:', error);
-    return res.status(500).json({ 
+    res.status(500).json({ 
       error: 'Internal server error',
       message: error.message 
     });
+    return;
   }
 };
 
