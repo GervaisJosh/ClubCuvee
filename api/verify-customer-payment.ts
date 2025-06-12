@@ -163,7 +163,7 @@ const handler = async (req: VercelRequest, res: VercelResponse) => {
       .from('membership_tiers')
       .select('*')
       .eq('id', customerData.tier_id)
-      .eq('restaurant_id', business.id)
+      .eq('business_id', business.id)
       .single();
 
     if (tierError || !tier) {

@@ -106,7 +106,7 @@ var handler = async (req, res) => {
     if (!businessId) {
       return res.status(400).json({ error: "Business ID is required" });
     }
-    const { data: business, error: businessError } = await supabaseAdmin.from("restaurants").select("id, name").eq("id", businessId).single();
+    const { data: business, error: businessError } = await supabaseAdmin.from("businesses").select("id, name").eq("id", businessId).single();
     if (businessError || !business) {
       return res.status(404).json({
         error: "Business not found"

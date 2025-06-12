@@ -94,7 +94,7 @@ const handler = async (req: VercelRequest, res: VercelResponse) => {
 
     // Verify that the business exists
     const { data: business, error: businessError } = await supabaseAdmin
-      .from('restaurants')
+      .from('businesses')
       .select('id, name')
       .eq('id', businessId)
       .single();

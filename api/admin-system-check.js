@@ -35,9 +35,18 @@ __export(admin_system_check_exports, {
   default: () => admin_system_check_default
 });
 module.exports = __toCommonJS(admin_system_check_exports);
-
-// api/utils/error-handler.ts
-var import_zod = require("zod");
+var import_supabase_js = require("@supabase/supabase-js");
+var import_stripe = __toESM(require("stripe"), 1);
+var supabaseAdmin = (0, import_supabase_js.createClient)(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY,
+  {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  }
+);
 var APIError = class extends Error {
   constructor(statusCode, message, code) {
     super(message);
@@ -67,25 +76,6 @@ var errorHandler = (error, req, res) => {
       }
     });
   }
-  if (error instanceof import_zod.ZodError) {
-    return res.status(400).json({
-      status: "error",
-      error: {
-        message: "Validation error",
-        code: "VALIDATION_ERROR",
-        details: error.errors
-      }
-    });
-  }
-  if (error instanceof Error && error.name === "StripeError") {
-    return res.status(400).json({
-      status: "error",
-      error: {
-        message: error.message,
-        code: "STRIPE_ERROR"
-      }
-    });
-  }
   return res.status(500).json({
     status: "error",
     error: {
@@ -107,28 +97,6 @@ var withErrorHandler = (handler) => {
     }
   };
 };
-
-// api/utils/supabase.ts
-var import_supabase_js = require("@supabase/supabase-js");
-if (!process.env.SUPABASE_URL) {
-  throw new Error("SUPABASE_URL is required");
-}
-if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
-  throw new Error("SUPABASE_SERVICE_ROLE_KEY is required");
-}
-var supabase = (0, import_supabase_js.createClient)(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY,
-  {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false
-    }
-  }
-);
-
-// api/admin-system-check.ts
-var import_stripe = __toESM(require("stripe"), 1);
 var stripe = new import_stripe.default(process.env.STRIPE_SECRET_KEY, {
   apiVersion: "2025-02-24.acacia"
 });
@@ -142,7 +110,7 @@ var admin_system_check_default = withErrorHandler(async (req, res) => {
   }
   let supabaseStatus = "green";
   try {
-    const { error } = await supabase.from("restaurant_invites").select("id").limit(1);
+    const { error } = await supabaseAdmin.from("restaurant_invitations").select("id").limit(1);
     if (error) supabaseStatus = "red";
   } catch {
     supabaseStatus = "red";
@@ -155,7 +123,7 @@ var admin_system_check_default = withErrorHandler(async (req, res) => {
   }
   let authStatus = "green";
   try {
-    const { error } = await supabase.auth.admin.listUsers({ page: 1, perPage: 1 });
+    const { error } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1 });
     if (error) authStatus = "red";
   } catch {
     authStatus = "red";

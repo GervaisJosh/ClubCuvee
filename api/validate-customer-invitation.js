@@ -121,7 +121,7 @@ var handler = async (req, res) => {
       });
     }
     const business = invitation.businesses;
-    const { data: membershipTiers, error: tiersError } = await supabaseAdmin.from("membership_tiers").select("*").eq("restaurant_id", business.id).eq("is_active", true).order("price", { ascending: true });
+    const { data: membershipTiers, error: tiersError } = await supabaseAdmin.from("membership_tiers").select("*").eq("business_id", business.id).eq("is_active", true).order("monthly_price_cents", { ascending: true });
     if (tiersError) {
       console.error("Error fetching membership tiers:", tiersError);
       return res.status(500).json({
@@ -138,7 +138,7 @@ var handler = async (req, res) => {
       membershipTiers: membershipTiers?.map((tier) => ({
         id: tier.id,
         name: tier.name,
-        price: tier.price,
+        price: (tier.monthly_price_cents / 100).toFixed(2),
         description: tier.description,
         stripe_price_id: tier.stripe_price_id
       })) || [],

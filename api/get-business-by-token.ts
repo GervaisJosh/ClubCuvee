@@ -94,35 +94,35 @@ const handler = async (req: VercelRequest, res: VercelResponse) => {
     // Get business data through the invitation token
     const { data: invitation, error: invitationError } = await supabaseAdmin
       .from('restaurant_invitations')
-      .select(`
-        *,
-        restaurants!inner (
-          id,
-          name,
-          website,
-          admin_email,
-          logo_url,
-          subscription_tier,
-          created_at
-        )
-      `)
+      .select('*')
       .eq('token', token)
       .eq('status', 'completed')
       .single();
 
     if (invitationError || !invitation) {
       return res.status(404).json({ 
-        error: 'Business not found or invitation invalid' 
+        error: 'Invitation not found or not completed' 
       });
     }
 
-    const business = invitation.restaurants;
+    // Get business data using business_id from invitation
+    const { data: business, error: businessError } = await supabaseAdmin
+      .from('businesses')
+      .select('id, name, website, email, status, created_at, updated_at')
+      .eq('id', invitation.business_id)
+      .single();
+
+    if (businessError || !business) {
+      return res.status(404).json({ 
+        error: 'Business not found' 
+      });
+    }
 
     // Get membership tiers for this business
     const { data: membershipTiers, error: tiersError } = await supabaseAdmin
       .from('membership_tiers')
       .select('*')
-      .eq('restaurant_id', business.id)
+      .eq('business_id', business.id)
       .order('created_at', { ascending: true });
 
     if (tiersError) {
@@ -138,9 +138,8 @@ const handler = async (req: VercelRequest, res: VercelResponse) => {
         id: business.id,
         name: business.name,
         website: business.website,
-        admin_email: business.admin_email,
-        logo_url: business.logo_url,
-        subscription_tier: business.subscription_tier,
+        email: business.email,
+        status: business.status,
         created_at: business.created_at
       },
       membershipTiers: membershipTiers || [],

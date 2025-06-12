@@ -153,7 +153,7 @@ var handler = async (req, res) => {
         error: "Missing required customer data from payment session"
       });
     }
-    const { data: tier, error: tierError } = await supabaseAdmin.from("membership_tiers").select("*").eq("id", customerData.tier_id).eq("restaurant_id", business.id).single();
+    const { data: tier, error: tierError } = await supabaseAdmin.from("membership_tiers").select("*").eq("id", customerData.tier_id).eq("business_id", business.id).single();
     if (tierError || !tier) {
       return res.status(404).json({
         error: "Membership tier not found"
