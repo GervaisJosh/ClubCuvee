@@ -88,6 +88,12 @@ interface CustomerTierData {
   benefits: string[];
 }
 
+interface StripeProductUpdate {
+  tierId: string;
+  stripeProductId: string;
+  stripePriceId: string;
+}
+
 interface BusinessFormData {
   businessName: string;
   businessOwnerName: string;
@@ -293,11 +299,12 @@ export default withErrorHandler(async (req: VercelRequest, res: VercelResponse):
       is_active: true
     }));
 
-    const { error: tiersError } = await supabaseAdmin
+    const { data: createdTiers, error: tiersError } = await supabaseAdmin
       .from('membership_tiers')
-      .insert(tierInserts);
+      .insert(tierInserts)
+      .select();
 
-    if (tiersError) {
+    if (tiersError || !createdTiers) {
       console.error('Error creating membership tiers:', tiersError);
       // Clean up created records if tier creation fails
       await supabaseAdmin.auth.admin.deleteUser(authUser.user.id);
@@ -305,7 +312,68 @@ export default withErrorHandler(async (req: VercelRequest, res: VercelResponse):
       throw new APIError(500, 'Failed to create membership tiers', 'DATABASE_ERROR');
     }
 
-    // 9. Mark the invitation as completed
+    // 9. Create Stripe products and prices for each tier
+    const stripeProductUpdates: StripeProductUpdate[] = [];
+    for (const tier of createdTiers) {
+      try {
+        // Create branded Stripe product
+        const product = await stripe.products.create({
+          name: `${businessData.businessName.trim()} Wine Club - ${tier.name}`,
+          description: `${tier.description} | Curated by ${businessData.businessName.trim()}`,
+          metadata: {
+            platform: 'Club Cuvée',
+            business_id: tier.business_id,
+            tier_id: tier.id,
+            business_name: businessData.businessName.trim()
+          }
+        });
+
+        // Create recurring monthly price
+        const price = await stripe.prices.create({
+          product: product.id,
+          unit_amount: tier.monthly_price_cents,
+          currency: 'usd',
+          recurring: {
+            interval: 'month',
+          },
+          metadata: {
+            business_id: tier.business_id,
+            tier_name: tier.name,
+            business_name: businessData.businessName.trim()
+          }
+        });
+
+        // Queue update for Supabase record
+        stripeProductUpdates.push({
+          tierId: tier.id,
+          stripeProductId: product.id,
+          stripePriceId: price.id
+        });
+
+      } catch (stripeError) {
+        console.error(`Stripe product creation failed for tier ${tier.name}:`, stripeError);
+        // Continue with business creation - allow manual Stripe setup later
+        // Don't throw error to avoid blocking the entire onboarding process
+      }
+    }
+
+    // 10. Update Supabase records with Stripe IDs
+    for (const update of stripeProductUpdates) {
+      try {
+        await supabaseAdmin
+          .from('membership_tiers')
+          .update({
+            stripe_product_id: update.stripeProductId,
+            stripe_price_id: update.stripePriceId
+          })
+          .eq('id', update.tierId);
+      } catch (updateError) {
+        console.error(`Failed to update tier ${update.tierId} with Stripe IDs:`, updateError);
+        // Log but continue - the tier exists, just without Stripe integration
+      }
+    }
+
+    // 11. Mark the invitation as completed
     await supabaseAdmin
       .from('restaurant_invitations')
       .update({
@@ -316,14 +384,16 @@ export default withErrorHandler(async (req: VercelRequest, res: VercelResponse):
       })
       .eq('token', token);
 
-    // 10. Return success response
+    // 12. Return success response
     res.status(200).json({
       success: true,
       data: {
         businessId: businessId,
         adminUserId: authUser.user.id,
         businessName: businessData.businessName,
-        customerTiersCreated: tierInserts.length
+        customerTiersCreated: tierInserts.length,
+        stripeProductsCreated: stripeProductUpdates.length,
+        stripeIntegrationComplete: stripeProductUpdates.length === createdTiers.length
       }
     });
 
