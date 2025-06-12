@@ -30,6 +30,8 @@ const OnboardingSuccess = React.lazy(() => import('./pages/onboarding/Onboarding
 
 // Private customer dashboard
 const ScopedCustomerDashboard = React.lazy(() => import('./pages/customer/ScopedCustomerDashboard'));
+const CustomerRegistration = React.lazy(() => import('./pages/customer/CustomerRegistration'));
+const CustomerWelcome = React.lazy(() => import('./pages/customer/CustomerWelcome'));
 
 const App = () => {
   // Initialize data check for development mode
@@ -95,6 +97,40 @@ const App = () => {
                     </div>
                   }>
                     <ScopedCustomerDashboard />
+                  </React.Suspense>
+                }
+              />
+              
+              {/* Customer registration flow */}
+              <Route 
+                path="/customer/join/:token" 
+                element={
+                  <React.Suspense fallback={
+                    <div className="min-h-screen flex items-center justify-center bg-[#fdfaf7] px-6 py-10">
+                      <div className="text-center">
+                        <div className="h-12 w-12 animate-spin border-4 border-[#800020] border-t-transparent rounded-full mx-auto mb-6"></div>
+                        <p className="text-gray-600 text-lg">Loading registration page...</p>
+                      </div>
+                    </div>
+                  }>
+                    <CustomerRegistration />
+                  </React.Suspense>
+                }
+              />
+              
+              {/* Customer welcome after successful payment */}
+              <Route 
+                path="/customer/welcome" 
+                element={
+                  <React.Suspense fallback={
+                    <div className="min-h-screen flex items-center justify-center bg-[#fdfaf7] px-6 py-10">
+                      <div className="text-center">
+                        <div className="h-12 w-12 animate-spin border-4 border-[#800020] border-t-transparent rounded-full mx-auto mb-6"></div>
+                        <p className="text-gray-600 text-lg">Activating your membership...</p>
+                      </div>
+                    </div>
+                  }>
+                    <CustomerWelcome />
                   </React.Suspense>
                 }
               />
