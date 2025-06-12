@@ -230,12 +230,57 @@ var create_business_default = withErrorHandler(async (req, res) => {
       monthly_price_cents: Math.round(tier.monthlyPrice * 100),
       is_active: true
     }));
-    const { error: tiersError } = await supabaseAdmin.from("membership_tiers").insert(tierInserts);
-    if (tiersError) {
+    const { data: createdTiers, error: tiersError } = await supabaseAdmin.from("membership_tiers").insert(tierInserts).select();
+    if (tiersError || !createdTiers) {
       console.error("Error creating membership tiers:", tiersError);
       await supabaseAdmin.auth.admin.deleteUser(authUser.user.id);
       await supabaseAdmin.from("businesses").delete().eq("id", businessId);
       throw new APIError(500, "Failed to create membership tiers", "DATABASE_ERROR");
+    }
+    const stripeProductUpdates = [];
+    for (const tier of createdTiers) {
+      try {
+        const product = await stripe.products.create({
+          name: `${businessData.businessName.trim()} Wine Club - ${tier.name}`,
+          description: `${tier.description} | Curated by ${businessData.businessName.trim()}`,
+          metadata: {
+            platform: "Club Cuv\xE9e",
+            business_id: tier.business_id,
+            tier_id: tier.id,
+            business_name: businessData.businessName.trim()
+          }
+        });
+        const price = await stripe.prices.create({
+          product: product.id,
+          unit_amount: tier.monthly_price_cents,
+          currency: "usd",
+          recurring: {
+            interval: "month"
+          },
+          metadata: {
+            business_id: tier.business_id,
+            tier_name: tier.name,
+            business_name: businessData.businessName.trim()
+          }
+        });
+        stripeProductUpdates.push({
+          tierId: tier.id,
+          stripeProductId: product.id,
+          stripePriceId: price.id
+        });
+      } catch (stripeError) {
+        console.error(`Stripe product creation failed for tier ${tier.name}:`, stripeError);
+      }
+    }
+    for (const update of stripeProductUpdates) {
+      try {
+        await supabaseAdmin.from("membership_tiers").update({
+          stripe_product_id: update.stripeProductId,
+          stripe_price_id: update.stripePriceId
+        }).eq("id", update.tierId);
+      } catch (updateError) {
+        console.error(`Failed to update tier ${update.tierId} with Stripe IDs:`, updateError);
+      }
     }
     await supabaseAdmin.from("restaurant_invitations").update({
       status: "completed",
@@ -249,7 +294,9 @@ var create_business_default = withErrorHandler(async (req, res) => {
         businessId,
         adminUserId: authUser.user.id,
         businessName: businessData.businessName,
-        customerTiersCreated: tierInserts.length
+        customerTiersCreated: tierInserts.length,
+        stripeProductsCreated: stripeProductUpdates.length,
+        stripeIntegrationComplete: stripeProductUpdates.length === createdTiers.length
       }
     });
   } catch (err) {
