@@ -1,8 +1,84 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
-import { supabaseAdmin } from '../lib/supabaseAdmin';
-import { withErrorHandler, APIError } from './utils/error-handler';
+import { createClient } from '@supabase/supabase-js';
+
+// Inline error handling (no external dependencies)
+class APIError extends Error {
+  constructor(
+    public statusCode: number,
+    message: string,
+    public code?: string
+  ) {
+    super(message);
+    this.name = 'APIError';
+  }
+}
+
+const setCommonHeaders = (res: VercelResponse) => {
+  res.setHeader('Content-Type', 'application/json');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+};
+
+const errorHandler = (
+  error: unknown,
+  req: VercelRequest,
+  res: VercelResponse
+) => {
+  console.error('API Error:', error);
+  setCommonHeaders(res);
+
+  if (req.method === 'OPTIONS') {
+    return res.status(204).end();
+  }
+
+  if (error instanceof APIError) {
+    return res.status(error.statusCode).json({
+      status: 'error',
+      error: {
+        message: error.message,
+        code: error.code,
+      },
+    });
+  }
+
+  return res.status(500).json({
+    status: 'error',
+    error: {
+      message: 'Internal server error',
+      code: 'INTERNAL_ERROR',
+    },
+  });
+};
+
+const withErrorHandler = (
+  handler: (req: VercelRequest, res: VercelResponse) => Promise<void>
+) => {
+  return async (req: VercelRequest, res: VercelResponse) => {
+    try {
+      setCommonHeaders(res);
+      if (req.method === 'OPTIONS') {
+        return res.status(204).end();
+      }
+      await handler(req, res);
+    } catch (error) {
+      errorHandler(error, req, res);
+    }
+  };
+};
 
 export default withErrorHandler(async (req: VercelRequest, res: VercelResponse): Promise<void> => {
+  // Create Supabase admin client directly in the API (no external dependencies)
+  const supabaseAdmin = createClient(
+    process.env.SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    }
+  );
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     throw new APIError(401, 'Unauthorized', 'UNAUTHORIZED');
@@ -44,9 +120,9 @@ async function handleGetTiers(business_id: string, res: VercelResponse) {
     throw new APIError(404, 'Business not found', 'BUSINESS_NOT_FOUND');
   }
 
-  // Get all tiers for this business (including non-ready ones for management)
+  // Get all tiers for this business
   const { data: tiers, error: tiersError } = await supabaseAdmin
-    .from('restaurant_membership_tiers')
+    .from('membership_tiers')
     .select('*')
     .eq('business_id', business_id)
     .order('created_at', { ascending: true });
@@ -67,7 +143,7 @@ async function handleGetTiers(business_id: string, res: VercelResponse) {
 async function handleDeleteTier(business_id: string, tier_id: string, res: VercelResponse) {
   // Verify the tier exists and belongs to this business
   const { data: tier, error: tierError } = await supabaseAdmin
-    .from('restaurant_membership_tiers')
+    .from('membership_tiers')
     .select('*')
     .eq('id', tier_id)
     .eq('business_id', business_id)
@@ -82,7 +158,7 @@ async function handleDeleteTier(business_id: string, tier_id: string, res: Verce
   // The Stripe products will remain (to preserve payment history)
   
   const { error: deleteError } = await supabaseAdmin
-    .from('restaurant_membership_tiers')
+    .from('membership_tiers')
     .delete()
     .eq('id', tier_id)
     .eq('business_id', business_id);

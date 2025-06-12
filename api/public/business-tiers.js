@@ -25,22 +25,7 @@ __export(business_tiers_exports, {
   default: () => business_tiers_default
 });
 module.exports = __toCommonJS(business_tiers_exports);
-
-// lib/supabaseAdmin.ts
 var import_supabase_js = require("@supabase/supabase-js");
-var supabaseAdmin = (0, import_supabase_js.createClient)(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY,
-  {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false
-    }
-  }
-);
-
-// api/utils/error-handler.ts
-var import_zod = require("zod");
 var APIError = class extends Error {
   constructor(statusCode, message, code) {
     super(message);
@@ -70,25 +55,6 @@ var errorHandler = (error, req, res) => {
       }
     });
   }
-  if (error instanceof import_zod.ZodError) {
-    return res.status(400).json({
-      status: "error",
-      error: {
-        message: "Validation error",
-        code: "VALIDATION_ERROR",
-        details: error.errors
-      }
-    });
-  }
-  if (error instanceof Error && error.name === "StripeError") {
-    return res.status(400).json({
-      status: "error",
-      error: {
-        message: error.message,
-        code: "STRIPE_ERROR"
-      }
-    });
-  }
   return res.status(500).json({
     status: "error",
     error: {
@@ -110,9 +76,17 @@ var withErrorHandler = (handler) => {
     }
   };
 };
-
-// api/public/business-tiers.ts
 var business_tiers_default = withErrorHandler(async (req, res) => {
+  const supabaseAdmin = (0, import_supabase_js.createClient)(
+    process.env.SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_ROLE_KEY,
+    {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    }
+  );
   if (req.method !== "GET") {
     throw new APIError(405, "Method not allowed", "METHOD_NOT_ALLOWED");
   }
@@ -124,17 +98,15 @@ var business_tiers_default = withErrorHandler(async (req, res) => {
   if (businessError || !business) {
     throw new APIError(404, "Business not found", "BUSINESS_NOT_FOUND");
   }
-  const { data: tiers, error: tiersError } = await supabaseAdmin.rpc("get_restaurant_membership_tiers", {
-    p_business_id: business_id
-  });
+  const { data: tiers, error: tiersError } = await supabaseAdmin.from("membership_tiers").select("id, name, description, monthly_price_cents, stripe_product_id, stripe_price_id, is_active").eq("business_id", business_id).eq("is_active", true);
   if (tiersError) {
-    console.error("Error fetching restaurant membership tiers:", tiersError);
+    console.error("Error fetching membership tiers:", tiersError);
     throw new APIError(500, "Failed to fetch membership tiers", "FETCH_TIERS_FAILED");
   }
   const formattedTiers = (tiers || []).map((tier) => ({
     ...tier,
-    price_display: `$${(tier.price_cents / 100).toFixed(2)}`,
-    price_per_interval: `$${(tier.price_cents / 100).toFixed(2)}/${tier.interval}`
+    price_display: `$${(tier.monthly_price_cents / 100).toFixed(2)}`,
+    price_per_interval: `$${(tier.monthly_price_cents / 100).toFixed(2)}/month`
   }));
   res.status(200).json({
     success: true,

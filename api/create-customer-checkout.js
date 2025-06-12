@@ -35,12 +35,8 @@ __export(create_customer_checkout_exports, {
   default: () => create_customer_checkout_default
 });
 module.exports = __toCommonJS(create_customer_checkout_exports);
-
-// api/utils/stripe.ts
+var import_supabase_js = require("@supabase/supabase-js");
 var import_stripe = __toESM(require("stripe"), 1);
-
-// api/utils/error-handler.ts
-var import_zod = require("zod");
 var APIError = class extends Error {
   constructor(statusCode, message, code) {
     super(message);
@@ -70,25 +66,6 @@ var errorHandler = (error, req, res) => {
       }
     });
   }
-  if (error instanceof import_zod.ZodError) {
-    return res.status(400).json({
-      status: "error",
-      error: {
-        message: "Validation error",
-        code: "VALIDATION_ERROR",
-        details: error.errors
-      }
-    });
-  }
-  if (error instanceof Error && error.name === "StripeError") {
-    return res.status(400).json({
-      status: "error",
-      error: {
-        message: error.message,
-        code: "STRIPE_ERROR"
-      }
-    });
-  }
   return res.status(500).json({
     status: "error",
     error: {
@@ -110,34 +87,21 @@ var withErrorHandler = (handler) => {
     }
   };
 };
-
-// api/utils/stripe.ts
-if (!process.env.STRIPE_SECRET_KEY) {
-  throw new Error("STRIPE_SECRET_KEY is required");
-}
-if (!process.env.STRIPE_WEBHOOK_SECRET) {
-  throw new Error("STRIPE_WEBHOOK_SECRET is required");
-}
-var stripe = new import_stripe.default(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: "2025-02-24.acacia",
-  typescript: true
-});
-
-// lib/supabaseAdmin.ts
-var import_supabase_js = require("@supabase/supabase-js");
-var supabaseAdmin = (0, import_supabase_js.createClient)(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY,
-  {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false
-    }
-  }
-);
-
-// api/create-customer-checkout.ts
 var create_customer_checkout_default = withErrorHandler(async (req, res) => {
+  const supabaseAdmin = (0, import_supabase_js.createClient)(
+    process.env.SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_ROLE_KEY,
+    {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    }
+  );
+  const stripe = new import_stripe.default(process.env.STRIPE_SECRET_KEY, {
+    apiVersion: "2025-02-24.acacia",
+    typescript: true
+  });
   if (req.method !== "POST") {
     throw new APIError(405, "Method not allowed", "METHOD_NOT_ALLOWED");
   }
@@ -154,7 +118,7 @@ var create_customer_checkout_default = withErrorHandler(async (req, res) => {
   if (businessError || !business) {
     throw new APIError(404, "Business not found", "BUSINESS_NOT_FOUND");
   }
-  const { data: tier, error: tierError } = await supabaseAdmin.from("restaurant_membership_tiers").select("*").eq("id", tier_id).eq("business_id", business_id).eq("is_ready", true).single();
+  const { data: tier, error: tierError } = await supabaseAdmin.from("membership_tiers").select("*").eq("id", tier_id).eq("business_id", business_id).eq("is_active", true).single();
   if (tierError || !tier) {
     throw new APIError(404, "Membership tier not found or not ready for signup", "TIER_NOT_FOUND");
   }
@@ -202,8 +166,8 @@ var create_customer_checkout_default = withErrorHandler(async (req, res) => {
         id: tier.id,
         name: tier.name,
         description: tier.description,
-        price_cents: tier.price_cents,
-        interval: tier.interval
+        price_cents: tier.monthly_price_cents,
+        interval: "month"
       }
     }
   });

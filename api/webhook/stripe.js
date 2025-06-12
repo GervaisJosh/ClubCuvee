@@ -124,11 +124,13 @@ async function handleCustomerMembershipCheckout(session, businessId, tierId) {
     if (metadata.invitation_token) {
       await handlePrivateInvitationCheckout(session, metadata.invitation_token, businessId, tierId);
     } else {
-      const { error: membershipError } = await supabase.from("customer_memberships").insert({
+      const { error: membershipError } = await supabase.from("customers").insert({
         business_id: businessId,
         tier_id: tierId,
         stripe_subscription_id: subscription.id,
-        status: "active"
+        subscription_status: "active",
+        email: session.customer_email || "",
+        name: session.customer_details?.name || "Customer"
       });
       if (membershipError) {
         console.error("Error creating customer membership:", membershipError);
@@ -166,13 +168,15 @@ async function handlePrivateInvitationCheckout(session, invitationToken, busines
       console.error("Customer user not found for email:", invitation.email);
       return;
     }
-    const { error: membershipError } = await supabase.from("customer_memberships").insert({
-      customer_user_id: customerUser.id,
+    const { error: membershipError } = await supabase.from("customers").insert({
+      auth_id: customerUser.id,
       business_id: businessId,
       tier_id: tierId,
       stripe_subscription_id: subscription.id,
-      invitation_token: invitationToken,
-      status: "active"
+      subscription_status: "active",
+      email: invitation.email,
+      name: customerUser.user_metadata?.full_name || invitation.email,
+      stripe_customer_id: subscription.customer
     });
     if (membershipError) {
       console.error("Error creating customer membership:", membershipError);
@@ -243,8 +247,8 @@ async function updateSubscriptionStatus(subscriptionId, status) {
 }
 async function updateCustomerMembershipStatus(subscriptionId, status) {
   try {
-    const { error } = await supabase.from("customer_memberships").update({
-      status,
+    const { error } = await supabase.from("customers").update({
+      subscription_status: status,
       updated_at: (/* @__PURE__ */ new Date()).toISOString()
     }).eq("stripe_subscription_id", subscriptionId);
     if (error) {

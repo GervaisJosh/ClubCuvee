@@ -223,24 +223,19 @@ var create_business_default = withErrorHandler(async (req, res) => {
       await supabaseAdmin.from("businesses").delete().eq("id", businessId);
       throw new APIError(500, "Failed to create business user profile", "DATABASE_ERROR");
     }
-    const tierInserts = businessData.customerTiers.map((tier, index) => ({
-      id: (0, import_crypto.randomUUID)(),
+    const tierInserts = businessData.customerTiers.map((tier) => ({
       business_id: businessId,
       name: tier.name.trim(),
       description: tier.description.trim(),
       monthly_price_cents: Math.round(tier.monthlyPrice * 100),
-      benefits: tier.benefits.filter((b) => b.trim()).map((b) => b.trim()),
-      tier_order: index + 1,
-      is_active: true,
-      created_at: (/* @__PURE__ */ new Date()).toISOString(),
-      updated_at: (/* @__PURE__ */ new Date()).toISOString()
+      is_active: true
     }));
-    const { error: tiersError } = await supabaseAdmin.from("customer_membership_tiers").insert(tierInserts);
+    const { error: tiersError } = await supabaseAdmin.from("membership_tiers").insert(tierInserts);
     if (tiersError) {
-      console.error("Error creating customer tiers:", tiersError);
+      console.error("Error creating membership tiers:", tiersError);
       await supabaseAdmin.auth.admin.deleteUser(authUser.user.id);
       await supabaseAdmin.from("businesses").delete().eq("id", businessId);
-      throw new APIError(500, "Failed to create customer membership tiers", "DATABASE_ERROR");
+      throw new APIError(500, "Failed to create membership tiers", "DATABASE_ERROR");
     }
     await supabaseAdmin.from("restaurant_invitations").update({
       status: "completed",

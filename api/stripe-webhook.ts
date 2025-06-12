@@ -103,16 +103,16 @@ export default withErrorHandler(async (req: VercelRequest, res: VercelResponse):
 
         // Create customer membership record
         const { error: membershipError } = await supabaseAdmin
-          .from('customer_memberships')
+          .from('customers')
           .insert({
-            customer_email: session.metadata.customer_email,
-            customer_name: session.metadata.customer_name || null,
+            email: session.metadata.customer_email,
+            name: session.metadata.customer_name || null,
             business_id: session.metadata.business_id,
             tier_id: session.metadata.tier_id,
             stripe_customer_id: subscription.customer as string,
             stripe_subscription_id: subscription.id,
-            status: 'active',
-            started_at: new Date().toISOString()
+            subscription_status: 'active',
+            created_at: new Date().toISOString()
           });
 
         if (membershipError) {

@@ -284,30 +284,25 @@ export default withErrorHandler(async (req: VercelRequest, res: VercelResponse):
       throw new APIError(500, 'Failed to create business user profile', 'DATABASE_ERROR');
     }
 
-    // 8. Create customer membership tiers for this business
-    const tierInserts = businessData.customerTiers.map((tier, index) => ({
-      id: randomUUID(),
+    // 8. Create membership tiers for this business
+    const tierInserts = businessData.customerTiers.map((tier) => ({
       business_id: businessId,
       name: tier.name.trim(),
       description: tier.description.trim(),
       monthly_price_cents: Math.round(tier.monthlyPrice * 100),
-      benefits: tier.benefits.filter(b => b.trim()).map(b => b.trim()),
-      tier_order: index + 1,
-      is_active: true,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
+      is_active: true
     }));
 
     const { error: tiersError } = await supabaseAdmin
-      .from('customer_membership_tiers')
+      .from('membership_tiers')
       .insert(tierInserts);
 
     if (tiersError) {
-      console.error('Error creating customer tiers:', tiersError);
+      console.error('Error creating membership tiers:', tiersError);
       // Clean up created records if tier creation fails
       await supabaseAdmin.auth.admin.deleteUser(authUser.user.id);
       await supabaseAdmin.from('businesses').delete().eq('id', businessId);
-      throw new APIError(500, 'Failed to create customer membership tiers', 'DATABASE_ERROR');
+      throw new APIError(500, 'Failed to create membership tiers', 'DATABASE_ERROR');
     }
 
     // 9. Mark the invitation as completed

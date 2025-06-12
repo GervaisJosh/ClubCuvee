@@ -246,15 +246,15 @@ var stripe_webhook_default = withErrorHandler(async (req, res) => {
           throw new APIError(400, "Invalid customer membership session data", "INVALID_SESSION");
         }
         const subscription = await getSubscription(session.subscription);
-        const { error: membershipError } = await supabaseAdmin.from("customer_memberships").insert({
-          customer_email: session.metadata.customer_email,
-          customer_name: session.metadata.customer_name || null,
+        const { error: membershipError } = await supabaseAdmin.from("customers").insert({
+          email: session.metadata.customer_email,
+          name: session.metadata.customer_name || null,
           business_id: session.metadata.business_id,
           tier_id: session.metadata.tier_id,
           stripe_customer_id: subscription.customer,
           stripe_subscription_id: subscription.id,
-          status: "active",
-          started_at: (/* @__PURE__ */ new Date()).toISOString()
+          subscription_status: "active",
+          created_at: (/* @__PURE__ */ new Date()).toISOString()
         });
         if (membershipError) {
           console.error("Error creating customer membership:", membershipError);

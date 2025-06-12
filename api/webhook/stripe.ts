@@ -127,12 +127,14 @@ async function handleCustomerMembershipCheckout(session: Stripe.Checkout.Session
     } else {
       // Legacy public checkout (deprecated)
       const { error: membershipError } = await supabase
-        .from('customer_memberships')
+        .from('customers')
         .insert({
           business_id: businessId,
           tier_id: tierId,
           stripe_subscription_id: subscription.id,
-          status: 'active'
+          subscription_status: 'active',
+          email: session.customer_email || '',
+          name: session.customer_details?.name || 'Customer'
         });
 
       if (membershipError) {
@@ -191,16 +193,18 @@ async function handlePrivateInvitationCheckout(session: Stripe.Checkout.Session,
       return;
     }
 
-    // Create customer membership record
+    // Create customer record
     const { error: membershipError } = await supabase
-      .from('customer_memberships')
+      .from('customers')
       .insert({
-        customer_user_id: customerUser.id,
+        auth_id: customerUser.id,
         business_id: businessId,
         tier_id: tierId,
         stripe_subscription_id: subscription.id,
-        invitation_token: invitationToken,
-        status: 'active'
+        subscription_status: 'active',
+        email: invitation.email,
+        name: customerUser.user_metadata?.full_name || invitation.email,
+        stripe_customer_id: subscription.customer
       });
 
     if (membershipError) {
@@ -316,9 +320,9 @@ async function updateSubscriptionStatus(subscriptionId: string, status: string) 
 async function updateCustomerMembershipStatus(subscriptionId: string, status: string) {
   try {
     const { error } = await supabase
-      .from('customer_memberships')
+      .from('customers')
       .update({
-        status,
+        subscription_status: status,
         updated_at: new Date().toISOString()
       })
       .eq('stripe_subscription_id', subscriptionId);

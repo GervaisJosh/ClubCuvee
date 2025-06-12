@@ -52,18 +52,18 @@ const ScopedCustomerDashboard: React.FC = () => {
 
       // Load customer profile using auth user with customer membership to get business scoping
       const { data: membershipData, error: membershipError } = await supabase
-        .from('customer_memberships')
+        .from('customers')
         .select(`
           id,
           business_id,
-          status,
+          subscription_status,
           tier_id,
           stripe_subscription_id,
           created_at,
           businesses!inner(id, name, email),
-          restaurant_membership_tiers(id, name, description)
+          membership_tiers(id, name, description)
         `)
-        .eq('customer_user_id', user!.id)
+        .eq('auth_id', user!.id)
         .single();
 
       if (membershipError) {
@@ -96,8 +96,8 @@ const ScopedCustomerDashboard: React.FC = () => {
       const customerMembership: CustomerMembership = {
         id: membershipData.id,
         tierId: membershipData.tier_id || '',
-        tierName: membershipData.restaurant_membership_tiers?.name || 'Unknown Tier',
-        tierDescription: membershipData.restaurant_membership_tiers?.description || '',
+        tierName: membershipData.membership_tiers?.name || 'Unknown Tier',
+        tierDescription: membershipData.membership_tiers?.description || '',
         status: membershipData.status || 'inactive',
         stripeSubscriptionId: membershipData.stripe_subscription_id || '',
         createdAt: membershipData.created_at

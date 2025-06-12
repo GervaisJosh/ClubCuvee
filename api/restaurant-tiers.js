@@ -25,22 +25,7 @@ __export(restaurant_tiers_exports, {
   default: () => restaurant_tiers_default
 });
 module.exports = __toCommonJS(restaurant_tiers_exports);
-
-// lib/supabaseAdmin.ts
 var import_supabase_js = require("@supabase/supabase-js");
-var supabaseAdmin = (0, import_supabase_js.createClient)(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY,
-  {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false
-    }
-  }
-);
-
-// api/utils/error-handler.ts
-var import_zod = require("zod");
 var APIError = class extends Error {
   constructor(statusCode, message, code) {
     super(message);
@@ -70,25 +55,6 @@ var errorHandler = (error, req, res) => {
       }
     });
   }
-  if (error instanceof import_zod.ZodError) {
-    return res.status(400).json({
-      status: "error",
-      error: {
-        message: "Validation error",
-        code: "VALIDATION_ERROR",
-        details: error.errors
-      }
-    });
-  }
-  if (error instanceof Error && error.name === "StripeError") {
-    return res.status(400).json({
-      status: "error",
-      error: {
-        message: error.message,
-        code: "STRIPE_ERROR"
-      }
-    });
-  }
   return res.status(500).json({
     status: "error",
     error: {
@@ -110,9 +76,17 @@ var withErrorHandler = (handler) => {
     }
   };
 };
-
-// api/restaurant-tiers.ts
 var restaurant_tiers_default = withErrorHandler(async (req, res) => {
+  const supabaseAdmin2 = (0, import_supabase_js.createClient)(
+    process.env.SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_ROLE_KEY,
+    {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    }
+  );
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
     throw new APIError(401, "Unauthorized", "UNAUTHORIZED");
@@ -141,7 +115,7 @@ async function handleGetTiers(business_id, res) {
   if (businessError || !business) {
     throw new APIError(404, "Business not found", "BUSINESS_NOT_FOUND");
   }
-  const { data: tiers, error: tiersError } = await supabaseAdmin.from("restaurant_membership_tiers").select("*").eq("business_id", business_id).order("created_at", { ascending: true });
+  const { data: tiers, error: tiersError } = await supabaseAdmin.from("membership_tiers").select("*").eq("business_id", business_id).order("created_at", { ascending: true });
   if (tiersError) {
     throw new APIError(500, "Failed to fetch tiers", "FETCH_TIERS_FAILED");
   }
@@ -154,11 +128,11 @@ async function handleGetTiers(business_id, res) {
   });
 }
 async function handleDeleteTier(business_id, tier_id, res) {
-  const { data: tier, error: tierError } = await supabaseAdmin.from("restaurant_membership_tiers").select("*").eq("id", tier_id).eq("business_id", business_id).single();
+  const { data: tier, error: tierError } = await supabaseAdmin.from("membership_tiers").select("*").eq("id", tier_id).eq("business_id", business_id).single();
   if (tierError || !tier) {
     throw new APIError(404, "Tier not found or access denied", "TIER_NOT_FOUND");
   }
-  const { error: deleteError } = await supabaseAdmin.from("restaurant_membership_tiers").delete().eq("id", tier_id).eq("business_id", business_id);
+  const { error: deleteError } = await supabaseAdmin.from("membership_tiers").delete().eq("id", tier_id).eq("business_id", business_id);
   if (deleteError) {
     throw new APIError(500, "Failed to delete tier", "DELETE_TIER_FAILED");
   }

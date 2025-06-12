@@ -35,12 +35,8 @@ __export(create_restaurant_tier_exports, {
   default: () => create_restaurant_tier_default
 });
 module.exports = __toCommonJS(create_restaurant_tier_exports);
-
-// api/utils/stripe.ts
+var import_supabase_js = require("@supabase/supabase-js");
 var import_stripe = __toESM(require("stripe"), 1);
-
-// api/utils/error-handler.ts
-var import_zod = require("zod");
 var APIError = class extends Error {
   constructor(statusCode, message, code) {
     super(message);
@@ -70,25 +66,6 @@ var errorHandler = (error, req, res) => {
       }
     });
   }
-  if (error instanceof import_zod.ZodError) {
-    return res.status(400).json({
-      status: "error",
-      error: {
-        message: "Validation error",
-        code: "VALIDATION_ERROR",
-        details: error.errors
-      }
-    });
-  }
-  if (error instanceof Error && error.name === "StripeError") {
-    return res.status(400).json({
-      status: "error",
-      error: {
-        message: error.message,
-        code: "STRIPE_ERROR"
-      }
-    });
-  }
   return res.status(500).json({
     status: "error",
     error: {
@@ -110,34 +87,21 @@ var withErrorHandler = (handler) => {
     }
   };
 };
-
-// api/utils/stripe.ts
-if (!process.env.STRIPE_SECRET_KEY) {
-  throw new Error("STRIPE_SECRET_KEY is required");
-}
-if (!process.env.STRIPE_WEBHOOK_SECRET) {
-  throw new Error("STRIPE_WEBHOOK_SECRET is required");
-}
-var stripe = new import_stripe.default(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: "2025-02-24.acacia",
-  typescript: true
-});
-
-// lib/supabaseAdmin.ts
-var import_supabase_js = require("@supabase/supabase-js");
-var supabaseAdmin = (0, import_supabase_js.createClient)(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY,
-  {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false
-    }
-  }
-);
-
-// api/create-restaurant-tier.ts
 var create_restaurant_tier_default = withErrorHandler(async (req, res) => {
+  const supabaseAdmin = (0, import_supabase_js.createClient)(
+    process.env.SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_ROLE_KEY,
+    {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    }
+  );
+  const stripe = new import_stripe.default(process.env.STRIPE_SECRET_KEY, {
+    apiVersion: "2025-02-24.acacia",
+    typescript: true
+  });
   if (req.method !== "POST") {
     throw new APIError(405, "Method not allowed", "METHOD_NOT_ALLOWED");
   }
@@ -146,24 +110,23 @@ var create_restaurant_tier_default = withErrorHandler(async (req, res) => {
     throw new APIError(401, "Unauthorized", "UNAUTHORIZED");
   }
   const body = req.body;
-  const { business_id, name, description, price_cents, interval = "month" } = body;
-  if (!business_id || !name || !price_cents) {
-    throw new APIError(400, "Missing required fields: business_id, name, price_cents", "MISSING_FIELDS");
+  const { business_id, name, description, monthly_price_cents } = body;
+  if (!business_id || !name || !monthly_price_cents) {
+    throw new APIError(400, "Missing required fields: business_id, name, monthly_price_cents", "MISSING_FIELDS");
   }
-  if (price_cents < 100) {
-    throw new APIError(400, "Minimum price is $1.00 (100 cents)", "INVALID_PRICE");
+  if (monthly_price_cents < 1e3) {
+    throw new APIError(400, "Minimum price is $10.00 (1000 cents)", "INVALID_PRICE");
   }
   const { data: business, error: businessError } = await supabaseAdmin.from("businesses").select("id, name").eq("id", business_id).single();
   if (businessError || !business) {
     throw new APIError(404, "Business not found or access denied", "BUSINESS_NOT_FOUND");
   }
-  const { data: tier, error: tierError } = await supabaseAdmin.from("restaurant_membership_tiers").insert({
+  const { data: tier, error: tierError } = await supabaseAdmin.from("membership_tiers").insert({
     business_id,
     name,
     description,
-    price_cents,
-    interval,
-    is_ready: false
+    monthly_price_cents,
+    is_active: false
     // Will be set to true after Stripe creation
   }).select().single();
   if (tierError || !tier) {
@@ -181,10 +144,10 @@ var create_restaurant_tier_default = withErrorHandler(async (req, res) => {
     });
     const price = await stripe.prices.create({
       product: product.id,
-      unit_amount: price_cents,
+      unit_amount: monthly_price_cents,
       currency: "usd",
       recurring: {
-        interval
+        interval: "month"
       },
       metadata: {
         business_id,
@@ -192,10 +155,10 @@ var create_restaurant_tier_default = withErrorHandler(async (req, res) => {
         created_by: "club_cuvee_platform"
       }
     });
-    const { error: updateError } = await supabaseAdmin.from("restaurant_membership_tiers").update({
+    const { error: updateError } = await supabaseAdmin.from("membership_tiers").update({
       stripe_product_id: product.id,
       stripe_price_id: price.id,
-      is_ready: true
+      is_active: true
     }).eq("id", tier.id);
     if (updateError) {
       console.error("Failed to update tier with Stripe IDs:", updateError);
@@ -206,12 +169,12 @@ var create_restaurant_tier_default = withErrorHandler(async (req, res) => {
         tier_id: tier.id,
         stripe_product_id: product.id,
         stripe_price_id: price.id,
-        is_ready: !updateError
+        is_active: !updateError
       }
     });
   } catch (stripeError) {
     console.error("Stripe creation failed:", stripeError);
-    await supabaseAdmin.from("restaurant_membership_tiers").delete().eq("id", tier.id);
+    await supabaseAdmin.from("membership_tiers").delete().eq("id", tier.id);
     throw new APIError(500, `Failed to create Stripe products: ${stripeError.message}`, "STRIPE_ERROR");
   }
 });
