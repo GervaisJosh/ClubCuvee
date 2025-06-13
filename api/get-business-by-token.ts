@@ -111,7 +111,7 @@ const handler = async (req: VercelRequest, res: VercelResponse): Promise<void> =
       .from('restaurant_invitations')
       .select('*')
       .eq('token', token)
-      .eq('status', 'completed')
+      .in('status', ['paid', 'completed'])
       .single();
 
     console.log('Invitation query result:', {
@@ -142,12 +142,13 @@ const handler = async (req: VercelRequest, res: VercelResponse): Promise<void> =
       });
 
       res.status(404).json({ 
-        error: 'Invitation not found or not completed',
+        error: 'Invitation not found or not in paid/completed status',
         debug: {
           tokenProvided: token,
           invitationFound: !!anyInvitation,
           invitationStatus: anyInvitation?.status,
-          hasBusinessId: !!anyInvitation?.business_id
+          hasBusinessId: !!anyInvitation?.business_id,
+          expectedStatuses: ['paid', 'completed']
         }
       });
       return;

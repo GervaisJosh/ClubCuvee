@@ -108,7 +108,7 @@ var handler = async (req, res) => {
       return;
     }
     console.log("\u{1F50D} Querying restaurant_invitations for token:", token);
-    const { data: invitation, error: invitationError } = await supabaseAdmin.from("restaurant_invitations").select("*").eq("token", token).eq("status", "completed").single();
+    const { data: invitation, error: invitationError } = await supabaseAdmin.from("restaurant_invitations").select("*").eq("token", token).in("status", ["paid", "completed"]).single();
     console.log("Invitation query result:", {
       invitation: invitation ? {
         id: invitation.id,
@@ -128,12 +128,13 @@ var handler = async (req, res) => {
         error: anyError
       });
       res.status(404).json({
-        error: "Invitation not found or not completed",
+        error: "Invitation not found or not in paid/completed status",
         debug: {
           tokenProvided: token,
           invitationFound: !!anyInvitation,
           invitationStatus: anyInvitation?.status,
-          hasBusinessId: !!anyInvitation?.business_id
+          hasBusinessId: !!anyInvitation?.business_id,
+          expectedStatuses: ["paid", "completed"]
         }
       });
       return;
