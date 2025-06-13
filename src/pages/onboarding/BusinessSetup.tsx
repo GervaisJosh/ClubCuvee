@@ -306,6 +306,11 @@ const BusinessSetup: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    if (!token) {
+      setError('Invalid token. Please try accessing this page again from your invitation link.');
+      return;
+    }
+    
     if (!validateForm()) {
       return;
     }
@@ -314,6 +319,7 @@ const BusinessSetup: React.FC = () => {
     setError(null);
 
     try {
+      console.log('🚀 Submitting business form with token:', token);
       const response = await apiClient.post<{
         success: boolean;
         data: {
@@ -326,10 +332,15 @@ const BusinessSetup: React.FC = () => {
         businessData: formData
       });
 
+      console.log('📝 Create business response:', response);
+
       if (response.success) {
+        const successUrl = `/onboard/${token}/success`;
+        console.log('✅ Business created successfully, navigating to:', successUrl);
         // Redirect to success page or business dashboard
-        navigate(`/onboard/${token}/success`);
+        navigate(successUrl);
       } else {
+        console.error('❌ Business creation failed - response.success is false');
         setError('Failed to create business. Please try again.');
       }
     } catch (err: any) {
