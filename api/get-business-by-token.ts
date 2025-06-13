@@ -111,7 +111,7 @@ const handler = async (req: VercelRequest, res: VercelResponse): Promise<void> =
     // Get business data using business_id from invitation
     const { data: business, error: businessError } = await supabaseAdmin
       .from('businesses')
-      .select('id, name, website, email, status, created_at, updated_at')
+      .select('id, name, website, email, status, created_at, updated_at, pricing_tier_id')
       .eq('id', invitation.business_id)
       .single();
 
@@ -122,10 +122,24 @@ const handler = async (req: VercelRequest, res: VercelResponse): Promise<void> =
       return;
     }
 
+    // Get pricing tier details separately
+    let pricingTierName = 'Unknown';
+    if (business.pricing_tier_id) {
+      const { data: pricingTier, error: pricingTierError } = await supabaseAdmin
+        .from('business_pricing_tiers')
+        .select('name')
+        .eq('id', business.pricing_tier_id)
+        .single();
+      
+      if (!pricingTierError && pricingTier) {
+        pricingTierName = pricingTier.name;
+      }
+    }
+
     // Get membership tiers for this business
     const { data: membershipTiers, error: tiersError } = await supabaseAdmin
       .from('membership_tiers')
-      .select('*')
+      .select('id, name, description, monthly_price_cents, stripe_product_id, stripe_price_id, created_at')
       .eq('business_id', business.id)
       .order('created_at', { ascending: true });
 
@@ -137,17 +151,26 @@ const handler = async (req: VercelRequest, res: VercelResponse): Promise<void> =
       return;
     }
 
-    // Format the response
+    // Format the response to match frontend interface
     const response = {
       business: {
         id: business.id,
         name: business.name,
         website: business.website,
-        email: business.email,
-        status: business.status,
+        admin_email: business.email,
+        logo_url: null, // TODO: Add logo support later
+        subscription_tier: pricingTierName,
         created_at: business.created_at
       },
-      membershipTiers: membershipTiers || [],
+      membershipTiers: (membershipTiers || []).map(tier => ({
+        id: tier.id,
+        name: tier.name,
+        price: (tier.monthly_price_cents / 100).toFixed(2), // Convert cents to dollars as string
+        description: tier.description,
+        stripe_product_id: tier.stripe_product_id || '',
+        stripe_price_id: tier.stripe_price_id || '',
+        created_at: tier.created_at
+      })),
       invitation: {
         id: invitation.id,
         status: invitation.status,
