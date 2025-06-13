@@ -167,7 +167,7 @@ var create_checkout_session_default = withErrorHandler(async (req, res) => {
         invitationToken: token,
         pricingTierId: pricingTier.id
       },
-      success_url: `${baseUrl}/onboard/${token}/success?session_id={CHECKOUT_SESSION_ID}`,
+      success_url: `${baseUrl}/onboard/${token}/setup?success=true&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${baseUrl}/onboard/${token}`
     });
     await supabaseAdmin.from("restaurant_invitations").update({

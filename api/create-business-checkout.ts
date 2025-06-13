@@ -201,7 +201,7 @@ export default withErrorHandler(async (req: VercelRequest, res: VercelResponse):
         invitationToken: token,
         pricingTierId: pricingTier.id,
       },
-      success_url: `${baseUrl}/onboard/${token}?success=true&session_id={CHECKOUT_SESSION_ID}`,
+      success_url: `${baseUrl}/onboard/${token}/setup?success=true&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${baseUrl}/onboard/${token}?canceled=true`,
     });
 
