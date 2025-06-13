@@ -150,11 +150,12 @@ async function handlePrivateInvitationCheckout(session, invitationToken, busines
       console.error("Error finding invitation:", inviteError);
       return;
     }
+    const typedInvitation = invitation;
     const { error: updateInviteError } = await supabase.from("customer_invitations").update({
       status: "used",
       used_at: (/* @__PURE__ */ new Date()).toISOString(),
       updated_at: (/* @__PURE__ */ new Date()).toISOString()
-    }).eq("id", invitation.id);
+    }).eq("id", typedInvitation.id);
     if (updateInviteError) {
       console.error("Error updating invitation status:", updateInviteError);
     }
@@ -163,9 +164,9 @@ async function handlePrivateInvitationCheckout(session, invitationToken, busines
       console.error("Error finding customer user:", userError);
       return;
     }
-    const customerUser = authUsers.users.find((user) => user.email === invitation.email);
+    const customerUser = authUsers.users.find((user) => user.email === typedInvitation.email);
     if (!customerUser) {
-      console.error("Customer user not found for email:", invitation.email);
+      console.error("Customer user not found for email:", typedInvitation.email);
       return;
     }
     const { error: membershipError } = await supabase.from("customers").insert({
@@ -174,8 +175,8 @@ async function handlePrivateInvitationCheckout(session, invitationToken, busines
       tier_id: tierId,
       stripe_subscription_id: subscription.id,
       subscription_status: "active",
-      email: invitation.email,
-      name: customerUser.user_metadata?.full_name || invitation.email,
+      email: typedInvitation.email,
+      name: customerUser.user_metadata?.full_name || typedInvitation.email,
       stripe_customer_id: subscription.customer
     });
     if (membershipError) {

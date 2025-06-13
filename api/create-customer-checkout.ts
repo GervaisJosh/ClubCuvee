@@ -260,6 +260,7 @@ export default withErrorHandler(async (req: VercelRequest, res: VercelResponse):
     mode: 'subscription',
     payment_method_types: ['card'],
     customer_email: finalCustomerEmail,
+    customer_creation: 'always',
     line_items: [
       {
         price: tier.stripe_price_id,
@@ -268,9 +269,15 @@ export default withErrorHandler(async (req: VercelRequest, res: VercelResponse):
     ],
     success_url: successUrl,
     cancel_url: cancelUrl,
-    metadata: customerMetadata,
+    metadata: {
+      ...customerMetadata,
+      customer_name: finalCustomerName
+    },
     subscription_data: {
-      metadata: customerMetadata
+      metadata: {
+        ...customerMetadata,
+        customer_name: finalCustomerName
+      }
     },
     allow_promotion_codes: true, // Allow customers to use discount codes
     billing_address_collection: 'auto'

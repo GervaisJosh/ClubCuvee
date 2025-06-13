@@ -32,7 +32,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     // Verify webhook signature
-    event = stripe.webhooks.constructEvent(req.body, signature, webhookSecret);
+    event = stripe.webhooks.constructEvent(req.body, signature as string, webhookSecret);
   } catch (error: any) {
     console.error('Webhook signature verification failed:', error.message);
     return res.status(400).json({ error: 'Invalid signature' });
@@ -164,6 +164,9 @@ async function handlePrivateInvitationCheckout(session: Stripe.Checkout.Session,
       return;
     }
 
+    // Type assertion for invitation object
+    const typedInvitation = invitation as { id: string; email: string; [key: string]: any };
+
     // Mark invitation as used
     const { error: updateInviteError } = await supabase
       .from('customer_invitations')
@@ -172,7 +175,7 @@ async function handlePrivateInvitationCheckout(session: Stripe.Checkout.Session,
         used_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       })
-      .eq('id', invitation.id);
+      .eq('id', typedInvitation.id);
 
     if (updateInviteError) {
       console.error('Error updating invitation status:', updateInviteError);
@@ -186,10 +189,10 @@ async function handlePrivateInvitationCheckout(session: Stripe.Checkout.Session,
       return;
     }
 
-    const customerUser = authUsers.users.find(user => user.email === invitation.email);
+    const customerUser = authUsers.users.find((user: any) => user.email === typedInvitation.email);
     
     if (!customerUser) {
-      console.error('Customer user not found for email:', invitation.email);
+      console.error('Customer user not found for email:', typedInvitation.email);
       return;
     }
 
@@ -202,8 +205,8 @@ async function handlePrivateInvitationCheckout(session: Stripe.Checkout.Session,
         tier_id: tierId,
         stripe_subscription_id: subscription.id,
         subscription_status: 'active',
-        email: invitation.email,
-        name: customerUser.user_metadata?.full_name || invitation.email,
+        email: typedInvitation.email,
+        name: customerUser.user_metadata?.full_name || typedInvitation.email,
         stripe_customer_id: subscription.customer
       });
 

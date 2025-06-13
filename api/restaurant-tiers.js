@@ -26,6 +26,16 @@ __export(restaurant_tiers_exports, {
 });
 module.exports = __toCommonJS(restaurant_tiers_exports);
 var import_supabase_js = require("@supabase/supabase-js");
+var supabaseAdmin = (0, import_supabase_js.createClient)(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY,
+  {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  }
+);
 var APIError = class extends Error {
   constructor(statusCode, message, code) {
     super(message);
@@ -77,16 +87,6 @@ var withErrorHandler = (handler) => {
   };
 };
 var restaurant_tiers_default = withErrorHandler(async (req, res) => {
-  const supabaseAdmin2 = (0, import_supabase_js.createClient)(
-    process.env.SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_ROLE_KEY,
-    {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false
-      }
-    }
-  );
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
     throw new APIError(401, "Unauthorized", "UNAUTHORIZED");

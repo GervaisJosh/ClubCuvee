@@ -197,6 +197,7 @@ var create_customer_checkout_default = withErrorHandler(async (req, res) => {
     mode: "subscription",
     payment_method_types: ["card"],
     customer_email: finalCustomerEmail,
+    customer_creation: "always",
     line_items: [
       {
         price: tier.stripe_price_id,
@@ -205,9 +206,15 @@ var create_customer_checkout_default = withErrorHandler(async (req, res) => {
     ],
     success_url: successUrl,
     cancel_url: cancelUrl,
-    metadata: customerMetadata,
+    metadata: {
+      ...customerMetadata,
+      customer_name: finalCustomerName
+    },
     subscription_data: {
-      metadata: customerMetadata
+      metadata: {
+        ...customerMetadata,
+        customer_name: finalCustomerName
+      }
     },
     allow_promotion_codes: true,
     // Allow customers to use discount codes

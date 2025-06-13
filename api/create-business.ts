@@ -239,7 +239,7 @@ export default withErrorHandler(async (req: VercelRequest, res: VercelResponse):
 
     // 6. Create the business record
     const businessId = randomUUID();
-    const { data: business, error: businessError } = await supabaseAdmin
+    const { error: businessError } = await supabaseAdmin
       .from('businesses')
       .insert({
         id: businessId,

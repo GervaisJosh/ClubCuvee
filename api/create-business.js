@@ -185,7 +185,7 @@ var create_business_default = withErrorHandler(async (req, res) => {
       throw new APIError(400, authError?.message || "Failed to create user account", "AUTH_ERROR");
     }
     const businessId = (0, import_crypto.randomUUID)();
-    const { data: business, error: businessError } = await supabaseAdmin.from("businesses").insert({
+    const { error: businessError } = await supabaseAdmin.from("businesses").insert({
       id: businessId,
       name: businessData.businessName.trim(),
       owner_id: authUser.user.id,

@@ -1,6 +1,18 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
 
+// Create Supabase admin client (inline, no external dependencies)
+const supabaseAdmin = createClient(
+  process.env.SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  }
+);
+
 // Inline error handling (no external dependencies)
 class APIError extends Error {
   constructor(
@@ -68,17 +80,6 @@ const withErrorHandler = (
 };
 
 export default withErrorHandler(async (req: VercelRequest, res: VercelResponse): Promise<void> => {
-  // Create Supabase admin client directly in the API (no external dependencies)
-  const supabaseAdmin = createClient(
-    process.env.SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false
-      }
-    }
-  );
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     throw new APIError(401, 'Unauthorized', 'UNAUTHORIZED');
