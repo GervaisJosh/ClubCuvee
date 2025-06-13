@@ -62,15 +62,6 @@ const OnboardingSuccess: React.FC = () => {
         }
 
         const data = await response.json();
-        
-        // Safety check: if business is null, redirect to setup page
-        if (!data.business) {
-          console.error('Invalid state: OnboardingSuccess accessed without business creation');
-          console.log('Redirecting to business setup page...');
-          navigate(`/onboard/${token}/setup`);
-          return;
-        }
-        
         setBusinessData(data);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'An error occurred');
