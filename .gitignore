@@ -408,3 +408,10 @@ FodyWeavers.xsd
 
 # Build output
 dist/
+
+# Backend folders (bolt-design branch only)
+api/
+lib/
+scripts/
+supabase/
+tests/
