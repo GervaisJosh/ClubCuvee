@@ -380,7 +380,6 @@ export default withErrorHandler(async (req: VercelRequest, res: VercelResponse):
       .update({
         status: 'completed',
         business_id: businessId,
-        admin_user_id: authUser.user.id,
         updated_at: new Date().toISOString()
       })
       .eq('token', token);
