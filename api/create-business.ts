@@ -374,7 +374,8 @@ export default withErrorHandler(async (req: VercelRequest, res: VercelResponse):
     }
 
     // 11. Mark the invitation as completed
-    await supabaseAdmin
+    console.log('🔄 Updating invitation status to completed for token:', token);
+    const { error: invitationUpdateError } = await supabaseAdmin
       .from('restaurant_invitations')
       .update({
         status: 'completed',
@@ -383,6 +384,13 @@ export default withErrorHandler(async (req: VercelRequest, res: VercelResponse):
         updated_at: new Date().toISOString()
       })
       .eq('token', token);
+
+    if (invitationUpdateError) {
+      console.error('❌ Error updating invitation status:', invitationUpdateError);
+      // Don't throw error - business was created successfully, just log the issue
+    } else {
+      console.log('✅ Successfully updated invitation status to completed');
+    }
 
     // 12. Return success response
     res.status(200).json({

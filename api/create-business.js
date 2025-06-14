@@ -282,12 +282,18 @@ var create_business_default = withErrorHandler(async (req, res) => {
         console.error(`Failed to update tier ${update.tierId} with Stripe IDs:`, updateError);
       }
     }
-    await supabaseAdmin.from("restaurant_invitations").update({
+    console.log("\u{1F504} Updating invitation status to completed for token:", token);
+    const { error: invitationUpdateError } = await supabaseAdmin.from("restaurant_invitations").update({
       status: "completed",
       business_id: businessId,
       admin_user_id: authUser.user.id,
       updated_at: (/* @__PURE__ */ new Date()).toISOString()
     }).eq("token", token);
+    if (invitationUpdateError) {
+      console.error("\u274C Error updating invitation status:", invitationUpdateError);
+    } else {
+      console.log("\u2705 Successfully updated invitation status to completed");
+    }
     res.status(200).json({
       success: true,
       data: {
