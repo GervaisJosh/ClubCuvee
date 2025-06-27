@@ -353,10 +353,10 @@ const BusinessSetup: React.FC = () => {
 
   if (verifyingPayment) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#fdfaf7] px-6 py-10">
+      <div className="min-h-screen flex items-center justify-center bg-[#fdfaf7] dark:bg-black px-6 py-10">
         <div className="text-center">
           <div className="h-12 w-12 animate-spin border-4 border-[#800020] border-t-transparent rounded-full mx-auto mb-6"></div>
-          <p className="text-gray-600 text-lg">Verifying your payment...</p>
+          <p className="text-gray-600 dark:text-gray-300 text-lg">Verifying your payment...</p>
         </div>
       </div>
     );
@@ -364,11 +364,11 @@ const BusinessSetup: React.FC = () => {
 
   if (error && !paymentData) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#fdfaf7] px-6 py-10">
-        <Card className="max-w-md mx-auto p-8 text-center bg-white shadow-2xl border border-red-200">
+      <div className="min-h-screen flex items-center justify-center bg-[#fdfaf7] dark:bg-black px-6 py-10">
+        <Card className="max-w-md mx-auto p-8 text-center bg-white dark:bg-gray-800 shadow-2xl border border-red-200 dark:border-red-800/30">
           <AlertCircle className="h-16 w-16 text-red-500 mx-auto mb-4" />
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">Setup Error</h1>
-          <p className="text-gray-600 mb-6">{error}</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Setup Error</h1>
+          <p className="text-gray-600 dark:text-gray-300 mb-6">{error}</p>
           <Button onClick={() => navigate('/landing')} className="w-full bg-gray-600 hover:bg-gray-700">
             Return Home
           </Button>
@@ -389,13 +389,13 @@ const BusinessSetup: React.FC = () => {
     const error = validationErrors[name];
     return (
       <div className="space-y-2">
-        <label htmlFor={name} className="block text-sm font-semibold text-gray-800">
+        <label htmlFor={name} className="block text-sm font-semibold text-gray-800 dark:text-gray-200">
           {label} {required && <span className="text-red-500">*</span>}
         </label>
         <div className="relative">
           {icon && (
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <div className="text-gray-400">{icon}</div>
+              <div className="text-gray-400 dark:text-gray-500">{icon}</div>
             </div>
           )}
           <input
@@ -408,9 +408,9 @@ const BusinessSetup: React.FC = () => {
             placeholder={placeholder}
             className={`w-full ${icon ? 'pl-10' : 'pl-4'} pr-4 py-3 border-2 rounded-lg transition-all duration-200 ${
               error 
-                ? 'border-red-300 bg-red-50 focus:border-red-500 focus:ring-red-500/20' 
-                : 'border-gray-200 bg-white focus:border-[#800020] focus:ring-[#800020]/20'
-            } focus:outline-none focus:ring-4`}
+                ? 'border-red-300 dark:border-red-500/50 bg-red-50 dark:bg-red-900/10 focus:border-red-500 focus:ring-red-500/20' 
+                : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 focus:border-[#800020] focus:ring-[#800020]/20'
+            } focus:outline-none focus:ring-4 dark:text-white`}
           />
           {name === 'password' && (
             <button
@@ -418,7 +418,7 @@ const BusinessSetup: React.FC = () => {
               onClick={() => setShowPassword(!showPassword)}
               className="absolute inset-y-0 right-0 pr-3 flex items-center"
             >
-              {showPassword ? <EyeOff className="h-5 w-5 text-gray-400" /> : <Eye className="h-5 w-5 text-gray-400" />}
+              {showPassword ? <EyeOff className="h-5 w-5 text-gray-400 dark:text-gray-500" /> : <Eye className="h-5 w-5 text-gray-400 dark:text-gray-500" />}
             </button>
           )}
           {name === 'confirmPassword' && (
@@ -427,12 +427,12 @@ const BusinessSetup: React.FC = () => {
               onClick={() => setShowConfirmPassword(!showConfirmPassword)}
               className="absolute inset-y-0 right-0 pr-3 flex items-center"
             >
-              {showConfirmPassword ? <EyeOff className="h-5 w-5 text-gray-400" /> : <Eye className="h-5 w-5 text-gray-400" />}
+              {showConfirmPassword ? <EyeOff className="h-5 w-5 text-gray-400 dark:text-gray-500" /> : <Eye className="h-5 w-5 text-gray-400 dark:text-gray-500" />}
             </button>
           )}
         </div>
         {error && (
-          <p className="text-sm text-red-600 flex items-center space-x-1">
+          <p className="text-sm text-red-600 dark:text-red-400 flex items-center space-x-1">
             <AlertCircle className="h-4 w-4" />
             <span>{error}</span>
           </p>
@@ -442,7 +442,7 @@ const BusinessSetup: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#fdfaf7] to-[#f8f5f0] px-6 py-10">
+    <div className="min-h-screen bg-gradient-to-br from-[#fdfaf7] dark:from-black to-[#f8f5f0] dark:to-gray-900 px-6 py-10">
       <div className="max-w-5xl mx-auto">
         {/* Header */}
         <div className="text-center mb-12">
@@ -453,18 +453,18 @@ const BusinessSetup: React.FC = () => {
           <h1 className="text-5xl font-bold bg-gradient-to-r from-[#800020] to-[#a00030] bg-clip-text text-transparent mb-4">
             Payment Successful!
           </h1>
-          <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+          <p className="text-xl text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
             Welcome to Club Cuvée! Let's complete your business setup and configure your wine club tiers.
           </p>
           
           {/* Payment Status Card */}
           {paymentData && (
-            <Card className="mt-8 p-6 bg-green-50 border-green-200 max-w-md mx-auto">
+            <Card className="mt-8 p-6 bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800/30 max-w-md mx-auto">
               <div className="flex items-center justify-center space-x-3">
-                <CheckCircle className="h-6 w-6 text-green-600" />
+                <CheckCircle className="h-6 w-6 text-green-600 dark:text-green-400" />
                 <div className="text-left">
-                  <p className="font-semibold text-green-800">Subscription Active</p>
-                  <p className="text-sm text-green-600">
+                  <p className="font-semibold text-green-800 dark:text-green-300">Subscription Active</p>
+                  <p className="text-sm text-green-600 dark:text-green-400">
                     {paymentData.session.customer_email}
                   </p>
                 </div>
@@ -475,10 +475,10 @@ const BusinessSetup: React.FC = () => {
 
         <form onSubmit={handleSubmit} className="space-y-8">
           {/* Business Information */}
-          <Card className="p-8 bg-white shadow-2xl border-gray-200">
+          <Card className="p-8 bg-white dark:bg-gray-800 shadow-2xl border-gray-200 dark:border-gray-700">
             <div className="flex items-center space-x-3 mb-8">
               <Building className="h-8 w-8 text-[#800020]" />
-              <h2 className="text-3xl font-bold text-gray-900">Business Information</h2>
+              <h2 className="text-3xl font-bold text-gray-900 dark:text-white">Business Information</h2>
             </div>
             
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -509,7 +509,7 @@ const BusinessSetup: React.FC = () => {
               {renderFormField('website', 'Website', 'url', undefined, false, 'https://yourwebsite.com')}
               
               <div className="space-y-2">
-                <label htmlFor="description" className="block text-sm font-semibold text-gray-800">
+                <label htmlFor="description" className="block text-sm font-semibold text-gray-800 dark:text-gray-200">
                   Business Description
                 </label>
                 <textarea
@@ -519,18 +519,18 @@ const BusinessSetup: React.FC = () => {
                   onChange={handleInputChange}
                   rows={4}
                   placeholder="Tell us about your business and wine philosophy..."
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg bg-white focus:border-[#800020] focus:ring-[#800020]/20 focus:outline-none focus:ring-4 transition-all duration-200"
+                  className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus:border-[#800020] focus:ring-[#800020]/20 focus:outline-none focus:ring-4 transition-all duration-200 dark:text-white"
                 />
               </div>
             </div>
           </Card>
 
           {/* Customer Wine Club Tiers */}
-          <Card className="p-8 bg-white shadow-2xl border-gray-200">
+          <Card className="p-8 bg-white dark:bg-gray-800 shadow-2xl border-gray-200 dark:border-gray-700">
             <div className="flex items-center justify-between mb-8">
               <div className="flex items-center space-x-3">
                 <Wine className="h-8 w-8 text-[#800020]" />
-                <h2 className="text-3xl font-bold text-gray-900">Customer Wine Club Tiers</h2>
+                <h2 className="text-3xl font-bold text-gray-900 dark:text-white">Customer Wine Club Tiers</h2>
               </div>
               <Button 
                 type="button" 
@@ -544,10 +544,10 @@ const BusinessSetup: React.FC = () => {
             
             <div className="space-y-8">
               {formData.customerTiers.length === 0 ? (
-                <div className="text-center py-12 border-2 border-dashed border-gray-300 rounded-xl bg-gray-50">
-                  <Wine className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-xl font-semibold text-gray-600 mb-2">Create Your Wine Club Tiers</h3>
-                  <p className="text-gray-500 mb-6 max-w-md mx-auto">
+                <div className="text-center py-12 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl bg-gray-50 dark:bg-gray-800/50">
+                  <Wine className="h-16 w-16 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
+                  <h3 className="text-xl font-semibold text-gray-600 dark:text-gray-300 mb-2">Create Your Wine Club Tiers</h3>
+                  <p className="text-gray-500 dark:text-gray-400 mb-6 max-w-md mx-auto">
                     Design membership tiers that reflect your unique wine offerings and create value for your customers.
                   </p>
                   <Button 
@@ -568,14 +568,14 @@ const BusinessSetup: React.FC = () => {
                 
                 return (
                   <div key={tierIndex} className={`border-2 rounded-xl p-6 transition-all duration-200 ${
-                    tierError ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-gray-50'
+                    tierError ? 'border-red-300 dark:border-red-500/50 bg-red-50 dark:bg-red-900/10' : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50'
                   }`}>
                     <div className="flex items-center justify-between mb-6">
                       <div className="flex items-center space-x-3">
                         <div className="bg-[#800020] text-white rounded-full w-8 h-8 flex items-center justify-center font-bold">
                           {tierIndex + 1}
                         </div>
-                        <h3 className="text-xl font-bold text-gray-900">Wine Club Tier {tierIndex + 1}</h3>
+                        <h3 className="text-xl font-bold text-gray-900 dark:text-white">Wine Club Tier {tierIndex + 1}</h3>
                       </div>
                       {formData.customerTiers.length > 1 && (
                         <Button
@@ -590,25 +590,25 @@ const BusinessSetup: React.FC = () => {
                     
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
                       <div className="space-y-2">
-                        <label className="block text-sm font-semibold text-gray-800">
+                        <label className="block text-sm font-semibold text-gray-800 dark:text-gray-200">
                           Tier Name <span className="text-red-500">*</span>
                         </label>
                         <div className="relative">
-                          <Wine className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400 h-5 w-5" />
+                          <Wine className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400 dark:text-gray-500 h-5 w-5" />
                           <input
                             type="text"
                             value={tier.name}
                             onChange={(e) => handleTierChange(tierIndex, 'name', e.target.value)}
                             className={`w-full pl-10 pr-4 py-3 border-2 rounded-lg transition-all duration-200 ${
                               validationErrors[`tier_${tierIndex}_name`] 
-                                ? 'border-red-300 bg-red-50 focus:border-red-500 focus:ring-red-500/20' 
-                                : 'border-gray-200 bg-white focus:border-[#800020] focus:ring-[#800020]/20'
-                            } focus:outline-none focus:ring-4`}
+                                ? 'border-red-300 dark:border-red-500/50 bg-red-50 dark:bg-red-900/10 focus:border-red-500 focus:ring-red-500/20' 
+                                : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 focus:border-[#800020] focus:ring-[#800020]/20'
+                            } focus:outline-none focus:ring-4 dark:text-white`}
                             placeholder="e.g., Bronze Club, Gold Reserve"
                           />
                         </div>
                         {validationErrors[`tier_${tierIndex}_name`] && (
-                          <p className="text-sm text-red-600 flex items-center space-x-1">
+                          <p className="text-sm text-red-600 dark:text-red-400 flex items-center space-x-1">
                             <AlertCircle className="h-4 w-4" />
                             <span>{validationErrors[`tier_${tierIndex}_name`]}</span>
                           </p>
@@ -616,11 +616,11 @@ const BusinessSetup: React.FC = () => {
                       </div>
                       
                       <div className="space-y-2">
-                        <label className="block text-sm font-semibold text-gray-800">
+                        <label className="block text-sm font-semibold text-gray-800 dark:text-gray-200">
                           Monthly Price <span className="text-red-500">*</span>
                         </label>
                         <div className="relative">
-                          <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-medium">$</span>
+                          <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400 font-medium">$</span>
                           <input
                             type="number"
                             min="10"
@@ -630,15 +630,15 @@ const BusinessSetup: React.FC = () => {
                             onChange={(e) => handleTierChange(tierIndex, 'monthlyPrice', parseFloat(e.target.value) || 0)}
                             className={`w-full pl-8 pr-20 py-3 border-2 rounded-lg transition-all duration-200 ${
                               validationErrors[`tier_${tierIndex}_price`] 
-                                ? 'border-red-300 bg-red-50 focus:border-red-500 focus:ring-red-500/20' 
-                                : 'border-gray-200 bg-white focus:border-[#800020] focus:ring-[#800020]/20'
-                            } focus:outline-none focus:ring-4`}
+                                ? 'border-red-300 dark:border-red-500/50 bg-red-50 dark:bg-red-900/10 focus:border-red-500 focus:ring-red-500/20' 
+                                : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 focus:border-[#800020] focus:ring-[#800020]/20'
+                            } focus:outline-none focus:ring-4 dark:text-white`}
                             placeholder="49"
                           />
-                          <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm">/month</span>
+                          <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500 text-sm">/month</span>
                         </div>
                         {validationErrors[`tier_${tierIndex}_price`] && (
-                          <p className="text-sm text-red-600 flex items-center space-x-1">
+                          <p className="text-sm text-red-600 dark:text-red-400 flex items-center space-x-1">
                             <AlertCircle className="h-4 w-4" />
                             <span>{validationErrors[`tier_${tierIndex}_price`]}</span>
                           </p>
@@ -646,7 +646,7 @@ const BusinessSetup: React.FC = () => {
                       </div>
                       
                       <div className="space-y-2">
-                        <label className="block text-sm font-semibold text-gray-800">
+                        <label className="block text-sm font-semibold text-gray-800 dark:text-gray-200">
                           Description <span className="text-red-500">*</span>
                         </label>
                         <textarea
@@ -655,13 +655,13 @@ const BusinessSetup: React.FC = () => {
                           rows={3}
                           className={`w-full px-4 py-3 border-2 rounded-lg transition-all duration-200 ${
                             validationErrors[`tier_${tierIndex}_description`] 
-                              ? 'border-red-300 bg-red-50 focus:border-red-500 focus:ring-red-500/20' 
-                              : 'border-gray-200 bg-white focus:border-[#800020] focus:ring-[#800020]/20'
-                          } focus:outline-none focus:ring-4`}
+                              ? 'border-red-300 dark:border-red-500/50 bg-red-50 dark:bg-red-900/10 focus:border-red-500 focus:ring-red-500/20' 
+                              : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 focus:border-[#800020] focus:ring-[#800020]/20'
+                          } focus:outline-none focus:ring-4 dark:text-white`}
                           placeholder="Describe what makes this tier special..."
                         />
                         {validationErrors[`tier_${tierIndex}_description`] && (
-                          <p className="text-sm text-red-600 flex items-center space-x-1">
+                          <p className="text-sm text-red-600 dark:text-red-400 flex items-center space-x-1">
                             <AlertCircle className="h-4 w-4" />
                             <span>{validationErrors[`tier_${tierIndex}_description`]}</span>
                           </p>
@@ -672,7 +672,7 @@ const BusinessSetup: React.FC = () => {
                     {/* Benefits Section */}
                     <div className="space-y-4">
                       <div className="flex items-center justify-between">
-                        <label className="block text-sm font-semibold text-gray-800">
+                        <label className="block text-sm font-semibold text-gray-800 dark:text-gray-200">
                           Membership Benefits <span className="text-red-500">*</span>
                         </label>
                         <Button
@@ -693,7 +693,7 @@ const BusinessSetup: React.FC = () => {
                                 type="text"
                                 value={benefit}
                                 onChange={(e) => updateTierBenefit(tierIndex, benefitIndex, e.target.value)}
-                                className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg bg-white focus:border-[#800020] focus:ring-[#800020]/20 focus:outline-none focus:ring-4 transition-all duration-200"
+                                className="w-full px-4 py-2 border-2 border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus:border-[#800020] focus:ring-[#800020]/20 focus:outline-none focus:ring-4 transition-all duration-200 dark:text-white"
                                 placeholder="e.g., 2 premium bottles monthly, Free shipping"
                               />
                             </div>
@@ -711,7 +711,7 @@ const BusinessSetup: React.FC = () => {
                       </div>
                       
                       {validationErrors[`tier_${tierIndex}_benefits`] && (
-                        <p className="text-sm text-red-600 flex items-center space-x-1">
+                        <p className="text-sm text-red-600 dark:text-red-400 flex items-center space-x-1">
                           <AlertCircle className="h-4 w-4" />
                           <span>{validationErrors[`tier_${tierIndex}_benefits`]}</span>
                         </p>
@@ -723,12 +723,12 @@ const BusinessSetup: React.FC = () => {
               )}
             </div>
             
-            <div className="mt-8 p-6 bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl">
+            <div className="mt-8 p-6 bg-gradient-to-r from-blue-50 dark:from-blue-900/20 to-indigo-50 dark:to-indigo-900/20 border-2 border-blue-200 dark:border-blue-800/30 rounded-xl">
               <div className="flex items-start space-x-3">
-                <AlertCircle className="h-6 w-6 text-blue-600 mt-1 flex-shrink-0" />
+                <AlertCircle className="h-6 w-6 text-blue-600 dark:text-blue-400 mt-1 flex-shrink-0" />
                 <div>
-                  <h4 className="font-semibold text-blue-900 mb-2">Wine Club Tier Guidelines</h4>
-                  <ul className="text-sm text-blue-800 space-y-1">
+                  <h4 className="font-semibold text-blue-900 dark:text-blue-300 mb-2">Wine Club Tier Guidelines</h4>
+                  <ul className="text-sm text-blue-800 dark:text-blue-300 space-y-1">
                     <li>• Create 2-4 tiers to give customers choice without overwhelming them</li>
                     <li>• Price tiers should offer clear value progression (more bottles, better wines, extra perks)</li>
                     <li>• Benefits should be specific and appealing ("Sommelier consultations" vs "Expert advice")</li>
@@ -741,12 +741,12 @@ const BusinessSetup: React.FC = () => {
 
           {/* Error Display */}
           {error && (
-            <Card className="p-6 bg-red-50 border-2 border-red-200">
+            <Card className="p-6 bg-red-50 dark:bg-red-900/20 border-2 border-red-200 dark:border-red-800/30">
               <div className="flex items-center space-x-3">
-                <AlertCircle className="h-6 w-6 text-red-500 flex-shrink-0" />
+                <AlertCircle className="h-6 w-6 text-red-500 dark:text-red-400 flex-shrink-0" />
                 <div>
-                  <h4 className="font-semibold text-red-800 mb-1">Setup Error</h4>
-                  <p className="text-sm text-red-700">{error}</p>
+                  <h4 className="font-semibold text-red-800 dark:text-red-300 mb-1">Setup Error</h4>
+                  <p className="text-sm text-red-700 dark:text-red-400">{error}</p>
                 </div>
               </div>
             </Card>
@@ -776,10 +776,10 @@ const BusinessSetup: React.FC = () => {
         
         {/* Footer Note */}
         <div className="text-center mt-12 pb-8">
-          <p className="text-gray-500 text-sm">
+          <p className="text-gray-500 dark:text-gray-400 text-sm">
             By completing setup, you agree to our Terms of Service and Privacy Policy.
           </p>
-          <p className="text-gray-400 text-xs mt-2">
+          <p className="text-gray-400 dark:text-gray-500 text-xs mt-2">
             Need help? Contact our support team at support@clubcuvee.com
           </p>
         </div>

@@ -55,16 +55,16 @@ const Header: React.FC = () => {
             </NavLink>
             {/* Desktop Navigation */}
             <nav className="hidden md:flex items-center ml-10 space-x-8">
-              <NavLink to="/how-it-works" className={`${isDark ? 'text-gray-300 hover:text-white' : 'text-black hover:text-gray-900'}`} style={{ fontFamily: 'TayBasal' }}>
+              <NavLink to="/how-it-works" className={`${isDark ? 'text-gray-300 hover:text-white' : 'text-black hover:text-gray-900'} glow-burgundy`} style={{ fontFamily: 'TayBasal' }}>
                 How It Works
               </NavLink>
-              <NavLink to="/features" className={`${isDark ? 'text-gray-300 hover:text-white' : 'text-black hover:text-gray-900'}`} style={{ fontFamily: 'TayBasal' }}>
+              <NavLink to="/features" className={`${isDark ? 'text-gray-300 hover:text-white' : 'text-black hover:text-gray-900'} glow-burgundy`} style={{ fontFamily: 'TayBasal' }}>
                 Features
               </NavLink>
-              <NavLink to="/pricing" className={`${isDark ? 'text-gray-300 hover:text-white' : 'text-black hover:text-gray-900'}`} style={{ fontFamily: 'TayBasal' }}>
+              <NavLink to="/pricing" className={`${isDark ? 'text-gray-300 hover:text-white' : 'text-black hover:text-gray-900'} glow-burgundy`} style={{ fontFamily: 'TayBasal' }}>
                 Pricing
               </NavLink>
-              <NavLink to="/about" className={`${isDark ? 'text-gray-300 hover:text-white' : 'text-black hover:text-gray-900'}`} style={{ fontFamily: 'TayBasal' }}>
+              <NavLink to="/about" className={`${isDark ? 'text-gray-300 hover:text-white' : 'text-black hover:text-gray-900'} glow-burgundy`} style={{ fontFamily: 'TayBasal' }}>
                 About
               </NavLink>
             </nav>
@@ -74,17 +74,15 @@ const Header: React.FC = () => {
           <div className="hidden md:flex items-center space-x-4">
             <NavLink 
               to="/login" 
-              className={`${isDark ? 'text-white hover:text-gray-300' : 'text-black hover:text-gray-900'}`} 
+              className={`${isDark ? 'text-white hover:text-gray-300' : 'text-black hover:text-gray-900'} glow-burgundy`} 
               style={{ fontFamily: 'TayBasal' }}
             >
               Sign in
             </NavLink>
             <NavLink 
               to="/get-started"
-              className="text-white px-4 py-2 rounded-md transition-colors duration-200"
+              className="text-white px-4 py-2 rounded-md transition-colors duration-200 glow-burgundy-strong"
               style={{ backgroundColor: burgundy, fontFamily: 'TayBasal' }}
-              onMouseEnter={(e) => e.currentTarget.style.opacity = '0.8'}
-              onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
             >
               Get Started
             </NavLink>
@@ -136,7 +134,7 @@ const Header: React.FC = () => {
             <div className="flex flex-col items-center justify-center space-y-8 flex-grow py-8">
               <NavLink 
                 to="/" 
-                className={`text-2xl font-medium ${isDark ? 'text-white hover:text-gray-300' : 'text-black hover:text-gray-700'}`} 
+                className={`text-2xl font-medium ${isDark ? 'text-white hover:text-gray-300' : 'text-black hover:text-gray-700'} glow-burgundy`} 
                 style={{ fontFamily: 'TayBasal' }}
                 onClick={() => setMobileMenuOpen(false)}
               >
@@ -144,7 +142,7 @@ const Header: React.FC = () => {
               </NavLink>
               <NavLink 
                 to="/how-it-works" 
-                className={`text-2xl font-medium ${isDark ? 'text-white hover:text-gray-300' : 'text-black hover:text-gray-700'}`} 
+                className={`text-2xl font-medium ${isDark ? 'text-white hover:text-gray-300' : 'text-black hover:text-gray-700'} glow-burgundy`} 
                 style={{ fontFamily: 'TayBasal' }}
                 onClick={() => setMobileMenuOpen(false)}
               >
@@ -152,7 +150,7 @@ const Header: React.FC = () => {
               </NavLink>
               <NavLink 
                 to="/features" 
-                className={`text-2xl font-medium ${isDark ? 'text-white hover:text-gray-300' : 'text-black hover:text-gray-700'}`} 
+                className={`text-2xl font-medium ${isDark ? 'text-white hover:text-gray-300' : 'text-black hover:text-gray-700'} glow-burgundy`} 
                 style={{ fontFamily: 'TayBasal' }}
                 onClick={() => setMobileMenuOpen(false)}
               >
@@ -160,7 +158,7 @@ const Header: React.FC = () => {
               </NavLink>
               <NavLink 
                 to="/pricing" 
-                className={`text-2xl font-medium ${isDark ? 'text-white hover:text-gray-300' : 'text-black hover:text-gray-700'}`} 
+                className={`text-2xl font-medium ${isDark ? 'text-white hover:text-gray-300' : 'text-black hover:text-gray-700'} glow-burgundy`} 
                 style={{ fontFamily: 'TayBasal' }}
                 onClick={() => setMobileMenuOpen(false)}
               >
@@ -168,7 +166,7 @@ const Header: React.FC = () => {
               </NavLink>
               <NavLink 
                 to="/about" 
-                className={`text-2xl font-medium ${isDark ? 'text-white hover:text-gray-300' : 'text-black hover:text-gray-700'}`} 
+                className={`text-2xl font-medium ${isDark ? 'text-white hover:text-gray-300' : 'text-black hover:text-gray-700'} glow-burgundy`} 
                 style={{ fontFamily: 'TayBasal' }}
                 onClick={() => setMobileMenuOpen(false)}
               >
@@ -182,7 +180,7 @@ const Header: React.FC = () => {
                 to="/login" 
                 className={`w-full py-3 text-center text-lg rounded-md ${
                   isDark ? 'text-white hover:bg-gray-800' : 'text-black hover:bg-gray-100'
-                } transition-colors duration-200`}
+                } transition-colors duration-200 glow-burgundy`}
                 style={{ fontFamily: 'TayBasal' }}
                 onClick={() => setMobileMenuOpen(false)}
               >
@@ -190,7 +188,7 @@ const Header: React.FC = () => {
               </NavLink>
               <NavLink 
                 to="/get-started"
-                className="w-full py-3 text-center text-lg text-white rounded-md transition-colors duration-200"
+                className="w-full py-3 text-center text-lg text-white rounded-md transition-colors duration-200 glow-burgundy-strong"
                 style={{ backgroundColor: burgundy, fontFamily: 'TayBasal' }}
                 onClick={() => setMobileMenuOpen(false)}
               >

@@ -175,10 +175,10 @@ const CustomerRegistration: React.FC = () => {
   // Loading state
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#fdfaf7] px-6 py-10 flex items-center justify-center">
+      <div className="min-h-screen bg-[#fdfaf7] dark:bg-black px-6 py-10 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#800020] mx-auto mb-4"></div>
-          <p className="text-lg text-gray-600">Loading invitation details...</p>
+          <p className="text-lg text-gray-600 dark:text-gray-300">Loading invitation details...</p>
         </div>
       </div>
     );
@@ -187,11 +187,11 @@ const CustomerRegistration: React.FC = () => {
   // Error state
   if (error && !invitationData) {
     return (
-      <div className="min-h-screen bg-[#fdfaf7] px-6 py-10 flex items-center justify-center">
+      <div className="min-h-screen bg-[#fdfaf7] dark:bg-black px-6 py-10 flex items-center justify-center">
         <Card className="max-w-md mx-auto p-8 text-center">
           <AlertCircle className="h-16 w-16 text-red-500 mx-auto mb-4" />
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">Invalid Invitation</h1>
-          <p className="text-gray-600 mb-6">{error}</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Invalid Invitation</h1>
+          <p className="text-gray-600 dark:text-gray-300 mb-6">{error}</p>
           <Button onClick={() => navigate('/')} variant="secondary" className="w-full">
             Return Home
           </Button>
@@ -210,34 +210,34 @@ const CustomerRegistration: React.FC = () => {
   // Processing state
   if (processingPayment) {
     return (
-      <div className="min-h-screen bg-[#fdfaf7] px-6 py-10 flex items-center justify-center">
+      <div className="min-h-screen bg-[#fdfaf7] dark:bg-black px-6 py-10 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#800020] mx-auto mb-4"></div>
-          <p className="text-lg text-gray-600">Creating your checkout session...</p>
+          <p className="text-lg text-gray-600 dark:text-gray-300">Creating your checkout session...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#fdfaf7] px-6 py-10">
+    <div className="min-h-screen bg-[#fdfaf7] dark:bg-black px-6 py-10">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">
+          <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
             Join {invitationData.business.name}'s Wine Club
           </h1>
-          <p className="text-xl text-gray-600 mb-2">
+          <p className="text-xl text-gray-600 dark:text-gray-300 mb-2">
             Discover curated wines delivered to your door
           </p>
         </div>
 
         {/* Expiry Warning */}
         {hoursUntilExpiry < 48 && hoursUntilExpiry > 0 && (
-          <Card className="p-4 mb-6 bg-yellow-50 border-yellow-200">
+          <Card className="p-4 mb-6 bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800/30">
             <div className="flex items-center">
-              <Clock className="h-5 w-5 text-yellow-500 mr-2" />
-              <p className="text-sm text-yellow-700">
+              <Clock className="h-5 w-5 text-yellow-500 dark:text-yellow-400 mr-2" />
+              <p className="text-sm text-yellow-700 dark:text-yellow-300">
                 This invitation expires in {hoursUntilExpiry} hours. Complete your registration soon!
               </p>
             </div>
@@ -246,8 +246,8 @@ const CustomerRegistration: React.FC = () => {
 
         {/* Step 1: Tier Selection */}
         {step === 'select-tier' && (
-          <Card className="p-8 mb-8">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">
+          <Card className="p-8 mb-8 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6 text-center">
               Choose Your Membership
             </h2>
             
@@ -257,8 +257,8 @@ const CustomerRegistration: React.FC = () => {
                   key={tier.id}
                   className={`p-6 border-2 rounded-lg cursor-pointer transition-all ${
                     selectedTierId === tier.id
-                      ? 'border-[#800020] bg-[#800020]/5'
-                      : 'border-gray-200 hover:border-[#800020]/30'
+                      ? 'border-[#800020] bg-[#800020]/5 dark:bg-[#800020]/20'
+                      : 'border-gray-200 dark:border-gray-700 hover:border-[#800020]/30 dark:hover:border-[#800020]/30'
                   }`}
                   onClick={() => handleTierSelection(tier.id)}
                 >
@@ -266,13 +266,13 @@ const CustomerRegistration: React.FC = () => {
                     <div className="h-12 w-12 bg-[#800020] rounded-full flex items-center justify-center mx-auto mb-4">
                       <Users className="h-6 w-6 text-white" />
                     </div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
                       {tier.name}
                     </h3>
                     <p className="text-2xl font-bold text-[#800020] mb-2">
                       ${parseFloat(tier.price).toFixed(2)}/month
                     </p>
-                    <p className="text-sm text-gray-600 mb-4">
+                    <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
                       {tier.description}
                     </p>
                     {selectedTierId === tier.id && (
@@ -287,8 +287,8 @@ const CustomerRegistration: React.FC = () => {
             </div>
 
             {error && (
-              <div className="p-4 bg-red-50 border border-red-200 rounded-lg mb-4">
-                <p className="text-sm text-red-600">{error}</p>
+              <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/30 rounded-lg mb-4">
+                <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
               </div>
             )}
 
@@ -303,12 +303,12 @@ const CustomerRegistration: React.FC = () => {
 
         {/* Step 2: Registration Form */}
         {step === 'fill-form' && selectedTier && (
-          <Card className="p-8 mb-8">
+          <Card className="p-8 mb-8 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
             <div className="mb-6">
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
                 Complete Your Registration
               </h2>
-              <p className="text-gray-600">
+              <p className="text-gray-600 dark:text-gray-300">
                 Selected: <span className="font-medium text-[#800020]">{selectedTier.name}</span> - 
                 ${parseFloat(selectedTier.price).toFixed(2)}/month
               </p>
@@ -317,10 +317,10 @@ const CustomerRegistration: React.FC = () => {
             <form onSubmit={handleSubmit} className="space-y-6">
               {/* Personal Information */}
               <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Personal Information</h3>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Personal Information</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       Full Name *
                     </label>
                     <input
@@ -328,12 +328,12 @@ const CustomerRegistration: React.FC = () => {
                       name="name"
                       value={formData.name}
                       onChange={handleInputChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#800020]"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-[#800020] dark:bg-gray-700 dark:text-white"
                       required
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       Email Address *
                     </label>
                     <input
@@ -341,12 +341,12 @@ const CustomerRegistration: React.FC = () => {
                       name="email"
                       value={formData.email}
                       onChange={handleInputChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#800020]"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-[#800020] dark:bg-gray-700 dark:text-white"
                       required
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       Phone Number
                     </label>
                     <input
@@ -354,7 +354,7 @@ const CustomerRegistration: React.FC = () => {
                       name="phone"
                       value={formData.phone}
                       onChange={handleInputChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#800020]"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-[#800020] dark:bg-gray-700 dark:text-white"
                     />
                   </div>
                 </div>
@@ -362,10 +362,10 @@ const CustomerRegistration: React.FC = () => {
 
               {/* Address Information */}
               <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Delivery Address</h3>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Delivery Address</h3>
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       Street Address *
                     </label>
                     <input
@@ -373,13 +373,13 @@ const CustomerRegistration: React.FC = () => {
                       name="address"
                       value={formData.address}
                       onChange={handleInputChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#800020]"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-[#800020] dark:bg-gray-700 dark:text-white"
                       required
                     />
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                         City *
                       </label>
                       <input
@@ -387,12 +387,12 @@ const CustomerRegistration: React.FC = () => {
                         name="city"
                         value={formData.city}
                         onChange={handleInputChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#800020]"
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-[#800020] dark:bg-gray-700 dark:text-white"
                         required
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                         State *
                       </label>
                       <input
@@ -400,12 +400,12 @@ const CustomerRegistration: React.FC = () => {
                         name="state"
                         value={formData.state}
                         onChange={handleInputChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#800020]"
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-[#800020] dark:bg-gray-700 dark:text-white"
                         required
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                         ZIP Code *
                       </label>
                       <input
@@ -413,7 +413,7 @@ const CustomerRegistration: React.FC = () => {
                         name="zip_code"
                         value={formData.zip_code}
                         onChange={handleInputChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#800020]"
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-[#800020] dark:bg-gray-700 dark:text-white"
                         required
                       />
                     </div>
@@ -423,10 +423,10 @@ const CustomerRegistration: React.FC = () => {
 
               {/* Wine Preferences */}
               <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Wine Preferences</h3>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Wine Preferences</h3>
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       Wine Preferences
                     </label>
                     <textarea
@@ -435,11 +435,11 @@ const CustomerRegistration: React.FC = () => {
                       onChange={handleInputChange}
                       rows={3}
                       placeholder="Tell us about your wine preferences (e.g., red wines, specific regions, flavor profiles)"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#800020]"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-[#800020] dark:bg-gray-700 dark:text-white"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       Dietary Restrictions
                     </label>
                     <input
@@ -448,11 +448,11 @@ const CustomerRegistration: React.FC = () => {
                       value={formData.dietary_restrictions}
                       onChange={handleInputChange}
                       placeholder="Any allergies or dietary restrictions?"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#800020]"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-[#800020] dark:bg-gray-700 dark:text-white"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       Special Requests
                     </label>
                     <textarea
@@ -461,15 +461,15 @@ const CustomerRegistration: React.FC = () => {
                       onChange={handleInputChange}
                       rows={2}
                       placeholder="Any special requests or notes for your wine selections?"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#800020]"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-[#800020] dark:bg-gray-700 dark:text-white"
                     />
                   </div>
                 </div>
               </div>
 
               {error && (
-                <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-                  <p className="text-sm text-red-600">{error}</p>
+                <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/30 rounded-lg">
+                  <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
                 </div>
               )}
 

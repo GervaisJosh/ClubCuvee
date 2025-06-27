@@ -52,6 +52,7 @@ const Button: React.FC<ButtonProps> = ({
   
   // Variant styles
   let variantStyles = '';
+  
   switch (variant) {
     case 'primary':
       variantStyles = `bg-[${burgundy}] text-white hover:bg-opacity-90`;

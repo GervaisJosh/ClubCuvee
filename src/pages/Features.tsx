@@ -107,7 +107,7 @@ const Features = () => {
                     />
                     <div className="absolute inset-0 bg-gradient-to-r from-black/40 via-black/20 to-transparent"></div>
                   </div>
-                  <div className={`flex flex-col justify-center p-12 rounded-2xl border ${isDark ? 'bg-black text-white border-gray-700' : 'bg-white text-black border-gray-300'}`}>
+                  <div className={`flex flex-col justify-center p-12 rounded-2xl border ${isDark ? 'bg-black text-white border-gray-700' : 'bg-white text-black border-gray-300'} glow-burgundy-subtle cursor-pointer`}>
                     <div className="flex items-center mb-6">
                       <img 
                         src={feature.icon} 
@@ -145,7 +145,7 @@ const Features = () => {
           </p>
           <Link
             to="/get-started"
-            className="text-white px-8 py-4 rounded-md text-lg transition-all duration-200 hover:opacity-80 inline-block"
+            className="text-white px-8 py-4 rounded-md text-lg transition-all duration-200 hover:opacity-80 inline-block glow-burgundy-strong"
             style={{ backgroundColor: burgundy, fontFamily: 'TayBasal' }}
           >
             Get Started
