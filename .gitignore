@@ -410,7 +410,6 @@ FodyWeavers.xsd
 dist/
 
 # Backend folders (bolt-design branch only)
-api/
 lib/
 scripts/
 supabase/
