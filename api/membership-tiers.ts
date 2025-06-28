@@ -109,7 +109,38 @@ const handler = async (req: VercelRequest, res: VercelResponse) => {
     typescript: true,
   });
 
-  // Only allow POST (create) and PUT (update) requests
+  // Handle GET request to fetch pricing tiers
+  if (req.method === 'GET') {
+    // Get all business pricing tiers
+    const { data: pricingTiers, error: tiersError } = await supabaseAdmin
+      .from('business_pricing_tiers')
+      .select('id, name, monthly_price_cents, stripe_price_id, description, is_active')
+      .eq('is_active', true)
+      .order('monthly_price_cents', { ascending: true });
+
+    if (tiersError) {
+      console.error('Error fetching pricing tiers:', tiersError);
+      throw new APIError(500, 'Failed to fetch pricing tiers', 'DATABASE_ERROR');
+    }
+
+    // Format pricing tiers for frontend
+    const formattedTiers = pricingTiers.map(tier => ({
+      id: tier.id,
+      name: tier.name,
+      price: (tier.monthly_price_cents / 100).toFixed(2),
+      price_cents: tier.monthly_price_cents,
+      stripe_price_id: tier.stripe_price_id,
+      description: tier.description || '',
+    }));
+
+    res.status(200).json({
+      success: true,
+      data: formattedTiers
+    });
+    return;
+  }
+
+  // Only allow POST (create) and PUT (update) requests for other operations
   if (req.method !== 'POST' && req.method !== 'PUT') {
     throw new APIError(405, 'Method not allowed', 'METHOD_NOT_ALLOWED');
   }
@@ -315,14 +346,15 @@ const handler = async (req: VercelRequest, res: VercelResponse) => {
     console.error('Stripe integration error:', stripeError);
     
     // Don't fail the request, but include the error in the response
-    return res.status(200).json({
+    res.status(200).json({
       tier,
       warning: `Tier saved but Stripe integration failed: ${stripeError.message}`
     });
+    return;
   }
 
   // Return the tier with stripe_price_id & stripe_product_id
-  return res.status(200).json(tier);
+  res.status(200).json(tier);
 };
 
 export default withErrorHandler(handler);

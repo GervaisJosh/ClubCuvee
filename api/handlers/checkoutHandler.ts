@@ -1,7 +1,35 @@
-import { stripe } from '../utils/stripeClient';
-import { supabaseAdmin } from '../../lib/supabaseAdmin';
-import { validateRequest } from '../utils/validation';
-import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { VercelRequest, VercelResponse } from '@vercel/node';
+import { createClient } from '@supabase/supabase-js';
+import Stripe from 'stripe';
+import { ZodError } from 'zod';
+
+// Inline error handling (no external dependencies)
+class APIError extends Error {
+  constructor(
+    public statusCode: number,
+    message: string,
+    public code?: string
+  ) {
+    super(message);
+    this.name = 'APIError';
+  }
+}
+
+// Inline validation utility
+const validateRequest = (body: any, requiredFields: string[]) => {
+  const errors: string[] = [];
+  
+  for (const field of requiredFields) {
+    if (!body[field]) {
+      errors.push(`${field} is required`);
+    }
+  }
+  
+  return {
+    isValid: errors.length === 0,
+    errors
+  };
+};
 
 /**
  * Helper function to send JSON response with proper error handling
@@ -29,6 +57,24 @@ function sendJsonResponse(res: VercelResponse, status: number, data: any) {
  * Create a Stripe checkout session for subscription payments
  */
 export async function createCheckoutSession(req: VercelRequest, res: VercelResponse) {
+  // Create Supabase admin client directly in the API (no external dependencies)
+  const supabaseAdmin = createClient(
+    process.env.SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    }
+  );
+
+  // Initialize Stripe client directly in the API
+  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+    apiVersion: '2025-02-24.acacia',
+    typescript: true,
+  });
+
   // Set CORS headers for all responses
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');

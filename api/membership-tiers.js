@@ -122,6 +122,26 @@ var handler = async (req, res) => {
     apiVersion: "2025-02-24.acacia",
     typescript: true
   });
+  if (req.method === "GET") {
+    const { data: pricingTiers, error: tiersError } = await supabaseAdmin.from("business_pricing_tiers").select("id, name, monthly_price_cents, stripe_price_id, description, is_active").eq("is_active", true).order("monthly_price_cents", { ascending: true });
+    if (tiersError) {
+      console.error("Error fetching pricing tiers:", tiersError);
+      throw new APIError(500, "Failed to fetch pricing tiers", "DATABASE_ERROR");
+    }
+    const formattedTiers = pricingTiers.map((tier2) => ({
+      id: tier2.id,
+      name: tier2.name,
+      price: (tier2.monthly_price_cents / 100).toFixed(2),
+      price_cents: tier2.monthly_price_cents,
+      stripe_price_id: tier2.stripe_price_id,
+      description: tier2.description || ""
+    }));
+    res.status(200).json({
+      success: true,
+      data: formattedTiers
+    });
+    return;
+  }
   if (req.method !== "POST" && req.method !== "PUT") {
     throw new APIError(405, "Method not allowed", "METHOD_NOT_ALLOWED");
   }
@@ -251,12 +271,13 @@ var handler = async (req, res) => {
     }
   } catch (stripeError) {
     console.error("Stripe integration error:", stripeError);
-    return res.status(200).json({
+    res.status(200).json({
       tier,
       warning: `Tier saved but Stripe integration failed: ${stripeError.message}`
     });
+    return;
   }
-  return res.status(200).json(tier);
+  res.status(200).json(tier);
 };
 var membership_tiers_default = withErrorHandler(handler);
 //# sourceMappingURL=membership-tiers.js.map
