@@ -57,8 +57,20 @@ const Card: React.FC<CardProps> = ({
       : 'hover:shadow-md hover:border-gray-300 cursor-pointer'
     : '';
     
+  // Glow effect for cards without images
+  const hasImages = React.Children.toArray(children).some(child => {
+    if (React.isValidElement(child)) {
+      return child.type === 'img' || 
+             (typeof child.type === 'string' && child.type.toLowerCase() === 'img') ||
+             child.props?.src;
+    }
+    return false;
+  });
+  
+  const glowClass = hover && !hasImages ? 'glow-burgundy-subtle' : '';
+    
   // Combine all styles
-  const combinedStyles = `${baseStyles} ${bgStyles} ${borderStyles} ${paddingStyles} ${hoverStyles} ${className}`;
+  const combinedStyles = `${baseStyles} ${bgStyles} ${borderStyles} ${paddingStyles} ${hoverStyles} ${glowClass} ${className}`;
   
   return (
     <div 

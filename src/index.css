@@ -50,3 +50,68 @@
     font-family: 'Libre Baskerville', 'serif';
   }
 }
+
+/* Simplified, vibrant burgundy glow effects */
+@layer utilities {
+  /* Standard burgundy glow - richer and more visible */
+  .glow-burgundy {
+    @apply transition-all duration-500 ease-out;
+  }
+  
+  .glow-burgundy:hover {
+    box-shadow: 
+      0 0 30px rgba(220, 20, 60, 0.7),
+      0 0 60px rgba(220, 20, 60, 0.5),
+      0 0 90px rgba(220, 20, 60, 0.3);
+    transform: translateY(-2px);
+  }
+  
+  /* Stronger glow for primary CTAs */
+  .glow-burgundy-strong {
+    @apply transition-all duration-500 ease-out;
+  }
+  
+  .glow-burgundy-strong:hover {
+    box-shadow: 
+      0 0 40px rgba(220, 20, 60, 0.8),
+      0 0 80px rgba(220, 20, 60, 0.6),
+      0 0 120px rgba(220, 20, 60, 0.4);
+    transform: translateY(-3px);
+  }
+  
+  /* Subtle glow for cards/bento boxes */
+  .glow-burgundy-subtle {
+    @apply transition-all duration-500 ease-out;
+  }
+  
+  .glow-burgundy-subtle:hover {
+    box-shadow: 
+      0 0 20px rgba(220, 20, 60, 0.5),
+      0 0 40px rgba(220, 20, 60, 0.3);
+    transform: translateY(-1px);
+  }
+  
+  /* Update button styles - remove glow, keep transform */
+  .btn-primary {
+    @apply transition-all duration-300 ease-out;
+  }
+  
+  .btn-primary:hover {
+    transform: translateY(-3px);
+    /* Remove any box-shadow glow effects */
+  }
+  
+  /* For any buttons with glow classes, update them */
+  button.glow-burgundy-strong,
+  button.glow-burgundy,
+  a.glow-burgundy-strong,
+  a.glow-burgundy {
+    box-shadow: none !important;
+  }
+  
+  button:hover,
+  a[role="button"]:hover {
+    transform: translateY(-3px);
+    /* No box-shadow */
+  }
+}

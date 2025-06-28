@@ -153,7 +153,7 @@ const GetStarted: React.FC = () => {
           <div
             className={`w-full max-w-xl rounded-2xl p-8 ${
               isDark ? 'bg-gray-800 text-gray-100' : 'bg-gray-100 text-gray-900'
-            } shadow-2xl transition-all duration-300`}
+            } shadow-2xl transition-all duration-300 glow-burgundy-subtle`}
           >
             {submitted ? (
               // If the form is successfully submitted, show a confirmation message
@@ -310,7 +310,7 @@ const GetStarted: React.FC = () => {
                   <button
                     type="submit"
                     style={{ fontFamily: 'TayBasal' }}
-                    className="w-full py-3.5 bg-[#800020] text-white rounded-lg hover:bg-[#600018] transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-[#800020] focus:ring-offset-2"
+                    className="w-full py-3.5 bg-[#800020] text-white rounded-lg hover:bg-[#600018] transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-[#800020] focus:ring-offset-2 glow-burgundy-strong"
                   >
                     Submit
                   </button>

@@ -144,7 +144,7 @@ const Pricing: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
               {/* Price Box */}
               <div
-                className={`rounded-lg p-6 transition-transform duration-200 hover:scale-105 cursor-pointer ${isDark ? 'bg-gray-800' : 'bg-gray-100'}`}
+                className={`rounded-lg p-6 transition-transform duration-200 hover:scale-105 cursor-pointer ${isDark ? 'bg-gray-800' : 'bg-gray-100'} glow-burgundy-subtle`}
               >
                 <div className="flex items-center mb-4">
                   <ChampagneIcon className="w-10 h-10 mr-3" />
@@ -158,7 +158,7 @@ const Pricing: React.FC = () => {
               </div>
               {/* Members Box */}
               <div
-                className={`rounded-lg p-6 transition-transform duration-200 hover:scale-105 cursor-pointer ${isDark ? 'bg-gray-800' : 'bg-gray-100'}`}
+                className={`rounded-lg p-6 transition-transform duration-200 hover:scale-105 cursor-pointer ${isDark ? 'bg-gray-800' : 'bg-gray-100'} glow-burgundy-subtle`}
               >
                 <div className="flex items-center mb-4">
                   <MembersIcon className="w-10 h-10 mr-3" />
@@ -172,7 +172,7 @@ const Pricing: React.FC = () => {
               </div>
               {/* Sales Box */}
               <div
-                className={`rounded-lg p-6 transition-transform duration-200 hover:scale-105 cursor-pointer ${isDark ? 'bg-gray-800' : 'bg-gray-100'}`}
+                className={`rounded-lg p-6 transition-transform duration-200 hover:scale-105 cursor-pointer ${isDark ? 'bg-gray-800' : 'bg-gray-100'} glow-burgundy-subtle`}
               >
                 <div className="flex items-center mb-4">
                   <WineryIcon className="w-10 h-10 mr-3" />
@@ -205,7 +205,7 @@ const Pricing: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
               {/* Price Box */}
               <div
-                className={`rounded-lg p-6 transition-transform duration-200 hover:scale-105 cursor-pointer ${isDark ? 'bg-gray-800' : 'bg-gray-100'}`}
+                className={`rounded-lg p-6 transition-transform duration-200 hover:scale-105 cursor-pointer ${isDark ? 'bg-gray-800' : 'bg-gray-100'} glow-burgundy-subtle`}
               >
                 <div className="flex items-center mb-4">
                   <ChampagneIcon className="w-10 h-10 mr-3" />
@@ -219,7 +219,7 @@ const Pricing: React.FC = () => {
               </div>
               {/* Members Box */}
               <div
-                className={`rounded-lg p-6 transition-transform duration-200 hover:scale-105 cursor-pointer ${isDark ? 'bg-gray-800' : 'bg-gray-100'}`}
+                className={`rounded-lg p-6 transition-transform duration-200 hover:scale-105 cursor-pointer ${isDark ? 'bg-gray-800' : 'bg-gray-100'} glow-burgundy-subtle`}
               >
                 <div className="flex items-center mb-4">
                   <MembersIcon className="w-10 h-10 mr-3" />
@@ -233,7 +233,7 @@ const Pricing: React.FC = () => {
               </div>
               {/* Sales Box */}
               <div
-                className={`rounded-lg p-6 transition-transform duration-200 hover:scale-105 cursor-pointer ${isDark ? 'bg-gray-800' : 'bg-gray-100'}`}
+                className={`rounded-lg p-6 transition-transform duration-200 hover:scale-105 cursor-pointer ${isDark ? 'bg-gray-800' : 'bg-gray-100'} glow-burgundy-subtle`}
               >
                 <div className="flex items-center mb-4">
                   <WineryIcon className="w-10 h-10 mr-3" />
@@ -266,7 +266,7 @@ const Pricing: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
               {/* Price Box */}
               <div
-                className={`rounded-lg p-6 transition-transform duration-200 hover:scale-105 cursor-pointer ${isDark ? 'bg-gray-800' : 'bg-gray-100'}`}
+                className={`rounded-lg p-6 transition-transform duration-200 hover:scale-105 cursor-pointer ${isDark ? 'bg-gray-800' : 'bg-gray-100'} glow-burgundy-subtle`}
               >
                 <div className="flex items-center mb-4">
                   <ChampagneIcon className="w-10 h-10 mr-3" />
@@ -280,7 +280,7 @@ const Pricing: React.FC = () => {
               </div>
               {/* Members Box */}
               <div
-                className={`rounded-lg p-6 transition-transform duration-200 hover:scale-105 cursor-pointer ${isDark ? 'bg-gray-800' : 'bg-gray-100'}`}
+                className={`rounded-lg p-6 transition-transform duration-200 hover:scale-105 cursor-pointer ${isDark ? 'bg-gray-800' : 'bg-gray-100'} glow-burgundy-subtle`}
               >
                 <div className="flex items-center mb-4">
                   <MembersIcon className="w-10 h-10 mr-3" />
@@ -294,7 +294,7 @@ const Pricing: React.FC = () => {
               </div>
               {/* Fee Box */}
               <div
-                className={`rounded-lg p-6 transition-transform duration-200 hover:scale-105 cursor-pointer ${isDark ? 'bg-gray-800' : 'bg-gray-100'}`}
+                className={`rounded-lg p-6 transition-transform duration-200 hover:scale-105 cursor-pointer ${isDark ? 'bg-gray-800' : 'bg-gray-100'} glow-burgundy-subtle`}
               >
                 <div className="flex items-center mb-4">
                   <WineryIcon className="w-10 h-10 mr-3" />

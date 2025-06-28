@@ -112,7 +112,7 @@ const HowItWorks = () => {
               </p>
               <button
                 onClick={() => window.location.href = '/get-started'}
-                className="text-white px-8 py-4 rounded-md text-lg transition-colors duration-200 hover:opacity-80"
+                className="text-white px-8 py-4 rounded-md text-lg transition-colors duration-200 hover:opacity-80 glow-burgundy-strong"
                 style={{ backgroundColor: burgundy, fontFamily: 'TayBasal' }}
               >
                 Get Started
@@ -156,9 +156,10 @@ const HowItWorks = () => {
                     fade-in-section 
                     opacity-0 translate-y-10 transition-all duration-700 
                     p-8 rounded-xl shadow-lg
-                    transform hover:scale-105 hover:shadow-xl transition-all duration-300 
+                    transform hover:scale-105 transition-all duration-300 
                     ${isDark ? 'bg-black' : 'bg-white'} 
                     relative z-10 bg-opacity-80 backdrop-blur-sm
+                    glow-burgundy-subtle cursor-pointer
                   `}
                 >
                   <div className="flex flex-col items-center text-center">
@@ -217,6 +218,7 @@ const HowItWorks = () => {
                   p-8 rounded-xl shadow-lg 
                   hover:shadow-xl transform hover:scale-105 transition-all duration-300 
                   ${isDark ? 'bg-black' : 'bg-white'}
+                  glow-burgundy-subtle cursor-pointer
                 `}
               >
                 <div className="flex flex-col items-center text-center">
@@ -262,7 +264,7 @@ const HowItWorks = () => {
           </p>
           <button
             onClick={() => window.location.href = '/get-started'}
-            className="text-white px-8 py-4 rounded-md text-lg transition-all duration-200 hover:opacity-80 flex items-center mx-auto"
+            className="text-white px-8 py-4 rounded-md text-lg transition-all duration-200 hover:opacity-80 flex items-center mx-auto glow-burgundy-strong"
             style={{ backgroundColor: burgundy, fontFamily: 'TayBasal' }}
           >
             Get Started

@@ -60,10 +60,23 @@ const BentoBox: React.FC<BentoBoxProps> = ({
     navigate(path);
   };
 
+  // Determine if this bento box contains images
+  const hasImages = React.Children.toArray(children).some(child => {
+    if (React.isValidElement(child)) {
+      return child.type === 'img' || 
+             (typeof child.type === 'string' && child.type.toLowerCase() === 'img') ||
+             child.props?.src;
+    }
+    return false;
+  });
+
+  // Only apply glow effect to boxes without images
+  const glowClass = !hasImages ? 'glow-burgundy-subtle' : '';
+
   return (
     <div
       ref={boxRef}
-      className={`rounded-lg md:rounded-xl shadow-md p-4 sm:p-6 ${size} cursor-pointer transition-all duration-200 transform hover:scale-105 relative overflow-hidden ${className} ${
+      className={`rounded-lg md:rounded-xl shadow-md p-4 sm:p-6 ${size} cursor-pointer transition-all duration-200 transform hover:scale-105 relative overflow-hidden ${className} ${glowClass} ${
         isDark ? 'bg-black' : backgroundColor || 'bg-white'
       }`}
       onClick={handleClick}

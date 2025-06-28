@@ -32,7 +32,7 @@ const Landing = () => {
               <div className="mt-8 md:mt-10">
                 <Link 
                   to="/get-started"
-                  className="w-full sm:w-auto text-white px-6 sm:px-8 py-3 sm:py-4 rounded-md transition-colors duration-200 text-lg inline-block hover:opacity-80"
+                  className="w-full sm:w-auto text-white px-6 sm:px-8 py-3 sm:py-4 rounded-md transition-colors duration-200 text-lg inline-block hover:opacity-80 glow-burgundy-strong"
                   style={{ backgroundColor: burgundy, fontFamily: 'TayBasal' }}
                 >
                   Get Started
@@ -77,7 +77,7 @@ const Landing = () => {
                   />
                   <div className="absolute inset-0 bg-gradient-to-r from-black/40 via-black/20 to-transparent"></div>
                 </div>
-                <div className={`flex flex-col justify-center p-12 rounded-2xl border ${isDark ? 'bg-black text-white border-gray-700' : 'bg-white text-black border-gray-300'}`}>
+                <div className={`flex flex-col justify-center p-12 rounded-2xl border ${isDark ? 'bg-black text-white border-gray-700' : 'bg-white text-black border-gray-300'} glow-burgundy-subtle cursor-pointer`}>
                   <h3 className={`text-3xl font-bold mb-6 ${isDark ? 'text-white' : 'text-gray-900'}`}>AI-Powered Wine Analysis</h3>
                   <p className="text-xl leading-relaxed">
                     Transform your inventory into actionable insights with our advanced AI algorithms. Our system analyzes your wine collection, tracks consumption patterns, and provides detailed analytics to optimize your inventory management and enhance customer experiences.
@@ -86,7 +86,7 @@ const Landing = () => {
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-16">
-                <div className={`flex flex-col justify-center p-12 rounded-2xl border ${isDark ? 'bg-black text-white border-gray-700' : 'bg-white text-black border-gray-300'}`}>
+                <div className={`flex flex-col justify-center p-12 rounded-2xl border ${isDark ? 'bg-black text-white border-gray-700' : 'bg-white text-black border-gray-300'} glow-burgundy-subtle cursor-pointer`}>
                   <h3 className={`text-3xl font-bold mb-6 ${isDark ? 'text-white' : 'text-gray-900'}`}>Revenue Generation</h3>
                   <p className="text-xl leading-relaxed">
                     Drive additional sales through personalized recommendations and targeted promotions. Our platform identifies opportunities to maximize revenue by matching wines with customer preferences and optimizing pricing strategies based on market demand.
@@ -111,7 +111,7 @@ const Landing = () => {
                   />
                   <div className="absolute inset-0 bg-gradient-to-r from-black/40 via-black/20 to-transparent"></div>
                 </div>
-                <div className={`flex flex-col justify-center p-12 rounded-2xl border ${isDark ? 'bg-black text-white border-gray-700' : 'bg-white text-black border-gray-300'}`}>
+                <div className={`flex flex-col justify-center p-12 rounded-2xl border ${isDark ? 'bg-black text-white border-gray-700' : 'bg-white text-black border-gray-300'} glow-burgundy-subtle cursor-pointer`}>
                   <h3 className={`text-3xl font-bold mb-6 ${isDark ? 'text-white' : 'text-gray-900'}`}>Customer Engagement</h3>
                   <p className="text-xl leading-relaxed">
                     Build lasting relationships with personalized wine journeys and recommendations. Our platform creates unique experiences for each customer, tracking preferences and providing tailored suggestions that keep them coming back for more.
@@ -120,7 +120,7 @@ const Landing = () => {
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-16">
-                <div className={`flex flex-col justify-center p-12 rounded-2xl border ${isDark ? 'bg-black text-white border-gray-700' : 'bg-white text-black border-gray-300'}`}>
+                <div className={`flex flex-col justify-center p-12 rounded-2xl border ${isDark ? 'bg-black text-white border-gray-700' : 'bg-white text-black border-gray-300'} glow-burgundy-subtle cursor-pointer`}>
                   <h3 className={`text-3xl font-bold mb-6 ${isDark ? 'text-white' : 'text-gray-900'}`}>Rating System</h3>
                   <p className="text-xl leading-relaxed">
                     Capture and analyze customer preferences with our detailed rating system. Enable your customers to rate and review wines, building a comprehensive database of preferences that helps you make informed inventory decisions.

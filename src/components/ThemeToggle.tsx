@@ -13,21 +13,13 @@ const ThemeToggle = () => {
   };
 
   return (
-    <button
-      onClick={toggleTheme}
-      className={`p-2 rounded-full transition-colors duration-200 ${
-        isDark 
-          ? 'hover:bg-gray-800 text-gray-400 hover:text-white'
-          : 'hover:bg-gray-200 text-gray-600 hover:text-gray-900'
-      }`}
-      aria-label={`Switch to ${isDark ? 'light' : 'dark'} mode`}
-    >
+    <div onClick={toggleTheme} className="cursor-pointer">
       {isDark ? (
-        <Sun className="h-5 w-5" />
+        <Sun className="h-5 w-5 text-gray-400 hover:text-white transition-colors duration-200" />
       ) : (
-        <Moon className="h-5 w-5" />
+        <Moon className="h-5 w-5 text-gray-600 hover:text-gray-900 transition-colors duration-200" />
       )}
-    </button>
+    </div>
   );
 };
 
