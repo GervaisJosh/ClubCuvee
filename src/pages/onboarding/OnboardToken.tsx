@@ -18,7 +18,7 @@ interface PricingTier {
   id: string;
   name: string;
   description: string;
-  price_cents: number;
+  monthly_price_cents: number;
   stripe_price_id: string;
 }
 
@@ -85,9 +85,9 @@ const OnboardToken: React.FC = () => {
       // Load pricing tiers from business_pricing_tiers table
       const { data: tiersData, error: tiersError } = await supabase
         .from('business_pricing_tiers')
-        .select('id, name, description, price_cents, stripe_price_id')
+        .select('id, name, description, monthly_price_cents, stripe_price_id')
         .eq('is_active', true)
-        .order('price_cents', { ascending: true });
+        .order('monthly_price_cents', { ascending: true });
       
       if (tiersError) {
         console.error('Error loading pricing tiers:', tiersError);
@@ -100,7 +100,7 @@ const OnboardToken: React.FC = () => {
         id: tier.id,
         name: tier.name,
         description: tier.description || `${tier.name} subscription plan`,
-        price_cents: tier.price_cents,
+        monthly_price_cents: tier.monthly_price_cents,
         stripe_price_id: tier.stripe_price_id
       })) || [];
 
@@ -342,7 +342,7 @@ const OnboardToken: React.FC = () => {
                   
                   <div className="mb-6">
                     <div className="text-4xl font-bold text-[#800020] mb-2">
-                      {formatPrice(tier.price_cents)}
+                      {formatPrice(tier.monthly_price_cents)}
                     </div>
                     <div className="text-gray-500 dark:text-gray-400 font-medium">per month</div>
                   </div>
@@ -382,7 +382,7 @@ const OnboardToken: React.FC = () => {
                     <strong>Selected Plan:</strong> {pricingTiers.find(t => t.id === selectedTierId)?.name}
                   </p>
                   <p className="text-2xl font-bold text-[#800020]">
-                    {formatPrice(pricingTiers.find(t => t.id === selectedTierId)?.price_cents || 0)} / month
+                    {formatPrice(pricingTiers.find(t => t.id === selectedTierId)?.monthly_price_cents || 0)} / month
                   </p>
                 </div>
                 
