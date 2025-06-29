@@ -114,4 +114,17 @@
     transform: translateY(-3px);
     /* No box-shadow */
   }
+
+  /* Glow shadow utility for pricing cards and other interactive elements */
+  .glow-shadow {
+    @apply transition-all duration-300 ease-out;
+  }
+  
+  .glow-shadow:hover {
+    box-shadow: 
+      0 0 20px rgba(220, 20, 60, 0.4),
+      0 0 40px rgba(220, 20, 60, 0.2),
+      0 10px 30px rgba(0, 0, 0, 0.1);
+    transform: translateY(-2px);
+  }
 }

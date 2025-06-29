@@ -6,6 +6,11 @@ import Button from '../../components/Button';
 import Card from '../../components/Card';
 import ThemeToggle from '../../components/ThemeToggle';
 import { CheckCircle, AlertCircle, Clock } from 'lucide-react';
+
+// Import custom icons as URL strings for now
+const LockIcon = '/icons/lock-icon.svg';
+const ThunderboltIcon = '/icons/thunderbolt-icon.svg';
+const UndoIcon = '/icons/undo-icon.svg';
 import { useTheme } from '../../contexts/ThemeContext';
 
 interface BusinessInviteData {
@@ -206,6 +211,28 @@ const OnboardToken: React.FC = () => {
     return `$${(priceInCents / 100).toFixed(0)}`;
   };
 
+  // Get tier details based on tier name
+  const getTierDetails = (tierName: string) => {
+    const details = {
+      'Neighborhood Cellar': [
+        'Support for up to 50 wine-club members',
+        'Manage wine lists up to 100 bottles',
+        'Introductory & members-only tasting assistance'
+      ],
+      'Sommelier\'s Select': [
+        'Support for up to 100 wine-club members',
+        'Manage wine lists up to 250 bottles',
+        'Personalized quarterly tasting events'
+      ],
+      'World-Class Wine Club': [
+        'Unlimited wine-club members',
+        'Manage unlimited wine lists',
+        'Full support for intro & quarterly tasting events'
+      ]
+    };
+    return details[tierName as keyof typeof details] || [];
+  };
+
   // Loading state
   if (loading) {
     return (
@@ -305,7 +332,7 @@ const OnboardToken: React.FC = () => {
         {/* Main Content */}
         <Card className={`p-10 mb-12 ${isDark ? 'bg-zinc-900/30 border-zinc-800/50' : 'bg-white border-gray-200'} rounded-xl`}>
           <div className="text-center mb-10">
-            <h2 className={`text-2xl font-medium ${isDark ? 'text-white' : 'text-gray-900'} mb-4`}>
+            <h2 className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-gray-900'} mb-4`}>
               Choose Your Plan
             </h2>
             <p className={`${isDark ? 'text-gray-400' : 'text-gray-600'} max-w-lg mx-auto`}>
@@ -314,61 +341,76 @@ const OnboardToken: React.FC = () => {
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-            {pricingTiers.map((tier, index) => (
-              <div
-                key={tier.id}
-                className={`relative rounded-lg border-2 cursor-pointer transition-colors p-6 ${
-                  selectedTierId === tier.id
-                    ? 'border-gray-600 bg-gray-50/5'
-                    : `${isDark ? 'border-zinc-700 hover:border-zinc-600' : 'border-gray-200 hover:border-gray-300'}`
-                }`}
-                onClick={() => setSelectedTierId(tier.id)}
-              >
-                <input
-                  type="radio"
-                  name="tier"
-                  value={tier.id}
-                  checked={selectedTierId === tier.id}
-                  onChange={() => setSelectedTierId(tier.id)}
-                  className="sr-only"
-                />
-                
-                {index === 1 && (
-                  <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
-                    <div className="bg-gray-600 text-white px-3 py-1 rounded-full text-xs font-medium">
-                      Popular
-                    </div>
-                  </div>
-                )}
-                
-                <div className="text-center">
-                  <h3 className={`text-lg font-medium ${isDark ? 'text-white' : 'text-gray-900'} mb-2`}>
-                    {tier.name}
-                  </h3>
-                  <p className={`${isDark ? 'text-gray-400' : 'text-gray-600'} text-sm mb-4`}>
-                    {tier.description}
-                  </p>
+            {pricingTiers.map((tier, index) => {
+              const tierDetails = getTierDetails(tier.name);
+              return (
+                <div
+                  key={tier.id}
+                  className={`relative rounded-lg border-2 cursor-pointer min-h-[18rem] py-8 px-6 glow-burgundy-subtle ${
+                    selectedTierId === tier.id
+                      ? 'border-[#800020] bg-[#800020]/5 dark:bg-[#800020]/10'
+                      : `${isDark ? 'border-zinc-700 hover:border-zinc-600' : 'border-gray-200 hover:border-gray-300'}`
+                  } transition-all duration-300`}
+                  onClick={() => setSelectedTierId(tier.id)}
+                >
+                  <input
+                    type="radio"
+                    name="tier"
+                    value={tier.id}
+                    checked={selectedTierId === tier.id}
+                    onChange={() => setSelectedTierId(tier.id)}
+                    className="sr-only"
+                  />
                   
-                  <div className="mb-4">
-                    <div className="text-3xl font-semibold text-gray-900 dark:text-white mb-1">
-                      {formatPrice(tier.monthly_price_cents)}
-                    </div>
-                    <div className={`${isDark ? 'text-gray-400' : 'text-gray-500'} text-sm`}>per month</div>
-                  </div>
-                  
-                  {selectedTierId === tier.id ? (
-                    <div className="flex items-center justify-center space-x-2 text-green-600 text-sm font-medium">
-                      <CheckCircle className="w-4 h-4" />
-                      <span>Selected</span>
-                    </div>
-                  ) : (
-                    <div className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                      Select Plan
+                  {index === 1 && (
+                    <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
+                      <div className="bg-[#800020] text-white px-3 py-1 rounded-full text-xs font-medium">
+                        Popular
+                      </div>
                     </div>
                   )}
+                  
+                  <div className="text-center h-full flex flex-col">
+                    <h3 className={`text-xl font-semibold ${isDark ? 'text-white' : 'text-gray-900'} mb-2`}>
+                      {tier.name}
+                    </h3>
+                    <p className={`${isDark ? 'text-gray-400' : 'text-gray-900'} text-sm mb-4`}>
+                      {tier.description}
+                    </p>
+                    
+                    {/* Tier Details */}
+                    <div className="mb-6 flex-grow">
+                      <ul className="space-y-2 text-left">
+                        {tierDetails.map((detail, idx) => (
+                          <li key={idx} className={`text-sm ${isDark ? 'text-gray-300' : 'text-gray-900'} flex items-start`}>
+                            <span className="text-[#800020] mr-2 font-bold">•</span>
+                            <span>{detail}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                    
+                    <div className="mb-4">
+                      <div className={`text-3xl font-semibold ${isDark ? 'text-white' : 'text-gray-900'} mb-1`}>
+                        {formatPrice(tier.monthly_price_cents)}
+                      </div>
+                      <div className={`${isDark ? 'text-gray-400' : 'text-gray-900'} text-sm`}>per month</div>
+                    </div>
+                    
+                    {selectedTierId === tier.id ? (
+                      <div className="flex items-center justify-center space-x-2 text-green-600 text-sm font-medium">
+                        <CheckCircle className="w-4 h-4" />
+                        <span>Selected</span>
+                      </div>
+                    ) : (
+                      <div className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-900'}`}>
+                        Select Plan
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           {error && (
@@ -390,7 +432,7 @@ const OnboardToken: React.FC = () => {
                   <p className={`text-sm ${isDark ? 'text-gray-300' : 'text-gray-700'} mb-2`}>
                     Selected Plan: {pricingTiers.find(t => t.id === selectedTierId)?.name}
                   </p>
-                  <p className="text-2xl font-semibold text-gray-900 dark:text-white">
+                  <p className={`text-lg font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
                     {formatPrice(pricingTiers.find(t => t.id === selectedTierId)?.monthly_price_cents || 0)} / month
                   </p>
                 </div>
@@ -410,12 +452,36 @@ const OnboardToken: React.FC = () => {
                   )}
                 </Button>
                 
-                <div className="flex items-center justify-center space-x-4 text-xs text-gray-500">
-                  <span>🔒 Secure</span>
+                <div className={`flex items-center justify-center space-x-4 text-xs ${isDark ? 'text-gray-300' : 'text-gray-500'}`}>
+                  <span className="flex items-center">
+                    <img 
+                      src={LockIcon} 
+                      alt="Lock" 
+                      className={`w-4 h-4 inline-block mr-1 ${isDark ? 'filter brightness-75' : ''}`}
+                      style={{ filter: isDark ? 'invert(0.75)' : 'invert(0.5)' }}
+                    />
+                    Secure
+                  </span>
                   <span>•</span>
-                  <span>⚡ Instant</span>
+                  <span className="flex items-center">
+                    <img 
+                      src={ThunderboltIcon} 
+                      alt="Thunderbolt" 
+                      className={`w-4 h-4 inline-block mr-1 ${isDark ? 'filter brightness-75' : ''}`}
+                      style={{ filter: isDark ? 'invert(0.75)' : 'invert(0.5)' }}
+                    />
+                    Instant
+                  </span>
                   <span>•</span>
-                  <span>🔄 Cancel Anytime</span>
+                  <span className="flex items-center">
+                    <img 
+                      src={UndoIcon} 
+                      alt="Undo" 
+                      className={`w-4 h-4 inline-block mr-1 ${isDark ? 'filter brightness-75' : ''}`}
+                      style={{ filter: isDark ? 'invert(0.75)' : 'invert(0.5)' }}
+                    />
+                    Cancel Anytime
+                  </span>
                 </div>
               </div>
             ) : (
