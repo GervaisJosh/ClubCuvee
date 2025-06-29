@@ -12,20 +12,22 @@ import {
   Eye, 
   EyeOff,
   DollarSign,
-  Shield
+  Shield,
+  Wine,
+  X
 } from 'lucide-react';
 import { useTheme } from '../../contexts/ThemeContext';
 
 interface BusinessFormData {
   businessName: string;
-  adminUserName: string;
+  adminName: string;
   email: string;
   password: string;
   confirmPassword: string;
-  businessAddress: string;
+  address: string;
   city: string;
   state: string;
-  zipCode: string;
+  zip: string;
   phone: string;
   website: string;
   description: string;
@@ -66,14 +68,14 @@ const BusinessSetup: React.FC = () => {
   
   const [formData, setFormData] = useState<BusinessFormData>({
     businessName: '',
-    adminUserName: '',
+    adminName: '',
     email: '',
     password: '',
     confirmPassword: '',
-    businessAddress: '',
+    address: '',
     city: '',
     state: '',
-    zipCode: '',
+    zip: '',
     phone: '',
     website: '',
     description: '',
@@ -87,11 +89,13 @@ const BusinessSetup: React.FC = () => {
   const [verifyingPayment, setVerifyingPayment] = useState(true);
   const [paymentData, setPaymentData] = useState<PaymentVerificationData | null>(null);
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
-  
-  // Scroll reveal refs
-  const businessInfoRef = useRef<HTMLDivElement>(null);
-  const securityRef = useRef<HTMLDivElement>(null);
-  const tiersRef = useRef<HTMLDivElement>(null);
+  const [showTierModal, setShowTierModal] = useState(false);
+  const [newTier, setNewTier] = useState<CustomerTierFormData>({
+    name: '',
+    description: '',
+    monthlyPrice: 0,
+    benefits: ['']
+  });
 
   useEffect(() => {
     if (!token || !sessionId) {
@@ -103,7 +107,7 @@ const BusinessSetup: React.FC = () => {
     verifyPaymentAndLoadData();
   }, [token, sessionId]);
 
-  // Intersection Observer for scroll reveals
+  // Enhanced Intersection Observer for scroll reveals
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
@@ -113,28 +117,16 @@ const BusinessSetup: React.FC = () => {
           }
         });
       },
-      { threshold: 0.1 }
+      { threshold: 0.1, rootMargin: '0px 0px -50px 0px' }
     );
 
-    const refs = [businessInfoRef, securityRef, tiersRef];
-    refs.forEach((ref) => {
-      if (ref.current) {
-        observer.observe(ref.current);
-      }
-    });
-
-    return () => {
-      refs.forEach((ref) => {
-        if (ref.current) {
-          observer.unobserve(ref.current);
-        }
-      });
-    };
+    document.querySelectorAll('.scroll-reveal').forEach(el => observer.observe(el));
+    return () => observer.disconnect();
   }, []);
 
-  // Calculate progress percentage
+  // Calculate progress percentage based on filled required fields
   const calculateProgress = () => {
-    const requiredFields = ['businessName', 'adminUserName', 'email', 'password', 'confirmPassword'];
+    const requiredFields = ['businessName', 'adminName', 'email', 'phone', 'password', 'confirmPassword', 'address', 'city', 'state', 'zip'];
     const filledFields = requiredFields.filter((field) => {
       const value = formData[field as keyof BusinessFormData] as string;
       return value && value.trim() !== '';
@@ -189,7 +181,7 @@ const BusinessSetup: React.FC = () => {
     switch (field) {
       case 'businessName':
         return value.trim().length < 2 ? 'Business name must be at least 2 characters' : '';
-      case 'adminUserName':
+      case 'adminName':
         return value.trim().length < 2 ? 'Admin name must be at least 2 characters' : '';
       case 'email':
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -242,15 +234,7 @@ const BusinessSetup: React.FC = () => {
   };
 
   const addCustomerTier = () => {
-    setFormData(prev => ({
-      ...prev,
-      customerTiers: [...prev.customerTiers, {
-        name: '',
-        description: '',
-        monthlyPrice: 29,
-        benefits: ['']
-      }]
-    }));
+    setShowTierModal(true);
   };
 
   const removeCustomerTier = (index: number) => {
@@ -279,6 +263,45 @@ const BusinessSetup: React.FC = () => {
     handleTierChange(tierIndex, 'benefits', newBenefits);
   };
 
+  // Tier Modal Functions
+  const addTierFromModal = () => {
+    if (!newTier.name.trim() || !newTier.description.trim() || newTier.monthlyPrice <= 0) {
+      return;
+    }
+    
+    setFormData(prev => ({
+      ...prev,
+      customerTiers: [...prev.customerTiers, { ...newTier }]
+    }));
+    
+    setNewTier({
+      name: '',
+      description: '',
+      monthlyPrice: 0,
+      benefits: ['']
+    });
+    
+    setShowTierModal(false);
+  };
+
+  const updateNewTierBenefit = (index: number, value: string) => {
+    const newBenefits = newTier.benefits.map((benefit, i) => 
+      i === index ? value : benefit
+    );
+    setNewTier(prev => ({ ...prev, benefits: newBenefits }));
+  };
+
+  const addNewTierBenefit = () => {
+    setNewTier(prev => ({ ...prev, benefits: [...prev.benefits, ''] }));
+  };
+
+  const removeNewTierBenefit = (index: number) => {
+    setNewTier(prev => ({
+      ...prev,
+      benefits: prev.benefits.filter((_, i) => i !== index)
+    }));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -288,7 +311,7 @@ const BusinessSetup: React.FC = () => {
     }
 
     // Validate required fields
-    const requiredFields = ['businessName', 'adminUserName', 'email', 'password', 'confirmPassword'];
+    const requiredFields = ['businessName', 'adminName', 'email', 'password', 'confirmPassword'];
     const errors: Record<string, string> = {};
     
     requiredFields.forEach(field => {
@@ -397,14 +420,11 @@ const BusinessSetup: React.FC = () => {
     <div className={`min-h-screen ${isDark ? 'bg-black' : 'bg-gray-50'} px-6 py-10 relative`}>
       <div className="max-w-2xl mx-auto">
         {/* Dynamic Progress Indicator */}
-        <div className="mb-4 flex items-center space-x-2">
-          <div className={`flex-1 h-1 ${isDark ? 'bg-gray-700' : 'bg-gray-200'} rounded-full`}>
-            <div 
-              className={`h-full ${isDark ? 'bg-[#B03040]' : 'bg-[#800020]'} rounded-full transition-all duration-300`}
-              style={{ width: `${calculateProgress()}%` }}
-            ></div>
-          </div>
-          <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{calculateProgress()}%</span>
+        <div className="w-full bg-gray-200 dark:bg-gray-800 rounded-full h-2 mb-8">
+          <div 
+            className="bg-gradient-to-r from-red-800 to-red-600 h-2 rounded-full transition-all duration-500"
+            style={{ width: `${calculateProgress()}%` }}
+          />
         </div>
 
         {/* Clean Header */}
@@ -425,19 +445,20 @@ const BusinessSetup: React.FC = () => {
           )}
         </div>
 
-        {/* Single Consolidated Form Card */}
+        {/* Form Sections */}
         <form onSubmit={handleSubmit}>
-          <Card className={`p-12 ${isDark ? 'bg-zinc-900/30 border-zinc-800/50' : 'bg-white border-gray-200'} rounded-xl`}>
+          <div className="space-y-16">
             
             {/* Business Information Section */}
-            <div ref={businessInfoRef} className="scroll-reveal mb-16">
-              <h2 className={`text-lg font-semibold ${isDark ? 'text-gray-100' : 'text-gray-900'} mb-8`}>
+            <section className="bg-white dark:bg-gray-900 rounded-2xl p-8 md:p-12 border border-gray-200 dark:border-gray-800 scroll-reveal">
+              <h2 className="text-2xl font-light mb-6 flex items-center gap-3 text-gray-900 dark:text-white">
+                <Wine className="w-6 h-6 text-red-800" />
                 Business Information
               </h2>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div className="space-y-3">
-                  <label className={`block text-sm font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                     Business Name *
                   </label>
                   <input
@@ -446,7 +467,7 @@ const BusinessSetup: React.FC = () => {
                     value={formData.businessName}
                     onChange={handleInputChange}
                     required
-                    className={`w-full px-4 py-3 ${isDark ? 'bg-zinc-800/50 border-zinc-700 text-white placeholder-zinc-500 focus:border-gray-500' : 'bg-gray-50 border-gray-300 text-gray-900 placeholder-gray-500 focus:border-gray-400'} border rounded-lg transition-colors`}
+                    className="w-full p-4 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
                     placeholder="Your business name"
                   />
                   {validationErrors.businessName && (
@@ -455,25 +476,25 @@ const BusinessSetup: React.FC = () => {
                 </div>
 
                 <div className="space-y-3">
-                  <label className={`block text-sm font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                    Admin User Name *
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Admin Name *
                   </label>
                   <input
                     type="text"
-                    name="adminUserName"
-                    value={formData.adminUserName}
+                    name="adminName"
+                    value={formData.adminName}
                     onChange={handleInputChange}
                     required
-                    className={`w-full px-4 py-3 ${isDark ? 'bg-zinc-800/50 border-zinc-700 text-white placeholder-zinc-500 focus:border-gray-500' : 'bg-gray-50 border-gray-300 text-gray-900 placeholder-gray-500 focus:border-gray-400'} border rounded-lg transition-colors`}
-                    placeholder="Full name"
+                    className="w-full p-4 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
+                    placeholder="Your full name"
                   />
-                  {validationErrors.adminUserName && (
-                    <p className="text-red-500 text-sm">{validationErrors.adminUserName}</p>
+                  {validationErrors.adminName && (
+                    <p className="text-red-500 text-sm">{validationErrors.adminName}</p>
                   )}
                 </div>
 
                 <div className="space-y-3">
-                  <label className={`block text-sm font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                     Email Address *
                   </label>
                   <input
@@ -482,7 +503,7 @@ const BusinessSetup: React.FC = () => {
                     value={formData.email}
                     onChange={handleInputChange}
                     required
-                    className={`w-full px-4 py-3 ${isDark ? 'bg-zinc-800/50 border-zinc-700 text-white placeholder-zinc-500 focus:border-gray-500' : 'bg-gray-50 border-gray-300 text-gray-900 placeholder-gray-500 focus:border-gray-400'} border rounded-lg transition-colors`}
+                    className="w-full p-4 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
                     placeholder="admin@yourbusiness.com"
                   />
                   {validationErrors.email && (
@@ -491,15 +512,16 @@ const BusinessSetup: React.FC = () => {
                 </div>
 
                 <div className="space-y-3">
-                  <label className={`block text-sm font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                    Phone Number
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Phone Number *
                   </label>
                   <input
                     type="tel"
                     name="phone"
                     value={formData.phone}
                     onChange={handleInputChange}
-                    className={`w-full px-4 py-3 ${isDark ? 'bg-zinc-800/50 border-zinc-700 text-white placeholder-zinc-500 focus:border-gray-500' : 'bg-gray-50 border-gray-300 text-gray-900 placeholder-gray-500 focus:border-gray-400'} border rounded-lg transition-colors`}
+                    required
+                    className="w-full p-4 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
                     placeholder="+1 (555) 123-4567"
                   />
                   {validationErrors.phone && (
@@ -509,8 +531,70 @@ const BusinessSetup: React.FC = () => {
               </div>
 
               <div className="mt-8 space-y-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  <div className="space-y-3">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Address *
+                    </label>
+                    <input
+                      type="text"
+                      name="address"
+                      value={formData.address}
+                      onChange={handleInputChange}
+                      required
+                      className="w-full p-4 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
+                      placeholder="123 Main Street"
+                    />
+                  </div>
+
+                  <div className="space-y-3">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                      City *
+                    </label>
+                    <input
+                      type="text"
+                      name="city"
+                      value={formData.city}
+                      onChange={handleInputChange}
+                      required
+                      className="w-full p-4 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
+                      placeholder="City"
+                    />
+                  </div>
+
+                  <div className="space-y-3">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                      State *
+                    </label>
+                    <input
+                      type="text"
+                      name="state"
+                      value={formData.state}
+                      onChange={handleInputChange}
+                      required
+                      className="w-full p-4 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
+                      placeholder="State"
+                    />
+                  </div>
+
+                  <div className="space-y-3">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                      ZIP Code *
+                    </label>
+                    <input
+                      type="text"
+                      name="zip"
+                      value={formData.zip}
+                      onChange={handleInputChange}
+                      required
+                      className="w-full p-4 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
+                      placeholder="12345"
+                    />
+                  </div>
+                </div>
+
                 <div className="space-y-3">
-                  <label className={`block text-sm font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                     Website URL
                   </label>
                   <input
@@ -518,7 +602,7 @@ const BusinessSetup: React.FC = () => {
                     name="website"
                     value={formData.website}
                     onChange={handleInputChange}
-                    className={`w-full px-4 py-3 ${isDark ? 'bg-zinc-800/50 border-zinc-700 text-white placeholder-zinc-500 focus:border-gray-500' : 'bg-gray-50 border-gray-300 text-gray-900 placeholder-gray-500 focus:border-gray-400'} border rounded-lg transition-colors`}
+                    className="w-full p-4 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
                     placeholder="https://yourbusiness.com"
                   />
                   {validationErrors.website && (
@@ -527,30 +611,31 @@ const BusinessSetup: React.FC = () => {
                 </div>
 
                 <div className="space-y-3">
-                  <label className={`block text-sm font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                     Business Description
                   </label>
                   <textarea
                     name="description"
                     value={formData.description}
                     onChange={handleInputChange}
-                    rows={3}
-                    className={`w-full px-4 py-3 ${isDark ? 'bg-zinc-800/50 border-zinc-700 text-white placeholder-zinc-500 focus:border-gray-500' : 'bg-gray-50 border-gray-300 text-gray-900 placeholder-gray-500 focus:border-gray-400'} border rounded-lg transition-colors resize-none`}
+                    rows={4}
+                    className="w-full p-4 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 resize-none"
                     placeholder="Tell your story and how joining your club helps members support your business and its community"
                   />
                 </div>
               </div>
-            </div>
+            </section>
 
             {/* Security Section */}
-            <div ref={securityRef} className="scroll-reveal mb-16">
-              <h2 className={`text-lg font-semibold ${isDark ? 'text-gray-100' : 'text-gray-900'} mb-8`}>
+            <section className="bg-white dark:bg-gray-900 rounded-2xl p-8 md:p-12 border border-gray-200 dark:border-gray-800 scroll-reveal">
+              <h2 className="text-2xl font-light mb-6 flex items-center gap-3 text-gray-900 dark:text-white">
+                <Shield className="w-6 h-6 text-red-800" />
                 Security Credentials
               </h2>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div className="space-y-3">
-                  <label className={`block text-sm font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                     Admin Password *
                   </label>
                   <div className="relative">
@@ -560,7 +645,7 @@ const BusinessSetup: React.FC = () => {
                       value={formData.password}
                       onChange={handleInputChange}
                       required
-                      className={`w-full px-4 pr-12 py-3 ${isDark ? 'bg-zinc-800/50 border-zinc-700 text-white placeholder-zinc-500 focus:border-gray-500' : 'bg-gray-50 border-gray-300 text-gray-900 placeholder-gray-500 focus:border-gray-400'} border rounded-lg transition-colors`}
+                      className="w-full p-4 pr-12 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
                       placeholder="Create a strong password"
                     />
                     <button
@@ -577,7 +662,7 @@ const BusinessSetup: React.FC = () => {
                 </div>
 
                 <div className="space-y-3">
-                  <label className={`block text-sm font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                     Confirm Password *
                   </label>
                   <div className="relative">
@@ -587,7 +672,7 @@ const BusinessSetup: React.FC = () => {
                       value={formData.confirmPassword}
                       onChange={handleInputChange}
                       required
-                      className={`w-full px-4 pr-12 py-3 ${isDark ? 'bg-zinc-800/50 border-zinc-700 text-white placeholder-zinc-500 focus:border-gray-500' : 'bg-gray-50 border-gray-300 text-gray-900 placeholder-gray-500 focus:border-gray-400'} border rounded-lg transition-colors`}
+                      className="w-full p-4 pr-12 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
                       placeholder="Confirm your password"
                     />
                     <button
@@ -603,152 +688,80 @@ const BusinessSetup: React.FC = () => {
                   )}
                 </div>
               </div>
-            </div>
+            </section>
 
             {/* Customer Membership Tiers Section */}
-            <div ref={tiersRef} className="scroll-reveal mb-16">
-              <div className="flex items-center justify-between mb-8">
-                <h2 className={`text-lg font-semibold ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>
-                  Customer Membership Tiers
-                </h2>
-                <Button
-                  type="button"
-                  onClick={addCustomerTier}
-                  variant="outline"
-                  size="sm"
-                  className="flex items-center space-x-2 border-red-700 text-red-700 dark:border-white dark:text-white"
-                >
-                  <Plus className="h-4 w-4" />
-                  <span>Add Tier</span>
-                </Button>
-              </div>
+            <section className="bg-white dark:bg-gray-900 rounded-2xl p-8 md:p-12 border border-gray-200 dark:border-gray-800 scroll-reveal">
+              <h2 className="text-2xl font-light mb-6 flex items-center gap-3 text-gray-900 dark:text-white">
+                <Wine className="w-6 h-6 text-red-800" />
+                Customer Membership Tiers
+              </h2>
 
               {formData.customerTiers.length === 0 ? (
-                <div className={`border-2 border-dashed ${isDark ? 'border-gray-700' : 'border-gray-300'} rounded-xl p-6 text-center`}>
-                  <p className={`mb-4 ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>Create your first membership tier</p>
-                  <Button
+                <div className="border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-xl p-12 text-center">
+                  <Wine className="w-12 h-12 mx-auto mb-4 text-gray-400" />
+                  <h3 className="text-xl font-light mb-2 text-gray-900 dark:text-white">Create your first membership tier</h3>
+                  <p className="text-gray-500 dark:text-gray-400 mb-6">
+                    Design exclusive wine experiences for your customers
+                  </p>
+                  <button 
                     type="button"
-                    onClick={addCustomerTier}
-                    className="bg-[#800020] hover:bg-[#600018] text-white"
+                    onClick={() => setShowTierModal(true)}
+                    className="px-8 py-3 bg-red-800 text-white rounded-lg hover:bg-red-700 transition-all"
                   >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Create First Tier
-                  </Button>
+                    + Create First Tier
+                  </button>
                 </div>
               ) : (
-                <div className="space-y-8">
-                  {formData.customerTiers.map((tier, tierIndex) => (
-                    <div key={tierIndex} className={`p-6 ${isDark ? 'bg-zinc-800/30 border-zinc-700' : 'bg-gray-50 border-gray-200'} border rounded-lg relative`}>
+                <div className="space-y-6">
+                  {formData.customerTiers.map((tier, index) => (
+                    <div key={index} className="p-6 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg relative">
                       <button
                         type="button"
-                        onClick={() => removeCustomerTier(tierIndex)}
+                        onClick={() => removeCustomerTier(index)}
                         className="absolute top-4 right-4 p-1 text-red-500 hover:bg-red-500/10 rounded transition-colors"
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>
-
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-                        <div className="space-y-3">
-                          <label className={`block text-sm font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                            Tier Name *
-                          </label>
-                          <input
-                            type="text"
-                            value={tier.name}
-                            onChange={(e) => handleTierChange(tierIndex, 'name', e.target.value)}
-                            className={`w-full px-4 py-3 ${isDark ? 'bg-zinc-800/50 border-zinc-700 text-white placeholder-zinc-500 focus:border-gray-500' : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500 focus:border-gray-400'} border rounded-lg transition-colors`}
-                            placeholder="e.g., Wine Enthusiast"
-                          />
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                        <div>
+                          <h4 className="font-medium text-gray-900 dark:text-white">{tier.name}</h4>
+                          <p className="text-gray-600 dark:text-gray-400 text-sm">${tier.monthlyPrice}/month</p>
                         </div>
-
-                        <div className="space-y-3">
-                          <label className={`block text-sm font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                            Monthly Price *
-                          </label>
-                          <div className="relative">
-                            <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                            <input
-                              type="number"
-                              step="0.01"
-                              min="10"
-                              max="999"
-                              value={tier.monthlyPrice}
-                              onChange={(e) => handleTierChange(tierIndex, 'monthlyPrice', parseInt(e.target.value) || 0)}
-                              className={`no-spinner w-full pl-10 pr-4 py-3 ${isDark ? 'bg-zinc-800/50 border-zinc-700 text-white placeholder-zinc-500 focus:border-gray-500' : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500 focus:border-gray-400'} border rounded-lg transition-colors`}
-                              placeholder="29"
-                            />
-                          </div>
-                        </div>
-
-                        <div className="space-y-3">
-                          <label className={`block text-sm font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                            Actions
-                          </label>
-                          <Button
-                            type="button"
-                            onClick={() => addBenefit(tierIndex)}
-                            variant="outline"
-                            size="sm"
-                            className="w-full"
-                          >
-                            <Plus className="h-4 w-4 mr-1" />
-                            Add Benefit
-                          </Button>
+                        <div className="md:col-span-2">
+                          <p className="text-gray-700 dark:text-gray-300 text-sm">{tier.description}</p>
                         </div>
                       </div>
-
-                      <div className="space-y-6">
-                        <div className="space-y-3">
-                          <label className={`block text-sm font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                            Description *
-                          </label>
-                          <textarea
-                            value={tier.description}
-                            onChange={(e) => handleTierChange(tierIndex, 'description', e.target.value)}
-                            rows={2}
-                            className={`w-full px-4 py-3 ${isDark ? 'bg-zinc-800/50 border-zinc-700 text-white placeholder-zinc-500 focus:border-gray-500' : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500 focus:border-gray-400'} border rounded-lg transition-colors resize-none`}
-                            placeholder="Describe this tier..."
-                          />
-                        </div>
-
-                        <div className="space-y-3">
-                          <label className={`block text-sm font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                            Benefits & Features *
-                          </label>
-                          <div className="space-y-3">
-                            {tier.benefits.map((benefit, benefitIndex) => (
-                              <div key={benefitIndex} className="flex items-center space-x-3">
-                                <input
-                                  type="text"
-                                  value={benefit}
-                                  onChange={(e) => updateBenefit(tierIndex, benefitIndex, e.target.value)}
-                                  className={`flex-1 px-4 py-3 ${isDark ? 'bg-zinc-800/50 border-zinc-700 text-white placeholder-zinc-500 focus:border-gray-500' : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500 focus:border-gray-400'} border rounded-lg transition-colors`}
-                                  placeholder="e.g., 2 premium bottles per month"
-                                />
-                                <button
-                                  type="button"
-                                  onClick={() => removeBenefit(tierIndex, benefitIndex)}
-                                  className="p-2 text-red-500 hover:bg-red-500/10 rounded transition-colors"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </button>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
+                      
+                      <div>
+                        <h5 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Benefits:</h5>
+                        <ul className="text-sm text-gray-600 dark:text-gray-400">
+                          {tier.benefits.filter(b => b.trim()).map((benefit, i) => (
+                            <li key={i}>• {benefit}</li>
+                          ))}
+                        </ul>
                       </div>
                     </div>
                   ))}
+                  
+                  <button 
+                    type="button"
+                    onClick={() => setShowTierModal(true)}
+                    className="w-full py-3 border-2 border-red-800 text-red-800 dark:border-white dark:text-white rounded-lg hover:bg-red-800 hover:text-white dark:hover:bg-white dark:hover:text-black transition-all"
+                  >
+                    + Add Tier
+                  </button>
                 </div>
               )}
-            </div>
+            </section>
 
             {/* Error Display */}
             {error && (
-              <div className={`p-4 mb-8 ${isDark ? 'bg-red-900/20 border-red-800/30' : 'bg-red-50 border-red-200'} border rounded-lg`}>
+              <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/30 rounded-lg">
                 <div className="flex items-center">
                   <AlertCircle className="h-4 w-4 text-red-500 mr-2" />
-                  <p className={`text-sm ${isDark ? 'text-red-400' : 'text-red-600'}`}>
+                  <p className="text-sm text-red-600 dark:text-red-400">
                     {error}
                   </p>
                 </div>
@@ -756,11 +769,11 @@ const BusinessSetup: React.FC = () => {
             )}
 
             {/* Submit Button */}
-            <div className="flex justify-center">
-              <Button
+            <div className="flex justify-center mt-12">
+              <button
                 type="submit"
                 disabled={loading}
-                className="bg-[#800020] hover:bg-[#600018] focus:ring-4 focus:ring-[#800020]/20 px-8 py-3 text-white font-medium transition-all duration-200 transform hover:scale-105 active:scale-95"
+                className="px-12 py-4 bg-red-800 text-white rounded-lg hover:bg-red-700 transition-all text-lg font-medium"
               >
                 {loading ? (
                   <div className="flex items-center space-x-2">
@@ -768,13 +781,127 @@ const BusinessSetup: React.FC = () => {
                     <span>Creating Your Business...</span>
                   </div>
                 ) : (
-                  'Launch Wine Club'
+                  'Complete Setup'
                 )}
-              </Button>
+              </button>
             </div>
 
-          </Card>
+          </div>
         </form>
+
+        {/* Tier Creation Modal */}
+        {showTierModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white dark:bg-gray-900 rounded-2xl p-8 max-w-md w-full max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xl font-light text-gray-900 dark:text-white">Create Membership Tier</h3>
+                <button
+                  onClick={() => setShowTierModal(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              <div className="space-y-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Tier Name *
+                  </label>
+                  <input
+                    type="text"
+                    value={newTier.name}
+                    onChange={(e) => setNewTier(prev => ({ ...prev, name: e.target.value }))}
+                    className="w-full p-4 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg"
+                    placeholder="e.g., Wine Enthusiast"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Monthly Price *
+                  </label>
+                  <div className="relative">
+                    <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={newTier.monthlyPrice || ''}
+                      onChange={(e) => {
+                        const value = parseFloat(e.target.value);
+                        setNewTier(prev => ({ ...prev, monthlyPrice: isNaN(value) ? 0 : value }));
+                      }}
+                      className="no-spinner w-full pl-10 pr-4 p-4 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg"
+                      placeholder="49.99"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Description *
+                  </label>
+                  <textarea
+                    value={newTier.description}
+                    onChange={(e) => setNewTier(prev => ({ ...prev, description: e.target.value }))}
+                    rows={3}
+                    className="w-full p-4 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg resize-none"
+                    placeholder="Describe this tier..."
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Benefits *
+                  </label>
+                  <div className="space-y-3">
+                    {newTier.benefits.map((benefit, index) => (
+                      <div key={index} className="flex items-center space-x-3">
+                        <input
+                          type="text"
+                          value={benefit}
+                          onChange={(e) => updateNewTierBenefit(index, e.target.value)}
+                          className="flex-1 p-4 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg"
+                          placeholder="e.g., 2 premium bottles per month"
+                        />
+                        {newTier.benefits.length > 1 && (
+                          <button
+                            onClick={() => removeNewTierBenefit(index)}
+                            className="p-2 text-red-500 hover:bg-red-500/10 rounded transition-colors"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                    <button
+                      onClick={addNewTierBenefit}
+                      className="w-full py-2 text-red-800 border border-red-800 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                    >
+                      + Add Benefit
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex space-x-4 pt-4">
+                  <button
+                    onClick={() => setShowTierModal(false)}
+                    className="flex-1 py-3 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={addTierFromModal}
+                    className="flex-1 py-3 bg-red-800 text-white rounded-lg hover:bg-red-700 transition-colors"
+                  >
+                    Create Tier
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Theme Toggle */}
         <ThemeToggle position="fixed" />

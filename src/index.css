@@ -128,11 +128,12 @@
     transform: translateY(-2px);
   }
 
-  /* Scroll reveal animation */
+  /* Scroll reveal animation - enhanced for premium feel */
   .scroll-reveal {
     opacity: 0;
-    transform: translateY(20px);
-    transition: opacity .6s ease-out, transform .6s ease-out;
+    transform: translateY(30px);
+    transition: opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1), 
+                transform 0.8s cubic-bezier(0.4, 0, 0.2, 1);
   }
   
   .scroll-reveal.active {
@@ -141,13 +142,12 @@
   }
 
   /* Hide number input spinners */
-  input.no-spinner::-webkit-inner-spin-button,
-  input.no-spinner::-webkit-outer-spin-button {
+  input[type="number"].no-spinner::-webkit-inner-spin-button,
+  input[type="number"].no-spinner::-webkit-outer-spin-button {
     -webkit-appearance: none;
     margin: 0;
   }
-  
-  input.no-spinner[type=number] {
+  input[type="number"].no-spinner {
     -moz-appearance: textfield;
   }
 }
