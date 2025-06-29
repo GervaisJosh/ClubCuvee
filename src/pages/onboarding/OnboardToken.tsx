@@ -4,7 +4,9 @@ import { apiClient } from '../../lib/api-client';
 import { supabase } from '../../lib/supabase';
 import Button from '../../components/Button';
 import Card from '../../components/Card';
-import { CheckCircle, AlertCircle, Clock, CreditCard, Star, DollarSign, Phone } from 'lucide-react';
+import ThemeToggle from '../../components/ThemeToggle';
+import { CheckCircle, AlertCircle, Clock, CreditCard, Star, DollarSign, Phone, Sparkles, Crown, Zap } from 'lucide-react';
+import { useTheme } from '../../contexts/ThemeContext';
 
 interface BusinessInviteData {
   is_valid: boolean;
@@ -34,6 +36,8 @@ const OnboardToken: React.FC = () => {
   const { token } = useParams<{ token: string }>();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
   
   const [inviteData, setInviteData] = useState<BusinessInviteData | null>(null);
   const [pricingTiers, setPricingTiers] = useState<PricingTier[]>([]);
@@ -202,58 +206,71 @@ const OnboardToken: React.FC = () => {
     return `$${(priceInCents / 100).toFixed(0)}`;
   };
 
+  // Loading state
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#fdfaf7] dark:bg-black px-6 py-10">
+      <div className="min-h-screen flex items-center justify-center bg-black px-6 py-10">
         <div className="text-center">
-          <div className="h-12 w-12 animate-spin border-4 border-[#800020] border-t-transparent rounded-full mx-auto mb-6"></div>
-          <p className="text-gray-600 dark:text-gray-300 text-lg">Validating your invitation...</p>
+          <div className="relative">
+            <div className="h-16 w-16 animate-spin border-4 border-[#800020] border-t-transparent rounded-full mx-auto mb-8"></div>
+            <Sparkles className="h-6 w-6 text-[#800020] absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 animate-pulse" />
+          </div>
+          <p className="text-gray-300 text-xl font-light">Validating your exclusive invitation...</p>
+          <p className="text-gray-500 text-sm mt-2">Preparing your luxury wine experience</p>
         </div>
+        <ThemeToggle position="fixed" />
       </div>
     );
   }
 
   if (processingPayment) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#fdfaf7] dark:bg-black px-6 py-10">
+      <div className="min-h-screen flex items-center justify-center bg-black px-6 py-10">
         <div className="text-center">
-          <div className="h-12 w-12 animate-spin border-4 border-[#800020] border-t-transparent rounded-full mx-auto mb-6"></div>
-          <p className="text-gray-600 dark:text-gray-300 text-lg">Processing your payment...</p>
+          <div className="relative">
+            <div className="h-16 w-16 animate-spin border-4 border-[#800020] border-t-transparent rounded-full mx-auto mb-8"></div>
+            <CreditCard className="h-6 w-6 text-[#800020] absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 animate-pulse" />
+          </div>
+          <p className="text-gray-200 text-xl font-light">Securing your premium subscription...</p>
+          <p className="text-gray-500 text-sm mt-2">Connecting to secure payment gateway</p>
         </div>
+        <ThemeToggle position="fixed" />
       </div>
     );
   }
 
   if (canceled) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#fdfaf7] dark:bg-black px-6 py-10">
-        <Card className="max-w-md mx-auto p-8 text-center">
-          <AlertCircle className="h-16 w-16 text-yellow-500 mx-auto mb-4" />
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Payment Canceled</h1>
-          <p className="text-gray-600 dark:text-gray-300 mb-6">
-            Your payment was canceled. You can try again when you're ready.
+      <div className={`min-h-screen flex items-center justify-center ${isDark ? 'bg-black' : 'bg-gray-50'} px-6 py-10`}>
+        <Card className={`max-w-md mx-auto p-8 text-center ${isDark ? 'bg-zinc-900/50 border-zinc-800' : 'bg-white border-gray-200'} backdrop-blur-sm rounded-2xl`}>
+          <AlertCircle className="h-20 w-20 text-amber-500 mx-auto mb-6" />
+          <h1 className={`text-3xl font-bold ${isDark ? 'text-white' : 'text-gray-900'} mb-4`}>Payment Paused</h1>
+          <p className={`${isDark ? 'text-gray-300' : 'text-gray-600'} mb-8 leading-relaxed`}>
+            No worries – your exclusive invitation is still valid. Continue when you're ready to join the luxury experience.
           </p>
-          <Button onClick={() => window.location.reload()} className="w-full">
-            Try Again
+          <Button onClick={() => window.location.reload()} className="w-full bg-gradient-to-r from-[#800020] to-[#a00030] hover:from-[#600018] hover:to-[#800028] py-3">
+            Continue Your Journey
           </Button>
         </Card>
+        <ThemeToggle position="fixed" />
       </div>
     );
   }
 
   if (error || !inviteData) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#fdfaf7] dark:bg-black px-6 py-10">
-        <Card className="max-w-md mx-auto p-8 text-center">
-          <AlertCircle className="h-16 w-16 text-red-500 mx-auto mb-4" />
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Invalid Invitation</h1>
-          <p className="text-gray-600 dark:text-gray-300 mb-6">
-            {error || 'This invitation link is invalid or has expired. Please request a new one.'}
+      <div className={`min-h-screen flex items-center justify-center ${isDark ? 'bg-black' : 'bg-gray-50'} px-6 py-10`}>
+        <Card className={`max-w-md mx-auto p-8 text-center ${isDark ? 'bg-zinc-900/50 border-zinc-800' : 'bg-white border-gray-200'} backdrop-blur-sm rounded-2xl`}>
+          <AlertCircle className="h-20 w-20 text-red-500 mx-auto mb-6" />
+          <h1 className={`text-3xl font-bold ${isDark ? 'text-white' : 'text-gray-900'} mb-4`}>Access Restricted</h1>
+          <p className={`${isDark ? 'text-gray-300' : 'text-gray-600'} mb-8 leading-relaxed`}>
+            {error || 'This exclusive invitation has expired or is no longer valid. Please contact us for a new invitation.'}
           </p>
-          <Button onClick={() => navigate('/landing')} variant="secondary" className="w-full">
-            Return Home
+          <Button onClick={() => navigate('/landing')} variant="secondary" className="w-full py-3">
+            Return to Club Cuvée
           </Button>
         </Card>
+        <ThemeToggle position="fixed" />
       </div>
     );
   }
@@ -264,59 +281,74 @@ const OnboardToken: React.FC = () => {
   const hoursUntilExpiry = Math.floor(timeUntilExpiry / (1000 * 60 * 60));
 
   return (
-    <div className="min-h-screen bg-[#fdfaf7] dark:bg-black px-6 py-10">
-      <div className="max-w-4xl mx-auto">
-        {/* Header */}
-        <div className="text-center mb-12">
-          <div className="mb-6">
-            <h1 className="text-5xl font-bold bg-gradient-to-r from-[#800020] to-[#a00030] bg-clip-text text-transparent mb-4">
-              Welcome to Club Cuvée
-            </h1>
-            <div className="w-24 h-1 bg-gradient-to-r from-[#800020] to-[#a00030] mx-auto rounded-full"></div>
+    <div className={`min-h-screen ${isDark ? 'bg-black' : 'bg-gray-50'} px-6 py-10 relative`}>
+      <div className="max-w-5xl mx-auto">
+        {/* Luxury Header */}
+        <div className="text-center mb-16 relative">
+          <div className="absolute inset-0 bg-gradient-radial from-[#800020]/10 via-transparent to-transparent blur-3xl"></div>
+          <div className="relative z-10">
+            <div className="mb-8">
+              <Crown className="h-12 w-12 text-[#800020] mx-auto mb-4 animate-pulse" />
+              <h1 className="text-6xl font-bold bg-gradient-to-r from-[#800020] via-[#a00030] to-[#800020] bg-clip-text text-transparent mb-6 tracking-tight">
+                Club Cuvée
+              </h1>
+              <div className="flex items-center justify-center space-x-2 mb-6">
+                <div className="w-12 h-px bg-gradient-to-r from-transparent to-[#800020]"></div>
+                <Sparkles className="h-4 w-4 text-[#800020]" />
+                <div className="w-12 h-px bg-gradient-to-r from-[#800020] to-transparent"></div>
+              </div>
+            </div>
+            <p className={`text-3xl font-light ${isDark ? 'text-gray-200' : 'text-gray-700'} mb-4`}>
+              Exclusive Invitation for <span className="font-semibold text-[#800020]">{inviteData.business_name}</span>
+            </p>
+            <div className={`inline-flex items-center px-6 py-3 ${isDark ? 'bg-zinc-900/50 border-zinc-800' : 'bg-white border-gray-200'} border rounded-full backdrop-blur-sm`}>
+              <div className="w-2 h-2 bg-emerald-500 rounded-full mr-3 animate-pulse"></div>
+              <span className={`${isDark ? 'text-gray-300' : 'text-gray-600'} font-medium`}>{inviteData.business_email}</span>
+            </div>
           </div>
-          <p className="text-2xl text-gray-700 dark:text-gray-200 mb-3">
-            Start your luxury wine club journey with <strong className="text-[#800020]">{inviteData.business_name}</strong>
-          </p>
-          <p className="text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 inline-block px-4 py-2 rounded-full">
-            {inviteData.business_email}
-          </p>
         </div>
 
         {/* Expiry Warning */}
         {hoursUntilExpiry < 24 && hoursUntilExpiry > 0 && (
-          <Card className="p-4 mb-6 bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800/30">
-            <div className="flex items-center">
-              <Clock className="h-5 w-5 text-yellow-500 dark:text-yellow-400 mr-2" />
-              <p className="text-sm text-yellow-700 dark:text-yellow-300">
-                This invitation expires in {hoursUntilExpiry} hours. Complete your registration soon!
+          <Card className={`p-6 mb-8 ${isDark ? 'bg-amber-900/20 border-amber-800/30' : 'bg-amber-50 border-amber-200'} backdrop-blur-sm rounded-2xl`}>
+            <div className="flex items-center justify-center">
+              <Clock className="h-6 w-6 text-amber-500 mr-3 animate-pulse" />
+              <p className={`text-lg font-medium ${isDark ? 'text-amber-300' : 'text-amber-700'}`}>
+                ⏰ Exclusive access expires in {hoursUntilExpiry} hours
               </p>
             </div>
           </Card>
         )}
 
         {/* Main Content */}
-        <Card className="p-8 mb-8 bg-gradient-to-br from-white dark:from-gray-900 to-gray-50 dark:to-gray-800 border-gray-200 dark:border-gray-700 shadow-xl">
-          <div className="text-center mb-8">
-            <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-3">
-              Select Your Club Cuvée Subscription
-            </h2>
-            <p className="text-gray-600 dark:text-gray-300 text-lg">
-              Choose the perfect plan to grow your wine business
+        <Card className={`p-10 mb-12 ${isDark ? 'bg-zinc-900/50 border-zinc-800' : 'bg-white border-gray-200'} backdrop-blur-sm rounded-3xl shadow-2xl`}>
+          <div className="text-center mb-12">
+            <div className="flex items-center justify-center mb-4">
+              <Zap className="h-8 w-8 text-[#800020] mr-3" />
+              <h2 className={`text-4xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                Choose Your Premium Tier
+              </h2>
+            </div>
+            <p className={`${isDark ? 'text-gray-300' : 'text-gray-600'} text-xl font-light leading-relaxed max-w-2xl mx-auto`}>
+              Select the perfect subscription to unlock the full potential of your luxury wine business
             </p>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10 mb-12">
             {pricingTiers.map((tier, index) => (
               <div
                 key={tier.id}
-                className={`group relative bg-white dark:bg-gray-800 border-2 rounded-xl p-8 cursor-pointer transition-all duration-300 hover:scale-105 ${
+                className={`group relative overflow-hidden rounded-2xl cursor-pointer transition-all duration-500 transform hover:scale-105 ${
                   selectedTierId === tier.id
-                    ? 'border-[#800020] shadow-2xl shadow-[#800020]/20 bg-gradient-to-br from-[#800020]/5 to-white dark:from-[#800020]/20 dark:to-gray-800'
-                    : 'border-gray-200 dark:border-gray-700 hover:border-[#800020]/30 dark:hover:border-[#800020]/30 hover:shadow-xl'
+                    ? `${isDark ? 'bg-gradient-to-br from-[#800020]/20 via-zinc-900 to-zinc-900 border-2 border-[#800020] shadow-2xl shadow-[#800020]/30' : 'bg-gradient-to-br from-[#800020]/10 via-white to-white border-2 border-[#800020] shadow-2xl shadow-[#800020]/20'}`
+                    : `${isDark ? 'bg-zinc-900/70 border border-zinc-800 hover:border-[#800020]/50 hover:shadow-xl' : 'bg-white border border-gray-200 hover:border-[#800020]/30 hover:shadow-xl'}`
                 }`}
                 onClick={() => setSelectedTierId(tier.id)}
               >
-                <div className="text-center">
+                {/* Luxury background pattern */}
+                <div className="absolute inset-0 bg-gradient-to-br from-transparent via-[#800020]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                
+                <div className="relative z-10 p-8 text-center">
                   <input
                     type="radio"
                     name="tier"
@@ -326,36 +358,37 @@ const OnboardToken: React.FC = () => {
                     className="sr-only"
                   />
                   
-                  {/* Popular badge for middle tier */}
+                  {/* Most Popular badge */}
                   {index === 1 && (
-                    <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                      <span className="bg-gradient-to-r from-[#800020] to-[#a00030] text-white px-4 py-2 rounded-full text-sm font-semibold shadow-lg">
-                        Most Popular
-                      </span>
+                    <div className="absolute -top-5 left-1/2 transform -translate-x-1/2 z-20">
+                      <div className="bg-gradient-to-r from-[#800020] to-[#a00030] text-white px-6 py-2 rounded-full text-sm font-bold shadow-xl border border-[#600018] backdrop-blur-sm">
+                        <Star className="h-4 w-4 inline mr-1" />
+                        MOST POPULAR
+                      </div>
                     </div>
                   )}
                   
-                  <div className="mb-6">
-                    <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">{tier.name}</h3>
-                    <p className="text-gray-600 dark:text-gray-300 text-sm leading-relaxed">{tier.description}</p>
+                  <div className="mb-8">
+                    <h3 className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-gray-900'} mb-4`}>{tier.name}</h3>
+                    <p className={`${isDark ? 'text-gray-300' : 'text-gray-600'} text-base leading-relaxed`}>{tier.description}</p>
                   </div>
                   
-                  <div className="mb-6">
-                    <div className="text-4xl font-bold text-[#800020] mb-2">
+                  <div className="mb-8">
+                    <div className="text-5xl font-bold text-[#800020] mb-3 tracking-tight">
                       {formatPrice(tier.monthly_price_cents)}
                     </div>
-                    <div className="text-gray-500 dark:text-gray-400 font-medium">per month</div>
+                    <div className={`${isDark ? 'text-gray-400' : 'text-gray-500'} font-medium text-lg`}>per month</div>
                   </div>
                   
                   {selectedTierId === tier.id ? (
-                    <div className="flex items-center justify-center space-x-2 text-[#800020]">
+                    <div className="flex items-center justify-center space-x-3 text-[#800020] bg-[#800020]/10 py-3 px-6 rounded-xl">
                       <CheckCircle className="w-6 h-6" />
-                      <span className="font-semibold">Selected</span>
+                      <span className="font-bold text-lg">SELECTED</span>
                     </div>
                   ) : (
-                    <div className="flex items-center justify-center space-x-2 text-gray-400 dark:text-gray-500 group-hover:text-[#800020] transition-colors">
-                      <div className="w-6 h-6 border-2 border-current rounded-full"></div>
-                      <span className="font-medium">Select Plan</span>
+                    <div className={`flex items-center justify-center space-x-3 ${isDark ? 'text-gray-400 group-hover:text-[#800020]' : 'text-gray-500 group-hover:text-[#800020]'} transition-all duration-300 py-3 px-6 rounded-xl border border-current group-hover:border-[#800020]`}>
+                      <div className="w-6 h-6 border-2 border-current rounded-full group-hover:bg-[#800020]/10 transition-all duration-300"></div>
+                      <span className="font-semibold">SELECT TIER</span>
                     </div>
                   )}
                 </div>
@@ -363,25 +396,24 @@ const OnboardToken: React.FC = () => {
             ))}
           </div>
 
-
           {error && (
-            <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/30 rounded-lg mb-6">
-              <p className="text-sm text-red-600 dark:text-red-400 flex items-center">
-                <AlertCircle className="w-5 h-5 mr-3" />
+            <div className={`p-6 ${isDark ? 'bg-red-900/20 border-red-800/30' : 'bg-red-50 border-red-200'} border rounded-2xl mb-8`}>
+              <p className={`text-lg ${isDark ? 'text-red-400' : 'text-red-600'} flex items-center justify-center font-medium`}>
+                <AlertCircle className="w-6 h-6 mr-3" />
                 {error}
               </p>
             </div>
           )}
 
-          {/* Action Button */}
+          {/* Action Section */}
           <div className="text-center">
             {selectedTierId ? (
-              <div className="space-y-4">
-                <div className="p-4 bg-[#800020]/5 dark:bg-[#800020]/20 border border-[#800020]/20 dark:border-[#800020]/30 rounded-lg">
-                  <p className="text-sm text-gray-700 dark:text-gray-200 mb-2">
-                    <strong>Selected Plan:</strong> {pricingTiers.find(t => t.id === selectedTierId)?.name}
+              <div className="space-y-8">
+                <div className={`p-8 ${isDark ? 'bg-[#800020]/10 border-[#800020]/30' : 'bg-[#800020]/5 border-[#800020]/20'} border rounded-2xl backdrop-blur-sm`}>
+                  <p className={`text-lg ${isDark ? 'text-gray-200' : 'text-gray-700'} mb-3 font-medium`}>
+                    ✨ <strong>Your Selected Plan:</strong> {pricingTiers.find(t => t.id === selectedTierId)?.name}
                   </p>
-                  <p className="text-2xl font-bold text-[#800020]">
+                  <p className="text-4xl font-bold text-[#800020] tracking-tight">
                     {formatPrice(pricingTiers.find(t => t.id === selectedTierId)?.monthly_price_cents || 0)} / month
                   </p>
                 </div>
@@ -389,89 +421,111 @@ const OnboardToken: React.FC = () => {
                 <button
                   onClick={handleTierSelection}
                   disabled={processingPayment}
-                  className="w-full bg-gradient-to-r from-[#800020] to-[#a00030] text-white font-semibold py-4 px-8 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 disabled:opacity-50 disabled:transform-none disabled:hover:shadow-lg"
+                  className="w-full bg-gradient-to-r from-[#800020] to-[#a00030] hover:from-[#600018] hover:to-[#800028] text-white font-bold py-6 px-10 rounded-2xl shadow-2xl hover:shadow-3xl transform hover:scale-105 transition-all duration-300 disabled:opacity-50 disabled:transform-none text-xl"
                 >
                   {processingPayment ? (
-                    <div className="flex items-center justify-center space-x-3">
-                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                      <span>Starting Secure Checkout...</span>
+                    <div className="flex items-center justify-center space-x-4">
+                      <div className="w-6 h-6 border-3 border-white border-t-transparent rounded-full animate-spin"></div>
+                      <span>Securing Your Premium Access...</span>
                     </div>
                   ) : (
-                    <div className="flex items-center justify-center space-x-3">
-                      <CreditCard className="w-5 h-5" />
-                      <span>Proceed to Secure Payment</span>
+                    <div className="flex items-center justify-center space-x-4">
+                      <CreditCard className="w-6 h-6" />
+                      <span>BEGIN LUXURY EXPERIENCE</span>
+                      <Sparkles className="w-6 h-6" />
                     </div>
                   )}
                 </button>
                 
-                <p className="text-xs text-gray-500 dark:text-gray-400 flex items-center justify-center space-x-2">
-                  <span>🔒 Secure payment processing by Stripe</span>
-                  <span>•</span>
-                  <span>Cancel anytime</span>
-                </p>
+                <div className="flex items-center justify-center space-x-6 text-sm">
+                  <span className={`${isDark ? 'text-gray-400' : 'text-gray-500'} flex items-center`}>
+                    🔒 Stripe Secured
+                  </span>
+                  <span className={`${isDark ? 'text-gray-400' : 'text-gray-500'}`}>•</span>
+                  <span className={`${isDark ? 'text-gray-400' : 'text-gray-500'} flex items-center`}>
+                    ⚡ Instant Activation
+                  </span>
+                  <span className={`${isDark ? 'text-gray-400' : 'text-gray-500'}`}>•</span>
+                  <span className={`${isDark ? 'text-gray-400' : 'text-gray-500'} flex items-center`}>
+                    🔄 Cancel Anytime
+                  </span>
+                </div>
               </div>
             ) : (
-              <div className="p-4 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
-                <p className="text-gray-600 dark:text-gray-300 text-center">
-                  Please select a subscription plan to continue
+              <div className={`p-8 ${isDark ? 'bg-zinc-800/50 border-zinc-700' : 'bg-gray-50 border-gray-200'} border rounded-2xl`}>
+                <Crown className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <p className={`${isDark ? 'text-gray-300' : 'text-gray-600'} text-xl font-light`}>
+                  Select your exclusive tier to continue
                 </p>
               </div>
             )}
           </div>
         </Card>
 
-        {/* What's Next */}
-        <Card className="p-8 bg-gradient-to-r from-gray-50 dark:from-gray-900 to-gray-100 dark:to-gray-800 border-gray-200 dark:border-gray-700">
-          <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-6 text-center">Your Onboarding Journey</h3>
-          <div className="space-y-6">
-            <div className="flex items-start">
-              <div className="w-8 h-8 bg-gradient-to-r from-[#800020] to-[#a00030] text-white rounded-full flex items-center justify-center text-sm font-bold mr-4 mt-1">
+        {/* Luxury Journey Preview */}
+        <Card className={`p-12 ${isDark ? 'bg-gradient-to-br from-zinc-900/70 via-zinc-900/50 to-zinc-900/70 border-zinc-800' : 'bg-gradient-to-br from-white via-gray-50 to-white border-gray-200'} backdrop-blur-sm rounded-3xl`}>
+          <div className="text-center mb-10">
+            <Sparkles className="h-10 w-10 text-[#800020] mx-auto mb-4" />
+            <h3 className={`text-3xl font-bold ${isDark ? 'text-white' : 'text-gray-900'} mb-3`}>Your Premium Journey Awaits</h3>
+            <p className={`${isDark ? 'text-gray-300' : 'text-gray-600'} text-lg font-light`}>Experience the Club Cuvée advantage in four elegant steps</p>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="flex items-start space-x-4">
+              <div className="w-12 h-12 bg-gradient-to-r from-[#800020] to-[#a00030] text-white rounded-2xl flex items-center justify-center text-lg font-bold shadow-lg">
                 1
               </div>
               <div>
-                <p className="font-semibold text-gray-900 dark:text-white mb-1">Secure Payment Processing</p>
-                <p className="text-gray-600 dark:text-gray-300">Complete your subscription payment through our secure Stripe integration</p>
+                <p className={`font-bold ${isDark ? 'text-white' : 'text-gray-900'} mb-2 text-lg`}>🔐 Secure Payment</p>
+                <p className={`${isDark ? 'text-gray-300' : 'text-gray-600'} leading-relaxed`}>Enterprise-grade security through our Stripe integration ensures your payment is protected</p>
               </div>
             </div>
-            <div className="flex items-start">
-              <div className="w-8 h-8 bg-gradient-to-r from-[#800020] to-[#a00030] text-white rounded-full flex items-center justify-center text-sm font-bold mr-4 mt-1">
+            
+            <div className="flex items-start space-x-4">
+              <div className="w-12 h-12 bg-gradient-to-r from-[#800020] to-[#a00030] text-white rounded-2xl flex items-center justify-center text-lg font-bold shadow-lg">
                 2
               </div>
               <div>
-                <p className="font-semibold text-gray-900 dark:text-white mb-1">Business Profile Setup</p>
-                <p className="text-gray-600 dark:text-gray-300">Create your account, set business details, and configure your wine club tiers</p>
+                <p className={`font-bold ${isDark ? 'text-white' : 'text-gray-900'} mb-2 text-lg`}>🏢 Profile Creation</p>
+                <p className={`${isDark ? 'text-gray-300' : 'text-gray-600'} leading-relaxed`}>Build your business profile and configure premium membership tiers for your customers</p>
               </div>
             </div>
-            <div className="flex items-start">
-              <div className="w-8 h-8 bg-gradient-to-r from-[#800020] to-[#a00030] text-white rounded-full flex items-center justify-center text-sm font-bold mr-4 mt-1">
+            
+            <div className="flex items-start space-x-4">
+              <div className="w-12 h-12 bg-gradient-to-r from-[#800020] to-[#a00030] text-white rounded-2xl flex items-center justify-center text-lg font-bold shadow-lg">
                 3
               </div>
               <div>
-                <p className="font-semibold text-gray-900 dark:text-white mb-1">Wine Inventory & AI Setup</p>
-                <p className="text-gray-600 dark:text-gray-300">Upload your wine inventory and let our AI create personalized recommendations</p>
+                <p className={`font-bold ${isDark ? 'text-white' : 'text-gray-900'} mb-2 text-lg`}>🤖 AI-Powered Setup</p>
+                <p className={`${isDark ? 'text-gray-300' : 'text-gray-600'} leading-relaxed`}>Upload your wine collection and let our AI create personalized recommendations</p>
               </div>
             </div>
-            <div className="flex items-start">
-              <div className="w-8 h-8 bg-gradient-to-r from-[#800020] to-[#a00030] text-white rounded-full flex items-center justify-center text-sm font-bold mr-4 mt-1">
+            
+            <div className="flex items-start space-x-4">
+              <div className="w-12 h-12 bg-gradient-to-r from-[#800020] to-[#a00030] text-white rounded-2xl flex items-center justify-center text-lg font-bold shadow-lg">
                 4
               </div>
               <div>
-                <p className="font-semibold text-gray-900 dark:text-white mb-1">Launch Your Wine Club</p>
-                <p className="text-gray-600 dark:text-gray-300">Start accepting customer memberships and grow your recurring revenue</p>
+                <p className={`font-bold ${isDark ? 'text-white' : 'text-gray-900'} mb-2 text-lg`}>🚀 Go Live</p>
+                <p className={`${isDark ? 'text-gray-300' : 'text-gray-600'} leading-relaxed`}>Launch your exclusive wine club and start building your member community</p>
               </div>
             </div>
           </div>
         </Card>
 
-        {/* Support */}
-        <div className="text-center mt-8 text-sm text-gray-500 dark:text-gray-400">
-          <p>
-            Need help? Contact our support team at{' '}
-            <a href="mailto:support@clubcuvee.com" className="text-[#800020] hover:underline">
+        {/* Luxury Support */}
+        <div className="text-center mt-12">
+          <div className={`inline-flex items-center px-8 py-4 ${isDark ? 'bg-zinc-900/50 border-zinc-800' : 'bg-white border-gray-200'} border rounded-2xl backdrop-blur-sm`}>
+            <Phone className="h-5 w-5 text-[#800020] mr-3" />
+            <span className={`${isDark ? 'text-gray-300' : 'text-gray-600'} mr-2`}>Premium Support:</span>
+            <a href="mailto:support@clubcuvee.com" className="text-[#800020] hover:text-[#600018] font-semibold transition-colors duration-200">
               support@clubcuvee.com
             </a>
-          </p>
+          </div>
         </div>
+        
+        {/* Theme Toggle */}
+        <ThemeToggle position="fixed" />
       </div>
     </div>
   );

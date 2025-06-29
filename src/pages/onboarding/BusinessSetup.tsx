@@ -3,6 +3,7 @@ import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { apiClient } from '../../lib/api-client';
 import Button from '../../components/Button';
 import Card from '../../components/Card';
+import ThemeToggle from '../../components/ThemeToggle';
 import { 
   CheckCircle, 
   Plus, 
@@ -16,8 +17,14 @@ import {
   Lock,
   MapPin,
   Wine,
-  DollarSign
+  DollarSign,
+  Crown,
+  Sparkles,
+  Zap,
+  Shield,
+  Rocket
 } from 'lucide-react';
+import { useTheme } from '../../contexts/ThemeContext';
 
 interface BusinessFormData {
   businessName: string;
@@ -62,6 +69,8 @@ const BusinessSetup: React.FC = () => {
   const { token } = useParams<{ token: string }>();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
   
   const sessionId = searchParams.get('session_id');
   
@@ -198,128 +207,96 @@ const BusinessSetup: React.FC = () => {
     }));
   };
 
-  const addTier = () => {
+  const addCustomerTier = () => {
     setFormData(prev => ({
       ...prev,
-      customerTiers: [...prev.customerTiers, { 
-        name: '', 
-        description: '', 
-        monthlyPrice: 49,
+      customerTiers: [...prev.customerTiers, {
+        name: '',
+        description: '',
+        monthlyPrice: 29,
         benefits: ['']
       }]
     }));
   };
 
-  const removeTier = (index: number) => {
-    if (formData.customerTiers.length > 1) {
-      setFormData(prev => ({
-        ...prev,
-        customerTiers: prev.customerTiers.filter((_, i) => i !== index)
-      }));
-    }
-  };
-
-  const addTierBenefit = (tierIndex: number) => {
+  const removeCustomerTier = (index: number) => {
     setFormData(prev => ({
       ...prev,
-      customerTiers: prev.customerTiers.map((tier, i) => 
-        i === tierIndex ? { ...tier, benefits: [...tier.benefits, ''] } : tier
-      )
+      customerTiers: prev.customerTiers.filter((_, i) => i !== index)
     }));
   };
 
-  const removeTierBenefit = (tierIndex: number, benefitIndex: number) => {
-    setFormData(prev => ({
-      ...prev,
-      customerTiers: prev.customerTiers.map((tier, i) => 
-        i === tierIndex 
-          ? { ...tier, benefits: tier.benefits.filter((_, bi) => bi !== benefitIndex) }
-          : tier
-      )
-    }));
+  const addBenefit = (tierIndex: number) => {
+    const tier = formData.customerTiers[tierIndex];
+    handleTierChange(tierIndex, 'benefits', [...tier.benefits, '']);
   };
 
-  const updateTierBenefit = (tierIndex: number, benefitIndex: number, value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      customerTiers: prev.customerTiers.map((tier, i) => 
-        i === tierIndex 
-          ? { 
-              ...tier, 
-              benefits: tier.benefits.map((benefit, bi) => 
-                bi === benefitIndex ? value : benefit
-              )
-            }
-          : tier
-      )
-    }));
+  const removeBenefit = (tierIndex: number, benefitIndex: number) => {
+    const tier = formData.customerTiers[tierIndex];
+    const newBenefits = tier.benefits.filter((_, i) => i !== benefitIndex);
+    handleTierChange(tierIndex, 'benefits', newBenefits);
   };
 
-  const validateForm = (): boolean => {
-    const errors: Record<string, string> = {};
-    
-    // Validate required fields
-    if (!formData.businessName.trim()) errors.businessName = 'Business name is required';
-    if (!formData.businessOwnerName.trim()) errors.businessOwnerName = 'Owner name is required';
-    if (!formData.email.trim()) errors.email = 'Email is required';
-    if (!formData.password) errors.password = 'Password is required';
-    if (!formData.confirmPassword) errors.confirmPassword = 'Please confirm your password';
-    
-    // Validate field formats
-    Object.keys(formData).forEach(key => {
-      if (typeof formData[key as keyof BusinessFormData] === 'string') {
-        const error = validateField(key, formData[key as keyof BusinessFormData] as string);
-        if (error) errors[key] = error;
-      }
-    });
-    
-    // Validate customer tiers
-    if (formData.customerTiers.length === 0) {
-      errors.customerTiers = 'At least one customer membership tier is required';
-    } else {
-      for (const [index, tier] of formData.customerTiers.entries()) {
-        if (!tier.name.trim()) {
-          errors[`tier_${index}_name`] = 'Tier name is required';
-        }
-        if (!tier.description.trim()) {
-          errors[`tier_${index}_description`] = 'Tier description is required';
-        }
-        if (tier.monthlyPrice < 10 || tier.monthlyPrice > 999) {
-          errors[`tier_${index}_price`] = 'Price must be between $10 and $999';
-        }
-        if (tier.benefits.filter(b => b.trim()).length === 0) {
-          errors[`tier_${index}_benefits`] = 'At least one benefit is required';
-        }
-      }
-    }
-    
-    setValidationErrors(errors);
-    
-    if (Object.keys(errors).length > 0) {
-      setError('Please fix the validation errors above');
-      return false;
-    }
-    
-    return true;
+  const updateBenefit = (tierIndex: number, benefitIndex: number, value: string) => {
+    const tier = formData.customerTiers[tierIndex];
+    const newBenefits = tier.benefits.map((benefit, i) => 
+      i === benefitIndex ? value : benefit
+    );
+    handleTierChange(tierIndex, 'benefits', newBenefits);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!token) {
-      setError('Invalid token. Please try accessing this page again from your invitation link.');
-      return;
-    }
-    
-    if (!validateForm()) {
+    if (!paymentData) {
+      setError('Payment verification required');
       return;
     }
 
-    setLoading(true);
-    setError(null);
+    // Validate required fields
+    const requiredFields = ['businessName', 'businessOwnerName', 'email', 'password', 'confirmPassword'];
+    const errors: Record<string, string> = {};
+    
+    requiredFields.forEach(field => {
+      const value = formData[field as keyof BusinessFormData] as string;
+      const error = validateField(field, value);
+      if (error) {
+        errors[field] = error;
+      }
+    });
+
+    // Validate customer tiers
+    if (formData.customerTiers.length === 0) {
+      setError('Please add at least one customer membership tier');
+      return;
+    }
+
+    formData.customerTiers.forEach((tier, index) => {
+      if (!tier.name.trim()) {
+        errors[`tier_${index}_name`] = 'Tier name is required';
+      }
+      if (!tier.description.trim()) {
+        errors[`tier_${index}_description`] = 'Tier description is required';
+      }
+      if (tier.monthlyPrice < 10 || tier.monthlyPrice > 999) {
+        errors[`tier_${index}_price`] = 'Price must be between $10 and $999';
+      }
+      if (tier.benefits.filter(b => b.trim()).length === 0) {
+        errors[`tier_${index}_benefits`] = 'At least one benefit is required';
+      }
+    });
+
+    setValidationErrors(errors);
+
+    if (Object.keys(errors).length > 0) {
+      setError('Please fix the validation errors before submitting');
+      return;
+    }
 
     try {
-      console.log('🚀 Submitting business form with token:', token);
+      setLoading(true);
+      setError(null);
+
       const response = await apiClient.post<{
         success: boolean;
         data: {
@@ -332,457 +309,479 @@ const BusinessSetup: React.FC = () => {
         businessData: formData
       });
 
-      console.log('📝 Create business response:', response);
-
       if (response.success) {
-        const successUrl = `/onboard/${token}/success`;
-        console.log('✅ Business created successfully, navigating to:', successUrl);
-        // Redirect to success page or business dashboard
-        navigate(successUrl);
+        // Navigate to success page
+        navigate(`/onboard/${token}/success`);
       } else {
-        console.error('❌ Business creation failed - response.success is false');
-        setError('Failed to create business. Please try again.');
+        setError('Failed to create business account. Please try again.');
       }
     } catch (err: any) {
       console.error('Error creating business:', err);
-      setError(err.message || 'Failed to create business. Please try again.');
+      setError(err.message || 'Failed to create business account');
     } finally {
       setLoading(false);
     }
   };
 
+  // Payment verification loading state
   if (verifyingPayment) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#fdfaf7] dark:bg-black px-6 py-10">
+      <div className={`min-h-screen flex items-center justify-center ${isDark ? 'bg-black' : 'bg-gray-50'} px-6 py-10`}>
         <div className="text-center">
-          <div className="h-12 w-12 animate-spin border-4 border-[#800020] border-t-transparent rounded-full mx-auto mb-6"></div>
-          <p className="text-gray-600 dark:text-gray-300 text-lg">Verifying your payment...</p>
+          <div className="relative">
+            <div className="h-16 w-16 animate-spin border-4 border-[#800020] border-t-transparent rounded-full mx-auto mb-8"></div>
+            <Shield className="h-6 w-6 text-[#800020] absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 animate-pulse" />
+          </div>
+          <p className={`${isDark ? 'text-gray-300' : 'text-gray-700'} text-xl font-light`}>Verifying your premium subscription...</p>
+          <p className={`${isDark ? 'text-gray-500' : 'text-gray-500'} text-sm mt-2`}>Securing your business credentials</p>
         </div>
+        <ThemeToggle position="fixed" />
       </div>
     );
   }
 
+  // Error state
   if (error && !paymentData) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#fdfaf7] dark:bg-black px-6 py-10">
-        <Card className="max-w-md mx-auto p-8 text-center bg-white dark:bg-gray-800 shadow-2xl border border-red-200 dark:border-red-800/30">
-          <AlertCircle className="h-16 w-16 text-red-500 mx-auto mb-4" />
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Setup Error</h1>
-          <p className="text-gray-600 dark:text-gray-300 mb-6">{error}</p>
-          <Button onClick={() => navigate('/landing')} className="w-full bg-gray-600 hover:bg-gray-700">
-            Return Home
+      <div className={`min-h-screen flex items-center justify-center ${isDark ? 'bg-black' : 'bg-gray-50'} px-6 py-10`}>
+        <Card className={`max-w-md mx-auto p-8 text-center ${isDark ? 'bg-zinc-900/50 border-zinc-800' : 'bg-white border-gray-200'} backdrop-blur-sm rounded-2xl`}>
+          <AlertCircle className="h-20 w-20 text-red-500 mx-auto mb-6" />
+          <h1 className={`text-3xl font-bold ${isDark ? 'text-white' : 'text-gray-900'} mb-4`}>Setup Error</h1>
+          <p className={`${isDark ? 'text-gray-300' : 'text-gray-600'} mb-8 leading-relaxed`}>
+            {error}
+          </p>
+          <Button onClick={() => navigate('/business/dashboard')} variant="secondary" className="w-full py-3">
+            Contact Support
           </Button>
         </Card>
+        <ThemeToggle position="fixed" />
       </div>
     );
   }
 
-  // Helper function to render form field with validation
-  const renderFormField = (
-    name: string,
-    label: string,
-    type: string = 'text',
-    icon?: React.ReactNode,
-    required: boolean = true,
-    placeholder?: string
-  ) => {
-    const error = validationErrors[name];
-    return (
-      <div className="space-y-2">
-        <label htmlFor={name} className="block text-sm font-semibold text-gray-800 dark:text-gray-200">
-          {label} {required && <span className="text-red-500">*</span>}
-        </label>
-        <div className="relative">
-          {icon && (
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <div className="text-gray-400 dark:text-gray-500">{icon}</div>
-            </div>
-          )}
-          <input
-            type={type}
-            id={name}
-            name={name}
-            value={formData[name as keyof BusinessFormData] as string}
-            onChange={handleInputChange}
-            required={required}
-            placeholder={placeholder}
-            className={`w-full ${icon ? 'pl-10' : 'pl-4'} pr-4 py-3 border-2 rounded-lg transition-all duration-200 ${
-              error 
-                ? 'border-red-300 dark:border-red-500/50 bg-red-50 dark:bg-red-900/10 focus:border-red-500 focus:ring-red-500/20' 
-                : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 focus:border-[#800020] focus:ring-[#800020]/20'
-            } focus:outline-none focus:ring-4 dark:text-white`}
-          />
-          {name === 'password' && (
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute inset-y-0 right-0 pr-3 flex items-center"
-            >
-              {showPassword ? <EyeOff className="h-5 w-5 text-gray-400 dark:text-gray-500" /> : <Eye className="h-5 w-5 text-gray-400 dark:text-gray-500" />}
-            </button>
-          )}
-          {name === 'confirmPassword' && (
-            <button
-              type="button"
-              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-              className="absolute inset-y-0 right-0 pr-3 flex items-center"
-            >
-              {showConfirmPassword ? <EyeOff className="h-5 w-5 text-gray-400 dark:text-gray-500" /> : <Eye className="h-5 w-5 text-gray-400 dark:text-gray-500" />}
-            </button>
-          )}
-        </div>
-        {error && (
-          <p className="text-sm text-red-600 dark:text-red-400 flex items-center space-x-1">
-            <AlertCircle className="h-4 w-4" />
-            <span>{error}</span>
-          </p>
-        )}
-      </div>
-    );
-  };
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#fdfaf7] dark:from-black to-[#f8f5f0] dark:to-gray-900 px-6 py-10">
-      <div className="max-w-5xl mx-auto">
-        {/* Header */}
-        <div className="text-center mb-12">
-          <div className="relative">
-            <CheckCircle className="h-20 w-20 text-green-500 mx-auto mb-6 drop-shadow-lg" />
-            <div className="absolute inset-0 rounded-full bg-green-500/10 blur-xl"></div>
-          </div>
-          <h1 className="text-5xl font-bold bg-gradient-to-r from-[#800020] to-[#a00030] bg-clip-text text-transparent mb-4">
-            Payment Successful!
-          </h1>
-          <p className="text-xl text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
-            Welcome to Club Cuvée! Let's complete your business setup and configure your wine club tiers.
-          </p>
-          
-          {/* Payment Status Card */}
-          {paymentData && (
-            <Card className="mt-8 p-6 bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800/30 max-w-md mx-auto">
-              <div className="flex items-center justify-center space-x-3">
-                <CheckCircle className="h-6 w-6 text-green-600 dark:text-green-400" />
-                <div className="text-left">
-                  <p className="font-semibold text-green-800 dark:text-green-300">Subscription Active</p>
-                  <p className="text-sm text-green-600 dark:text-green-400">
-                    {paymentData.session.customer_email}
-                  </p>
-                </div>
+    <div className={`min-h-screen ${isDark ? 'bg-black' : 'bg-gray-50'} px-6 py-10 relative`}>
+      <div className="max-w-4xl mx-auto">
+        {/* Luxury Header */}
+        <div className="text-center mb-16 relative">
+          <div className="absolute inset-0 bg-gradient-radial from-[#800020]/10 via-transparent to-transparent blur-3xl"></div>
+          <div className="relative z-10">
+            <div className="mb-8">
+              <Crown className="h-12 w-12 text-[#800020] mx-auto mb-4 animate-pulse" />
+              <h1 className="text-5xl font-bold bg-gradient-to-r from-[#800020] via-[#a00030] to-[#800020] bg-clip-text text-transparent mb-6 tracking-tight">
+                Build Your Empire
+              </h1>
+              <div className="flex items-center justify-center space-x-2 mb-6">
+                <div className="w-12 h-px bg-gradient-to-r from-transparent to-[#800020]"></div>
+                <Sparkles className="h-4 w-4 text-[#800020]" />
+                <div className="w-12 h-px bg-gradient-to-r from-[#800020] to-transparent"></div>
               </div>
-            </Card>
-          )}
+            </div>
+            <p className={`text-2xl font-light ${isDark ? 'text-gray-200' : 'text-gray-700'} mb-4`}>
+              Complete your business profile to launch your luxury wine club
+            </p>
+            {paymentData && (
+              <div className={`inline-flex items-center px-6 py-3 ${isDark ? 'bg-emerald-900/20 border-emerald-800/30' : 'bg-emerald-50 border-emerald-200'} border rounded-full backdrop-blur-sm`}>
+                <CheckCircle className="w-5 h-5 text-emerald-500 mr-2" />
+                <span className={`${isDark ? 'text-emerald-300' : 'text-emerald-700'} font-medium`}>
+                  Payment Verified • {paymentData.pricing_tier}
+                </span>
+              </div>
+            )}
+          </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-8">
+        <form onSubmit={handleSubmit} className="space-y-12">
           {/* Business Information */}
-          <Card className="p-8 bg-white dark:bg-gray-800 shadow-2xl border-gray-200 dark:border-gray-700">
-            <div className="flex items-center space-x-3 mb-8">
-              <Building className="h-8 w-8 text-[#800020]" />
-              <h2 className="text-3xl font-bold text-gray-900 dark:text-white">Business Information</h2>
+          <Card className={`p-10 ${isDark ? 'bg-zinc-900/50 border-zinc-800' : 'bg-white border-gray-200'} backdrop-blur-sm rounded-3xl shadow-2xl`}>
+            <div className="flex items-center mb-8">
+              <Building className="h-8 w-8 text-[#800020] mr-3" />
+              <h2 className={`text-3xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                Business Information
+              </h2>
             </div>
             
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {renderFormField('businessName', 'Business Name', 'text', <Building className="h-5 w-5" />, true, 'Enter your business name')}
-              {renderFormField('businessOwnerName', 'Owner Name', 'text', <User className="h-5 w-5" />, true, 'Your full name')}
-              {renderFormField('email', 'Email Address', 'email', <Mail className="h-5 w-5" />, true, 'business@example.com')}
-              {renderFormField('phone', 'Phone Number', 'tel', <Mail className="h-5 w-5" />, false, '+1 (555) 123-4567')}
-            </div>
-            
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
-              <div>
-                {renderFormField('password', 'Password', showPassword ? 'text' : 'password', <Lock className="h-5 w-5" />, true, 'Create a secure password')}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="space-y-2">
+                <label className={`block text-sm font-semibold ${isDark ? 'text-gray-300' : 'text-gray-700'} mb-2`}>
+                  Business Name *
+                </label>
+                <div className="relative">
+                  <Building className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                  <input
+                    type="text"
+                    name="businessName"
+                    value={formData.businessName}
+                    onChange={handleInputChange}
+                    required
+                    className={`w-full pl-12 pr-4 py-4 ${isDark ? 'bg-zinc-800 border-zinc-700 text-white placeholder-zinc-500 focus:border-[#800020] focus:ring-[#800020]/20' : 'bg-gray-50 border-gray-300 text-gray-900 placeholder-gray-500 focus:border-[#800020] focus:ring-[#800020]/20'} border rounded-xl transition-all duration-200 text-lg`}
+                    placeholder="Your business name"
+                  />
+                </div>
+                {validationErrors.businessName && (
+                  <p className="text-red-500 text-sm mt-1">{validationErrors.businessName}</p>
+                )}
               </div>
-              <div>
-                {renderFormField('confirmPassword', 'Confirm Password', showConfirmPassword ? 'text' : 'password', <Lock className="h-5 w-5" />, true, 'Confirm your password')}
+
+              <div className="space-y-2">
+                <label className={`block text-sm font-semibold ${isDark ? 'text-gray-300' : 'text-gray-700'} mb-2`}>
+                  Business Owner Name *
+                </label>
+                <div className="relative">
+                  <User className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                  <input
+                    type="text"
+                    name="businessOwnerName"
+                    value={formData.businessOwnerName}
+                    onChange={handleInputChange}
+                    required
+                    className={`w-full pl-12 pr-4 py-4 ${isDark ? 'bg-zinc-800 border-zinc-700 text-white placeholder-zinc-500 focus:border-[#800020] focus:ring-[#800020]/20' : 'bg-gray-50 border-gray-300 text-gray-900 placeholder-gray-500 focus:border-[#800020] focus:ring-[#800020]/20'} border rounded-xl transition-all duration-200 text-lg`}
+                    placeholder="Full name"
+                  />
+                </div>
+                {validationErrors.businessOwnerName && (
+                  <p className="text-red-500 text-sm mt-1">{validationErrors.businessOwnerName}</p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <label className={`block text-sm font-semibold ${isDark ? 'text-gray-300' : 'text-gray-700'} mb-2`}>
+                  Email Address *
+                </label>
+                <div className="relative">
+                  <Mail className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                  <input
+                    type="email"
+                    name="email"
+                    value={formData.email}
+                    onChange={handleInputChange}
+                    required
+                    className={`w-full pl-12 pr-4 py-4 ${isDark ? 'bg-zinc-800 border-zinc-700 text-white placeholder-zinc-500 focus:border-[#800020] focus:ring-[#800020]/20' : 'bg-gray-50 border-gray-300 text-gray-900 placeholder-gray-500 focus:border-[#800020] focus:ring-[#800020]/20'} border rounded-xl transition-all duration-200 text-lg`}
+                    placeholder="admin@yourbusiness.com"
+                  />
+                </div>
+                {validationErrors.email && (
+                  <p className="text-red-500 text-sm mt-1">{validationErrors.email}</p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <label className={`block text-sm font-semibold ${isDark ? 'text-gray-300' : 'text-gray-700'} mb-2`}>
+                  Phone Number
+                </label>
+                <div className="relative">
+                  <input
+                    type="tel"
+                    name="phone"
+                    value={formData.phone}
+                    onChange={handleInputChange}
+                    className={`w-full pl-4 pr-4 py-4 ${isDark ? 'bg-zinc-800 border-zinc-700 text-white placeholder-zinc-500 focus:border-[#800020] focus:ring-[#800020]/20' : 'bg-gray-50 border-gray-300 text-gray-900 placeholder-gray-500 focus:border-[#800020] focus:ring-[#800020]/20'} border rounded-xl transition-all duration-200 text-lg`}
+                    placeholder="+1 (555) 123-4567"
+                  />
+                </div>
+                {validationErrors.phone && (
+                  <p className="text-red-500 text-sm mt-1">{validationErrors.phone}</p>
+                )}
               </div>
             </div>
 
-            <div className="mt-6 space-y-6">
-              {renderFormField('businessAddress', 'Business Address', 'text', <MapPin className="h-5 w-5" />, false, '123 Main Street')}
-              
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {renderFormField('city', 'City', 'text', undefined, false, 'City')}
-                {renderFormField('state', 'State', 'text', undefined, false, 'State')}
-                {renderFormField('zipCode', 'ZIP Code', 'text', undefined, false, '12345')}
-              </div>
-              
-              {renderFormField('website', 'Website', 'url', undefined, false, 'https://yourwebsite.com')}
-              
+            <div className="mt-8 space-y-6">
               <div className="space-y-2">
-                <label htmlFor="description" className="block text-sm font-semibold text-gray-800 dark:text-gray-200">
+                <label className={`block text-sm font-semibold ${isDark ? 'text-gray-300' : 'text-gray-700'} mb-2`}>
+                  Website URL
+                </label>
+                <input
+                  type="url"
+                  name="website"
+                  value={formData.website}
+                  onChange={handleInputChange}
+                  className={`w-full px-4 py-4 ${isDark ? 'bg-zinc-800 border-zinc-700 text-white placeholder-zinc-500 focus:border-[#800020] focus:ring-[#800020]/20' : 'bg-gray-50 border-gray-300 text-gray-900 placeholder-gray-500 focus:border-[#800020] focus:ring-[#800020]/20'} border rounded-xl transition-all duration-200 text-lg`}
+                  placeholder="https://yourbusiness.com"
+                />
+                {validationErrors.website && (
+                  <p className="text-red-500 text-sm mt-1">{validationErrors.website}</p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <label className={`block text-sm font-semibold ${isDark ? 'text-gray-300' : 'text-gray-700'} mb-2`}>
                   Business Description
                 </label>
                 <textarea
-                  id="description"
                   name="description"
                   value={formData.description}
                   onChange={handleInputChange}
                   rows={4}
-                  placeholder="Tell us about your business and wine philosophy..."
-                  className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus:border-[#800020] focus:ring-[#800020]/20 focus:outline-none focus:ring-4 transition-all duration-200 dark:text-white"
+                  className={`w-full px-4 py-4 ${isDark ? 'bg-zinc-800 border-zinc-700 text-white placeholder-zinc-500 focus:border-[#800020] focus:ring-[#800020]/20' : 'bg-gray-50 border-gray-300 text-gray-900 placeholder-gray-500 focus:border-[#800020] focus:ring-[#800020]/20'} border rounded-xl transition-all duration-200 text-lg resize-none`}
+                  placeholder="Tell us about your wine business, expertise, and what makes you unique..."
                 />
               </div>
             </div>
           </Card>
 
-          {/* Customer Wine Club Tiers */}
-          <Card className="p-8 bg-white dark:bg-gray-800 shadow-2xl border-gray-200 dark:border-gray-700">
-            <div className="flex items-center justify-between mb-8">
-              <div className="flex items-center space-x-3">
-                <Wine className="h-8 w-8 text-[#800020]" />
-                <h2 className="text-3xl font-bold text-gray-900 dark:text-white">Customer Wine Club Tiers</h2>
+          {/* Security */}
+          <Card className={`p-10 ${isDark ? 'bg-zinc-900/50 border-zinc-800' : 'bg-white border-gray-200'} backdrop-blur-sm rounded-3xl shadow-2xl`}>
+            <div className="flex items-center mb-8">
+              <Lock className="h-8 w-8 text-[#800020] mr-3" />
+              <h2 className={`text-3xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                Security Credentials
+              </h2>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="space-y-2">
+                <label className={`block text-sm font-semibold ${isDark ? 'text-gray-300' : 'text-gray-700'} mb-2`}>
+                  Admin Password *
+                </label>
+                <div className="relative">
+                  <Lock className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    name="password"
+                    value={formData.password}
+                    onChange={handleInputChange}
+                    required
+                    className={`w-full pl-12 pr-12 py-4 ${isDark ? 'bg-zinc-800 border-zinc-700 text-white placeholder-zinc-500 focus:border-[#800020] focus:ring-[#800020]/20' : 'bg-gray-50 border-gray-300 text-gray-900 placeholder-gray-500 focus:border-[#800020] focus:ring-[#800020]/20'} border rounded-xl transition-all duration-200 text-lg`}
+                    placeholder="Create a strong password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  >
+                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                  </button>
+                </div>
+                {validationErrors.password && (
+                  <p className="text-red-500 text-sm mt-1">{validationErrors.password}</p>
+                )}
               </div>
-              <Button 
-                type="button" 
-                onClick={addTier} 
-                className="bg-[#800020] hover:bg-[#a00030] text-white px-4 py-2 rounded-lg transition-all duration-200 flex items-center space-x-2"
+
+              <div className="space-y-2">
+                <label className={`block text-sm font-semibold ${isDark ? 'text-gray-300' : 'text-gray-700'} mb-2`}>
+                  Confirm Password *
+                </label>
+                <div className="relative">
+                  <Lock className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                  <input
+                    type={showConfirmPassword ? 'text' : 'password'}
+                    name="confirmPassword"
+                    value={formData.confirmPassword}
+                    onChange={handleInputChange}
+                    required
+                    className={`w-full pl-12 pr-12 py-4 ${isDark ? 'bg-zinc-800 border-zinc-700 text-white placeholder-zinc-500 focus:border-[#800020] focus:ring-[#800020]/20' : 'bg-gray-50 border-gray-300 text-gray-900 placeholder-gray-500 focus:border-[#800020] focus:ring-[#800020]/20'} border rounded-xl transition-all duration-200 text-lg`}
+                    placeholder="Confirm your password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  >
+                    {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                  </button>
+                </div>
+                {validationErrors.confirmPassword && (
+                  <p className="text-red-500 text-sm mt-1">{validationErrors.confirmPassword}</p>
+                )}
+              </div>
+            </div>
+          </Card>
+
+          {/* Customer Membership Tiers */}
+          <Card className={`p-10 ${isDark ? 'bg-zinc-900/50 border-zinc-800' : 'bg-white border-gray-200'} backdrop-blur-sm rounded-3xl shadow-2xl`}>
+            <div className="flex items-center justify-between mb-8">
+              <div className="flex items-center">
+                <Wine className="h-8 w-8 text-[#800020] mr-3" />
+                <h2 className={`text-3xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                  Customer Membership Tiers
+                </h2>
+              </div>
+              <Button
+                type="button"
+                onClick={addCustomerTier}
+                variant="outline"
+                className="flex items-center space-x-2"
               >
                 <Plus className="h-5 w-5" />
                 <span>Add Tier</span>
               </Button>
             </div>
-            
-            <div className="space-y-8">
-              {formData.customerTiers.length === 0 ? (
-                <div className="text-center py-12 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl bg-gray-50 dark:bg-gray-800/50">
-                  <Wine className="h-16 w-16 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
-                  <h3 className="text-xl font-semibold text-gray-600 dark:text-gray-300 mb-2">Create Your Wine Club Tiers</h3>
-                  <p className="text-gray-500 dark:text-gray-400 mb-6 max-w-md mx-auto">
-                    Design membership tiers that reflect your unique wine offerings and create value for your customers.
-                  </p>
-                  <Button 
-                    type="button" 
-                    onClick={addTier} 
-                    className="bg-[#800020] hover:bg-[#a00030] text-white px-6 py-3 rounded-lg transition-all duration-200 flex items-center space-x-2 mx-auto"
-                  >
-                    <Plus className="h-5 w-5" />
-                    <span>Create Your First Tier</span>
-                  </Button>
-                </div>
-              ) : (
-                formData.customerTiers.map((tier, tierIndex) => {
-                const tierError = validationErrors[`tier_${tierIndex}_name`] || 
-                                validationErrors[`tier_${tierIndex}_description`] || 
-                                validationErrors[`tier_${tierIndex}_price`] || 
-                                validationErrors[`tier_${tierIndex}_benefits`];
-                
-                return (
-                  <div key={tierIndex} className={`border-2 rounded-xl p-6 transition-all duration-200 ${
-                    tierError ? 'border-red-300 dark:border-red-500/50 bg-red-50 dark:bg-red-900/10' : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50'
-                  }`}>
-                    <div className="flex items-center justify-between mb-6">
-                      <div className="flex items-center space-x-3">
-                        <div className="bg-[#800020] text-white rounded-full w-8 h-8 flex items-center justify-center font-bold">
-                          {tierIndex + 1}
-                        </div>
-                        <h3 className="text-xl font-bold text-gray-900 dark:text-white">Wine Club Tier {tierIndex + 1}</h3>
-                      </div>
-                      {formData.customerTiers.length > 1 && (
-                        <Button
-                          type="button"
-                          onClick={() => removeTier(tierIndex)}
-                          className="bg-red-500 hover:bg-red-600 text-white p-2 rounded-lg transition-all duration-200"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </div>
-                    
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+
+            {formData.customerTiers.length === 0 ? (
+              <div className={`text-center py-12 ${isDark ? 'bg-zinc-800/50' : 'bg-gray-50'} rounded-2xl border-2 border-dashed ${isDark ? 'border-zinc-700' : 'border-gray-300'}`}>
+                <Wine className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                <p className={`text-xl ${isDark ? 'text-gray-300' : 'text-gray-600'} mb-4`}>
+                  Create your first membership tier
+                </p>
+                <p className={`${isDark ? 'text-gray-400' : 'text-gray-500'} mb-6`}>
+                  Design exclusive wine experiences for your customers
+                </p>
+                <Button
+                  type="button"
+                  onClick={addCustomerTier}
+                  className="bg-gradient-to-r from-[#800020] to-[#a00030] hover:from-[#600018] hover:to-[#800028]"
+                >
+                  <Plus className="h-5 w-5 mr-2" />
+                  Create First Tier
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-8">
+                {formData.customerTiers.map((tier, tierIndex) => (
+                  <div key={tierIndex} className={`p-8 ${isDark ? 'bg-zinc-800/50 border-zinc-700' : 'bg-gray-50 border-gray-200'} border rounded-2xl relative`}>
+                    <button
+                      type="button"
+                      onClick={() => removeCustomerTier(tierIndex)}
+                      className="absolute top-4 right-4 p-2 text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
+                    >
+                      <Trash2 className="h-5 w-5" />
+                    </button>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
                       <div className="space-y-2">
-                        <label className="block text-sm font-semibold text-gray-800 dark:text-gray-200">
-                          Tier Name <span className="text-red-500">*</span>
+                        <label className={`block text-sm font-semibold ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                          Tier Name *
+                        </label>
+                        <input
+                          type="text"
+                          value={tier.name}
+                          onChange={(e) => handleTierChange(tierIndex, 'name', e.target.value)}
+                          className={`w-full px-4 py-3 ${isDark ? 'bg-zinc-800 border-zinc-700 text-white placeholder-zinc-500 focus:border-[#800020]' : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500 focus:border-[#800020]'} border rounded-xl transition-all duration-200`}
+                          placeholder="e.g., Wine Enthusiast"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <label className={`block text-sm font-semibold ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                          Monthly Price *
                         </label>
                         <div className="relative">
-                          <Wine className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400 dark:text-gray-500 h-5 w-5" />
-                          <input
-                            type="text"
-                            value={tier.name}
-                            onChange={(e) => handleTierChange(tierIndex, 'name', e.target.value)}
-                            className={`w-full pl-10 pr-4 py-3 border-2 rounded-lg transition-all duration-200 ${
-                              validationErrors[`tier_${tierIndex}_name`] 
-                                ? 'border-red-300 dark:border-red-500/50 bg-red-50 dark:bg-red-900/10 focus:border-red-500 focus:ring-red-500/20' 
-                                : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 focus:border-[#800020] focus:ring-[#800020]/20'
-                            } focus:outline-none focus:ring-4 dark:text-white`}
-                            placeholder="e.g., Bronze Club, Gold Reserve"
-                          />
-                        </div>
-                        {validationErrors[`tier_${tierIndex}_name`] && (
-                          <p className="text-sm text-red-600 dark:text-red-400 flex items-center space-x-1">
-                            <AlertCircle className="h-4 w-4" />
-                            <span>{validationErrors[`tier_${tierIndex}_name`]}</span>
-                          </p>
-                        )}
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <label className="block text-sm font-semibold text-gray-800 dark:text-gray-200">
-                          Monthly Price <span className="text-red-500">*</span>
-                        </label>
-                        <div className="relative">
-                          <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400 font-medium">$</span>
+                          <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
                           <input
                             type="number"
                             min="10"
                             max="999"
-                            step="1"
                             value={tier.monthlyPrice}
-                            onChange={(e) => handleTierChange(tierIndex, 'monthlyPrice', parseFloat(e.target.value) || 0)}
-                            className={`w-full pl-8 pr-20 py-3 border-2 rounded-lg transition-all duration-200 ${
-                              validationErrors[`tier_${tierIndex}_price`] 
-                                ? 'border-red-300 dark:border-red-500/50 bg-red-50 dark:bg-red-900/10 focus:border-red-500 focus:ring-red-500/20' 
-                                : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 focus:border-[#800020] focus:ring-[#800020]/20'
-                            } focus:outline-none focus:ring-4 dark:text-white`}
-                            placeholder="49"
+                            onChange={(e) => handleTierChange(tierIndex, 'monthlyPrice', parseInt(e.target.value) || 0)}
+                            className={`w-full pl-10 pr-4 py-3 ${isDark ? 'bg-zinc-800 border-zinc-700 text-white placeholder-zinc-500 focus:border-[#800020]' : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500 focus:border-[#800020]'} border rounded-xl transition-all duration-200`}
+                            placeholder="29"
                           />
-                          <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500 text-sm">/month</span>
                         </div>
-                        {validationErrors[`tier_${tierIndex}_price`] && (
-                          <p className="text-sm text-red-600 dark:text-red-400 flex items-center space-x-1">
-                            <AlertCircle className="h-4 w-4" />
-                            <span>{validationErrors[`tier_${tierIndex}_price`]}</span>
-                          </p>
-                        )}
                       </div>
-                      
+
                       <div className="space-y-2">
-                        <label className="block text-sm font-semibold text-gray-800 dark:text-gray-200">
-                          Description <span className="text-red-500">*</span>
+                        <label className={`block text-sm font-semibold ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                          Actions
+                        </label>
+                        <div className="flex space-x-2">
+                          <Button
+                            type="button"
+                            onClick={() => addBenefit(tierIndex)}
+                            variant="outline"
+                            size="sm"
+                            className="flex-1"
+                          >
+                            <Plus className="h-4 w-4 mr-1" />
+                            Add Benefit
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <label className={`block text-sm font-semibold ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                          Description *
                         </label>
                         <textarea
                           value={tier.description}
                           onChange={(e) => handleTierChange(tierIndex, 'description', e.target.value)}
                           rows={3}
-                          className={`w-full px-4 py-3 border-2 rounded-lg transition-all duration-200 ${
-                            validationErrors[`tier_${tierIndex}_description`] 
-                              ? 'border-red-300 dark:border-red-500/50 bg-red-50 dark:bg-red-900/10 focus:border-red-500 focus:ring-red-500/20' 
-                              : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 focus:border-[#800020] focus:ring-[#800020]/20'
-                          } focus:outline-none focus:ring-4 dark:text-white`}
+                          className={`w-full px-4 py-3 ${isDark ? 'bg-zinc-800 border-zinc-700 text-white placeholder-zinc-500 focus:border-[#800020]' : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500 focus:border-[#800020]'} border rounded-xl transition-all duration-200 resize-none`}
                           placeholder="Describe what makes this tier special..."
                         />
-                        {validationErrors[`tier_${tierIndex}_description`] && (
-                          <p className="text-sm text-red-600 dark:text-red-400 flex items-center space-x-1">
-                            <AlertCircle className="h-4 w-4" />
-                            <span>{validationErrors[`tier_${tierIndex}_description`]}</span>
-                          </p>
-                        )}
                       </div>
-                    </div>
 
-                    {/* Benefits Section */}
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <label className="block text-sm font-semibold text-gray-800 dark:text-gray-200">
-                          Membership Benefits <span className="text-red-500">*</span>
+                      <div className="space-y-2">
+                        <label className={`block text-sm font-semibold ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                          Benefits & Features *
                         </label>
-                        <Button
-                          type="button"
-                          onClick={() => addTierBenefit(tierIndex)}
-                          className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded-lg text-sm transition-all duration-200 flex items-center space-x-1"
-                        >
-                          <Plus className="h-4 w-4" />
-                          <span>Add Benefit</span>
-                        </Button>
-                      </div>
-                      
-                      <div className="space-y-3">
-                        {tier.benefits.map((benefit, benefitIndex) => (
-                          <div key={benefitIndex} className="flex items-center space-x-3">
-                            <div className="flex-1">
+                        <div className="space-y-3">
+                          {tier.benefits.map((benefit, benefitIndex) => (
+                            <div key={benefitIndex} className="flex items-center space-x-3">
                               <input
                                 type="text"
                                 value={benefit}
-                                onChange={(e) => updateTierBenefit(tierIndex, benefitIndex, e.target.value)}
-                                className="w-full px-4 py-2 border-2 border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus:border-[#800020] focus:ring-[#800020]/20 focus:outline-none focus:ring-4 transition-all duration-200 dark:text-white"
-                                placeholder="e.g., 2 premium bottles monthly, Free shipping"
+                                onChange={(e) => updateBenefit(tierIndex, benefitIndex, e.target.value)}
+                                className={`flex-1 px-4 py-3 ${isDark ? 'bg-zinc-800 border-zinc-700 text-white placeholder-zinc-500 focus:border-[#800020]' : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500 focus:border-[#800020]'} border rounded-xl transition-all duration-200`}
+                                placeholder="e.g., 2 premium bottles per month"
                               />
-                            </div>
-                            {tier.benefits.length > 1 && (
-                              <Button
+                              <button
                                 type="button"
-                                onClick={() => removeTierBenefit(tierIndex, benefitIndex)}
-                                className="bg-red-500 hover:bg-red-600 text-white p-2 rounded-lg transition-all duration-200"
+                                onClick={() => removeBenefit(tierIndex, benefitIndex)}
+                                className="p-2 text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
                               >
                                 <Trash2 className="h-4 w-4" />
-                              </Button>
-                            )}
-                          </div>
-                        ))}
+                              </button>
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                      
-                      {validationErrors[`tier_${tierIndex}_benefits`] && (
-                        <p className="text-sm text-red-600 dark:text-red-400 flex items-center space-x-1">
-                          <AlertCircle className="h-4 w-4" />
-                          <span>{validationErrors[`tier_${tierIndex}_benefits`]}</span>
-                        </p>
-                      )}
                     </div>
                   </div>
-                );
-                })
-              )}
-            </div>
-            
-            <div className="mt-8 p-6 bg-gradient-to-r from-blue-50 dark:from-blue-900/20 to-indigo-50 dark:to-indigo-900/20 border-2 border-blue-200 dark:border-blue-800/30 rounded-xl">
-              <div className="flex items-start space-x-3">
-                <AlertCircle className="h-6 w-6 text-blue-600 dark:text-blue-400 mt-1 flex-shrink-0" />
-                <div>
-                  <h4 className="font-semibold text-blue-900 dark:text-blue-300 mb-2">Wine Club Tier Guidelines</h4>
-                  <ul className="text-sm text-blue-800 dark:text-blue-300 space-y-1">
-                    <li>• Create 2-4 tiers to give customers choice without overwhelming them</li>
-                    <li>• Price tiers should offer clear value progression (more bottles, better wines, extra perks)</li>
-                    <li>• Benefits should be specific and appealing ("Sommelier consultations" vs "Expert advice")</li>
-                    <li>• Consider your wine costs and target profit margins when setting prices</li>
-                  </ul>
-                </div>
+                ))}
               </div>
-            </div>
+            )}
           </Card>
 
           {/* Error Display */}
           {error && (
-            <Card className="p-6 bg-red-50 dark:bg-red-900/20 border-2 border-red-200 dark:border-red-800/30">
-              <div className="flex items-center space-x-3">
-                <AlertCircle className="h-6 w-6 text-red-500 dark:text-red-400 flex-shrink-0" />
-                <div>
-                  <h4 className="font-semibold text-red-800 dark:text-red-300 mb-1">Setup Error</h4>
-                  <p className="text-sm text-red-700 dark:text-red-400">{error}</p>
-                </div>
+            <Card className={`p-6 ${isDark ? 'bg-red-900/20 border-red-800/30' : 'bg-red-50 border-red-200'} border backdrop-blur-sm rounded-2xl`}>
+              <div className="flex items-center">
+                <AlertCircle className="h-6 w-6 text-red-500 mr-3" />
+                <p className={`${isDark ? 'text-red-400' : 'text-red-600'} font-medium`}>
+                  {error}
+                </p>
               </div>
             </Card>
           )}
 
           {/* Submit Button */}
-          <div className="text-center pt-4">
-            <Button
-              type="submit"
-              disabled={loading}
-              className="bg-gradient-to-r from-[#800020] to-[#a00030] hover:from-[#a00030] hover:to-[#c00040] text-white font-bold px-12 py-4 rounded-xl text-lg shadow-2xl transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
-            >
-              {loading ? (
-                <div className="flex items-center space-x-3">
-                  <div className="h-5 w-5 animate-spin border-2 border-white border-t-transparent rounded-full"></div>
-                  <span>Creating Your Business...</span>
-                </div>
-              ) : (
-                <div className="flex items-center space-x-3">
-                  <CheckCircle className="h-6 w-6" />
-                  <span>Complete Setup & Launch Your Wine Club</span>
-                </div>
-              )}
-            </Button>
+          <div className="text-center">
+            <Card className={`p-8 ${isDark ? 'bg-gradient-to-r from-[#800020]/20 to-[#a00030]/20 border-[#800020]/30' : 'bg-gradient-to-r from-[#800020]/10 to-[#a00030]/10 border-[#800020]/20'} border backdrop-blur-sm rounded-3xl`}>
+              <div className="flex items-center justify-center mb-6">
+                <Rocket className="h-8 w-8 text-[#800020] mr-3" />
+                <h3 className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                  Ready to Launch Your Wine Empire?
+                </h3>
+              </div>
+              <Button
+                type="submit"
+                disabled={loading}
+                className="bg-gradient-to-r from-[#800020] to-[#a00030] hover:from-[#600018] hover:to-[#800028] px-12 py-4 text-xl font-bold shadow-2xl transform hover:scale-105 transition-all duration-300"
+              >
+                {loading ? (
+                  <div className="flex items-center space-x-3">
+                    <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    <span>Creating Your Business...</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center space-x-3">
+                    <Zap className="w-6 h-6" />
+                    <span>Launch Wine Club</span>
+                    <Sparkles className="w-6 h-6" />
+                  </div>
+                )}
+              </Button>
+              <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'} mt-4`}>
+                Your premium wine club platform will be ready in seconds
+              </p>
+            </Card>
           </div>
         </form>
-        
-        {/* Footer Note */}
-        <div className="text-center mt-12 pb-8">
-          <p className="text-gray-500 dark:text-gray-400 text-sm">
-            By completing setup, you agree to our Terms of Service and Privacy Policy.
-          </p>
-          <p className="text-gray-400 dark:text-gray-500 text-xs mt-2">
-            Need help? Contact our support team at support@clubcuvee.com
-          </p>
-        </div>
+
+        {/* Theme Toggle */}
+        <ThemeToggle position="fixed" />
       </div>
     </div>
   );

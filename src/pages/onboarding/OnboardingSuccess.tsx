@@ -2,7 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import Button from '../../components/Button';
 import Card from '../../components/Card';
-import { CheckCircle, ArrowRight, Settings, Users, BarChart3, Copy, ExternalLink } from 'lucide-react';
+import ThemeToggle from '../../components/ThemeToggle';
+import { CheckCircle, ArrowRight, Settings, Users, BarChart3, Copy, ExternalLink, Crown, Sparkles, Trophy, Zap } from 'lucide-react';
+import { useTheme } from '../../contexts/ThemeContext';
 
 interface BusinessData {
   business: {
@@ -33,6 +35,9 @@ interface BusinessData {
 const OnboardingSuccess: React.FC = () => {
   const navigate = useNavigate();
   const { token } = useParams<{ token: string }>();
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
+  
   const [businessData, setBusinessData] = useState<BusinessData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -108,35 +113,19 @@ const OnboardingSuccess: React.FC = () => {
     }
   };
 
-  const nextSteps = [
-    {
-      icon: Settings,
-      title: 'Configure Your Wine Inventory',
-      description: 'Upload your wine catalog and set pricing for each membership tier',
-      action: 'Set up inventory'
-    },
-    {
-      icon: Users,
-      title: 'Share Your Membership Page',
-      description: 'Get your custom link to start accepting customer sign-ups',
-      action: 'Get member link'
-    },
-    {
-      icon: BarChart3,
-      title: 'Monitor Your Analytics',
-      description: 'Track memberships, revenue, and customer preferences',
-      action: 'View dashboard'
-    }
-  ];
-
   // Loading state
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#fdfaf7] dark:bg-black px-6 py-10 flex items-center justify-center">
+      <div className={`min-h-screen flex items-center justify-center ${isDark ? 'bg-black' : 'bg-gray-50'} px-6 py-10`}>
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#800020] mx-auto mb-4"></div>
-          <p className="text-lg text-gray-600 dark:text-gray-300">Loading your business details...</p>
+          <div className="relative">
+            <div className="h-16 w-16 animate-spin border-4 border-[#800020] border-t-transparent rounded-full mx-auto mb-8"></div>
+            <Crown className="h-6 w-6 text-[#800020] absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 animate-pulse" />
+          </div>
+          <p className={`${isDark ? 'text-gray-300' : 'text-gray-700'} text-xl font-light`}>Preparing your business dashboard...</p>
+          <p className={`${isDark ? 'text-gray-500' : 'text-gray-500'} text-sm mt-2`}>Setting up your wine club empire</p>
         </div>
+        <ThemeToggle position="fixed" />
       </div>
     );
   }
@@ -144,100 +133,140 @@ const OnboardingSuccess: React.FC = () => {
   // Error state
   if (error || !businessData) {
     return (
-      <div className="min-h-screen bg-[#fdfaf7] dark:bg-black px-6 py-10 flex items-center justify-center">
+      <div className={`min-h-screen flex items-center justify-center ${isDark ? 'bg-black' : 'bg-gray-50'} px-6 py-10`}>
         <div className="text-center">
-          <p className="text-lg text-red-600 dark:text-red-400 mb-4">Error: {error || 'Failed to load business data'}</p>
+          <p className={`text-lg ${isDark ? 'text-red-400' : 'text-red-600'} mb-4`}>Error: {error || 'Failed to load business data'}</p>
           <Button onClick={() => navigate('/business/dashboard')}>
             Go to Dashboard
           </Button>
         </div>
+        <ThemeToggle position="fixed" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#fdfaf7] dark:bg-black px-6 py-10">
-      <div className="max-w-4xl mx-auto">
-        {/* Success Header */}
-        <div className="text-center mb-12">
-          <CheckCircle className="h-24 w-24 text-green-500 mx-auto mb-6" />
-          <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
-            🎉 Welcome to Club Cuvée, {businessData.business.name}!
-          </h1>
-          <p className="text-xl text-gray-600 dark:text-gray-300 mb-2">
-            Your business account has been successfully created
-          </p>
-          <p className="text-lg text-gray-500 dark:text-gray-400">
-            You're ready to start building your wine club community
-          </p>
+    <div className={`min-h-screen ${isDark ? 'bg-black' : 'bg-gray-50'} px-6 py-10 relative`}>
+      <div className="max-w-6xl mx-auto">
+        {/* Luxury Success Header */}
+        <div className="text-center mb-16 relative">
+          <div className="absolute inset-0 bg-gradient-radial from-emerald-500/10 via-transparent to-transparent blur-3xl"></div>
+          <div className="relative z-10">
+            <div className="mb-8">
+              <div className="relative inline-block">
+                <Trophy className="h-20 w-20 text-emerald-500 mx-auto mb-6 animate-bounce" />
+                <div className="absolute -top-2 -right-2 w-8 h-8 bg-gradient-to-r from-[#800020] to-[#a00030] rounded-full flex items-center justify-center">
+                  <CheckCircle className="h-5 w-5 text-white" />
+                </div>
+              </div>
+              <h1 className={`text-6xl font-bold ${isDark ? 'text-white' : 'text-gray-900'} mb-4 tracking-tight`}>
+                🎉 Welcome to the Elite
+              </h1>
+              <div className="flex items-center justify-center space-x-3 mb-6">
+                <div className="w-16 h-px bg-gradient-to-r from-transparent to-emerald-500"></div>
+                <Sparkles className="h-6 w-6 text-emerald-500 animate-pulse" />
+                <div className="w-16 h-px bg-gradient-to-r from-emerald-500 to-transparent"></div>
+              </div>
+              <p className={`text-3xl font-light ${isDark ? 'text-gray-200' : 'text-gray-700'} mb-4`}>
+                <span className="font-semibold text-[#800020]">{businessData.business.name}</span> is now live!
+              </p>
+              <p className={`text-xl ${isDark ? 'text-gray-400' : 'text-gray-600'} font-light`}>
+                Your premium wine club platform is ready to transform your business
+              </p>
+            </div>
+          </div>
         </div>
 
-        {/* Your Membership Tiers */}
-        <Card className="p-8 mb-8 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6 text-center">
-            Your Membership Tiers
-          </h2>
+        {/* Membership Tiers Showcase */}
+        <Card className={`p-10 mb-12 ${isDark ? 'bg-zinc-900/50 border-zinc-800' : 'bg-white border-gray-200'} backdrop-blur-sm rounded-3xl shadow-2xl`}>
+          <div className="text-center mb-10">
+            <Crown className="h-10 w-10 text-[#800020] mx-auto mb-4" />
+            <h2 className={`text-3xl font-bold ${isDark ? 'text-white' : 'text-gray-900'} mb-3`}>
+              Your Premium Membership Tiers
+            </h2>
+            <p className={`${isDark ? 'text-gray-300' : 'text-gray-600'} text-lg font-light`}>
+              Beautifully crafted tiers ready to attract discerning wine enthusiasts
+            </p>
+          </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            {businessData.membershipTiers.map((tier) => (
-              <div key={tier.id} className="text-center p-6 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600">
-                <div className="h-12 w-12 bg-[#800020] rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Users className="h-6 w-6 text-white" />
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-10">
+            {businessData.membershipTiers.map((tier, index) => (
+              <div key={tier.id} className={`text-center p-8 ${isDark ? 'bg-zinc-800/50 border-zinc-700' : 'bg-gray-50 border-gray-200'} border rounded-2xl transition-all duration-300 hover:scale-105 hover:shadow-xl`}>
+                <div className="relative mb-6">
+                  <div className="h-16 w-16 bg-gradient-to-r from-[#800020] to-[#a00030] rounded-2xl flex items-center justify-center mx-auto shadow-lg">
+                    <Users className="h-8 w-8 text-white" />
+                  </div>
+                  {index === 1 && (
+                    <div className="absolute -top-2 -right-2 w-6 h-6 bg-emerald-500 rounded-full flex items-center justify-center">
+                      <Sparkles className="h-3 w-3 text-white" />
+                    </div>
+                  )}
                 </div>
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                <h3 className={`text-xl font-bold ${isDark ? 'text-white' : 'text-gray-900'} mb-3`}>
                   {tier.name}
                 </h3>
-                <p className="text-2xl font-bold text-[#800020] mb-2">
-                  ${parseFloat(tier.price).toFixed(2)}/month
+                <p className="text-3xl font-bold text-[#800020] mb-3">
+                  ${parseFloat(tier.price).toFixed(2)}
+                  <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'} font-normal`}>/month</span>
                 </p>
-                <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
+                <p className={`text-sm ${isDark ? 'text-gray-300' : 'text-gray-600'} mb-6 leading-relaxed`}>
                   {tier.description}
                 </p>
-                <div className="flex items-center justify-center space-x-2 text-xs text-green-600 dark:text-green-400">
-                  <CheckCircle className="h-4 w-4" />
-                  <span>Stripe Ready</span>
+                <div className="flex items-center justify-center space-x-2 text-emerald-500">
+                  <CheckCircle className="h-5 w-5" />
+                  <span className="text-sm font-semibold">Stripe Ready</span>
                 </div>
               </div>
             ))}
           </div>
 
           {/* Customer Link Generation */}
-          <div className="border-t dark:border-gray-700 pt-6">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 text-center">
-              Ready to Start Acquiring Customers?
-            </h3>
+          <div className={`border-t ${isDark ? 'border-zinc-700' : 'border-gray-200'} pt-8`}>
             <div className="text-center">
+              <h3 className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-gray-900'} mb-6`}>
+                🚀 Ready to Acquire Your First Members?
+              </h3>
               {!customerLinkGenerated ? (
-                <Button 
-                  onClick={generateCustomerLink}
-                  className="mb-4"
-                >
-                  <ExternalLink className="w-4 h-4 mr-2" />
-                  Generate Customer Sign-Up Link
-                </Button>
-              ) : (
                 <div className="space-y-4">
-                  <div className="p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800/30 rounded-lg">
-                    <p className="text-sm text-green-800 dark:text-green-300 mb-2">Your customer sign-up link is ready!</p>
-                    <div className="flex items-center space-x-2">
+                  <p className={`${isDark ? 'text-gray-300' : 'text-gray-600'} text-lg mb-6`}>
+                    Generate your exclusive customer sign-up link and start building your wine community
+                  </p>
+                  <Button 
+                    onClick={generateCustomerLink}
+                    className="bg-gradient-to-r from-[#800020] to-[#a00030] hover:from-[#600018] hover:to-[#800028] px-8 py-4 text-lg font-semibold"
+                  >
+                    <ExternalLink className="w-5 h-5 mr-3" />
+                    Generate Customer Sign-Up Link
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  <div className={`p-6 ${isDark ? 'bg-emerald-900/20 border-emerald-800/30' : 'bg-emerald-50 border-emerald-200'} border rounded-2xl`}>
+                    <div className="flex items-center justify-center mb-4">
+                      <CheckCircle className="h-6 w-6 text-emerald-500 mr-2" />
+                      <p className={`text-lg font-bold ${isDark ? 'text-emerald-300' : 'text-emerald-700'}`}>
+                        Your customer portal is ready!
+                      </p>
+                    </div>
+                    <div className="flex items-center space-x-3">
                       <input
                         type="text"
                         value={customerLinkGenerated}
                         readOnly
-                        className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-800 text-sm dark:text-white"
+                        className={`flex-1 px-4 py-3 border rounded-xl text-sm font-mono ${isDark ? 'bg-zinc-800 border-zinc-700 text-white' : 'bg-gray-50 border-gray-300 text-gray-700'}`}
                       />
                       <Button
                         onClick={() => copyToClipboard(customerLinkGenerated)}
                         variant="secondary"
-                        size="sm"
+                        className="px-6 py-3"
                       >
-                        <Copy className="w-4 h-4 mr-1" />
+                        <Copy className="w-4 h-4 mr-2" />
                         {copySuccess ? 'Copied!' : 'Copy'}
                       </Button>
                     </div>
                   </div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    Share this link with potential customers to start building your wine club community!
+                  <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                    Share this link on your website, social media, or directly with potential customers
                   </p>
                 </div>
               )}
@@ -245,75 +274,164 @@ const OnboardingSuccess: React.FC = () => {
           </div>
         </Card>
 
-        {/* Account Details */}
-        <Card className="p-6 mb-8 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-            Your Account Details
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-            <div>
-              <span className="font-medium text-gray-700 dark:text-gray-300">✅ Business Name:</span>
-              <span className="text-gray-600 dark:text-gray-400 ml-2">{businessData.business.name}</span>
+        {/* Account Status Card */}
+        <Card className={`p-8 mb-12 ${isDark ? 'bg-zinc-900/50 border-zinc-800' : 'bg-white border-gray-200'} backdrop-blur-sm rounded-3xl`}>
+          <div className="flex items-center mb-6">
+            <Settings className="h-8 w-8 text-[#800020] mr-3" />
+            <h3 className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+              Account Configuration Status
+            </h3>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-4">
+              <div className="flex items-center">
+                <CheckCircle className="h-5 w-5 text-emerald-500 mr-3" />
+                <span className={`font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>Business Profile</span>
+                <span className={`ml-auto ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{businessData.business.name}</span>
+              </div>
+              <div className="flex items-center">
+                <CheckCircle className="h-5 w-5 text-emerald-500 mr-3" />
+                <span className={`font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>Admin Email</span>
+                <span className={`ml-auto ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{businessData.business.admin_email}</span>
+              </div>
+              <div className="flex items-center">
+                <CheckCircle className="h-5 w-5 text-emerald-500 mr-3" />
+                <span className={`font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>Membership Tiers</span>
+                <span className={`ml-auto ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{businessData.membershipTiers.length} Created</span>
+              </div>
             </div>
-            <div>
-              <span className="font-medium text-gray-700 dark:text-gray-300">✅ Admin Email:</span>
-              <span className="text-gray-600 dark:text-gray-400 ml-2">{businessData.business.admin_email}</span>
-            </div>
-            <div>
-              <span className="font-medium text-gray-700 dark:text-gray-300">✅ Membership Tiers:</span>
-              <span className="text-gray-600 dark:text-gray-400 ml-2">{businessData.membershipTiers.length} Created</span>
-            </div>
-            <div>
-              <span className="font-medium text-gray-700 dark:text-gray-300">✅ Stripe Integration:</span>
-              <span className="text-gray-600 dark:text-gray-400 ml-2">Products & Prices Created</span>
-            </div>
-            <div>
-              <span className="font-medium text-gray-700 dark:text-gray-300">✅ Subscription Tier:</span>
-              <span className="text-gray-600 dark:text-gray-400 ml-2">{businessData.business.subscription_tier}</span>
-            </div>
-            <div>
-              <span className="font-medium text-gray-700 dark:text-gray-300">✅ Status:</span>
-              <span className="text-green-600 dark:text-green-400 ml-2">Ready for Customers</span>
+            <div className="space-y-4">
+              <div className="flex items-center">
+                <CheckCircle className="h-5 w-5 text-emerald-500 mr-3" />
+                <span className={`font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>Stripe Integration</span>
+                <span className={`ml-auto text-emerald-500 font-semibold`}>Active</span>
+              </div>
+              <div className="flex items-center">
+                <CheckCircle className="h-5 w-5 text-emerald-500 mr-3" />
+                <span className={`font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>Subscription Tier</span>
+                <span className={`ml-auto ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{businessData.business.subscription_tier}</span>
+              </div>
+              <div className="flex items-center">
+                <CheckCircle className="h-5 w-5 text-emerald-500 mr-3" />
+                <span className={`font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>Platform Status</span>
+                <span className="ml-auto text-emerald-500 font-semibold">Ready for Customers</span>
+              </div>
             </div>
           </div>
         </Card>
 
-        {/* Call to Action */}
-        <div className="text-center space-y-4">
-          <Button
-            onClick={() => navigate('/business/dashboard')}
-            className="px-8 py-3"
-          >
-            Access Your Dashboard
-            <ArrowRight className="w-5 h-5 ml-2" />
-          </Button>
+        {/* Next Steps */}
+        <Card className={`p-10 mb-12 ${isDark ? 'bg-gradient-to-br from-zinc-900/70 via-zinc-900/50 to-zinc-900/70 border-zinc-800' : 'bg-gradient-to-br from-white via-gray-50 to-white border-gray-200'} backdrop-blur-sm rounded-3xl`}>
+          <div className="text-center mb-10">
+            <Zap className="h-10 w-10 text-[#800020] mx-auto mb-4" />
+            <h3 className={`text-3xl font-bold ${isDark ? 'text-white' : 'text-gray-900'} mb-3`}>What's Next?</h3>
+            <p className={`${isDark ? 'text-gray-300' : 'text-gray-600'} text-lg font-light`}>Complete these steps to maximize your wine club's potential</p>
+          </div>
           
-          <p className="text-sm text-gray-500 dark:text-gray-400">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div className="text-center p-6">
+              <div className="w-16 h-16 bg-gradient-to-r from-[#800020] to-[#a00030] rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg">
+                <Settings className="h-8 w-8 text-white" />
+              </div>
+              <h4 className={`text-xl font-bold ${isDark ? 'text-white' : 'text-gray-900'} mb-3`}>Configure Inventory</h4>
+              <p className={`${isDark ? 'text-gray-300' : 'text-gray-600'} leading-relaxed mb-4`}>
+                Upload your wine catalog and set pricing for each membership tier
+              </p>
+              <Button 
+                onClick={() => navigate('/business/dashboard')}
+                variant="outline" 
+                className="w-full"
+              >
+                Set up inventory
+              </Button>
+            </div>
+
+            <div className="text-center p-6">
+              <div className="w-16 h-16 bg-gradient-to-r from-[#800020] to-[#a00030] rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg">
+                <Users className="h-8 w-8 text-white" />
+              </div>
+              <h4 className={`text-xl font-bold ${isDark ? 'text-white' : 'text-gray-900'} mb-3`}>Share Your Club</h4>
+              <p className={`${isDark ? 'text-gray-300' : 'text-gray-600'} leading-relaxed mb-4`}>
+                Promote your membership page and start accepting customer sign-ups
+              </p>
+              <Button 
+                onClick={customerLinkGenerated ? () => copyToClipboard(customerLinkGenerated) : generateCustomerLink}
+                variant="outline" 
+                className="w-full"
+              >
+                {customerLinkGenerated ? 'Copy Link' : 'Get Link'}
+              </Button>
+            </div>
+
+            <div className="text-center p-6">
+              <div className="w-16 h-16 bg-gradient-to-r from-[#800020] to-[#a00030] rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg">
+                <BarChart3 className="h-8 w-8 text-white" />
+              </div>
+              <h4 className={`text-xl font-bold ${isDark ? 'text-white' : 'text-gray-900'} mb-3`}>Monitor Analytics</h4>
+              <p className={`${isDark ? 'text-gray-300' : 'text-gray-600'} leading-relaxed mb-4`}>
+                Track memberships, revenue, and customer preferences in real-time
+              </p>
+              <Button 
+                onClick={() => navigate('/business/dashboard')}
+                variant="outline" 
+                className="w-full"
+              >
+                View dashboard
+              </Button>
+            </div>
+          </div>
+        </Card>
+
+        {/* CTA Section */}
+        <div className="text-center space-y-8">
+          <Card className={`p-8 ${isDark ? 'bg-gradient-to-r from-[#800020]/20 to-[#a00030]/20 border-[#800020]/30' : 'bg-gradient-to-r from-[#800020]/10 to-[#a00030]/10 border-[#800020]/20'} border backdrop-blur-sm rounded-3xl`}>
+            <div className="flex items-center justify-center mb-6">
+              <Crown className="h-8 w-8 text-[#800020] mr-3" />
+              <h3 className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                Ready to Rule Your Wine Empire?
+              </h3>
+            </div>
+            <Button
+              onClick={() => navigate('/business/dashboard')}
+              className="bg-gradient-to-r from-[#800020] to-[#a00030] hover:from-[#600018] hover:to-[#800028] px-10 py-4 text-xl font-bold shadow-2xl transform hover:scale-105 transition-all duration-300"
+            >
+              <ArrowRight className="w-6 h-6 mr-3" />
+              Enter Your Dashboard
+              <Sparkles className="w-6 h-6 ml-3" />
+            </Button>
+          </Card>
+          
+          <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'} font-light`}>
             You can now log in with your admin credentials at any time
           </p>
         </div>
 
-        {/* Support */}
-        <div className="text-center mt-12 p-6 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800/30">
-          <h3 className="text-lg font-semibold text-blue-900 dark:text-blue-300 mb-2">
-            Need Help Getting Started?
-          </h3>
-          <p className="text-blue-700 dark:text-blue-400 mb-4">
-            Our team is here to help you make the most of Club Cuvée
-          </p>
-          <div className="space-y-2 text-sm">
-            <p>
-              📧 Email: <a href="mailto:support@clubcuvee.com" className="text-blue-600 dark:text-blue-400 hover:underline">support@clubcuvee.com</a>
+        {/* Premium Support */}
+        <div className="text-center mt-16">
+          <Card className={`inline-block p-6 ${isDark ? 'bg-blue-900/20 border-blue-800/30' : 'bg-blue-50 border-blue-200'} border backdrop-blur-sm rounded-2xl`}>
+            <h3 className={`text-lg font-bold ${isDark ? 'text-blue-300' : 'text-blue-900'} mb-2`}>
+              🎯 Need Help Getting Started?
+            </h3>
+            <p className={`${isDark ? 'text-blue-400' : 'text-blue-700'} mb-4`}>
+              Our premium support team is here to ensure your success
             </p>
-            {businessData.business.website && (
+            <div className="space-y-2 text-sm">
               <p>
-                🌐 Business: <a href={businessData.business.website} target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline">
-                  {businessData.business.name}
-                </a>
+                📧 <a href="mailto:support@clubcuvee.com" className={`${isDark ? 'text-blue-400' : 'text-blue-600'} hover:underline font-semibold`}>support@clubcuvee.com</a>
               </p>
-            )}
-          </div>
+              {businessData.business.website && (
+                <p>
+                  🌐 <a href={businessData.business.website} target="_blank" rel="noopener noreferrer" className={`${isDark ? 'text-blue-400' : 'text-blue-600'} hover:underline font-semibold`}>
+                    {businessData.business.name}
+                  </a>
+                </p>
+              )}
+            </div>
+          </Card>
         </div>
+
+        {/* Theme Toggle */}
+        <ThemeToggle position="fixed" />
       </div>
     </div>
   );
