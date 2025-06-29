@@ -346,7 +346,7 @@ const OnboardToken: React.FC = () => {
               return (
                 <div
                   key={tier.id}
-                  className={`relative rounded-lg border-2 cursor-pointer min-h-[18rem] py-8 px-6 glow-burgundy-subtle ${
+                  className={`relative rounded-lg border-2 cursor-pointer min-h-[20rem] py-10 px-6 glow-burgundy-subtle ${
                     selectedTierId === tier.id
                       ? 'border-[#800020] bg-[#800020]/5 dark:bg-[#800020]/10'
                       : `${isDark ? 'border-zinc-700 hover:border-zinc-600' : 'border-gray-200 hover:border-gray-300'}`
@@ -380,11 +380,10 @@ const OnboardToken: React.FC = () => {
                     
                     {/* Tier Details */}
                     <div className="mb-6 flex-grow">
-                      <ul className="space-y-2 text-left">
+                      <ul className="space-y-4 text-left list-disc list-inside">
                         {tierDetails.map((detail, idx) => (
-                          <li key={idx} className={`text-sm ${isDark ? 'text-gray-300' : 'text-gray-900'} flex items-start`}>
-                            <span className="text-[#800020] mr-2 font-bold">•</span>
-                            <span>{detail}</span>
+                          <li key={idx} className={`text-sm ${isDark ? 'text-gray-300' : 'text-gray-900'}`}>
+                            {detail}
                           </li>
                         ))}
                       </ul>

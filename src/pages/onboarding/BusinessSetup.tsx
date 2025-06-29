@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { apiClient } from '../../lib/api-client';
 import Button from '../../components/Button';
@@ -87,6 +87,11 @@ const BusinessSetup: React.FC = () => {
   const [verifyingPayment, setVerifyingPayment] = useState(true);
   const [paymentData, setPaymentData] = useState<PaymentVerificationData | null>(null);
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+  
+  // Scroll reveal refs
+  const businessInfoRef = useRef<HTMLDivElement>(null);
+  const securityRef = useRef<HTMLDivElement>(null);
+  const tiersRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!token || !sessionId) {
@@ -97,6 +102,45 @@ const BusinessSetup: React.FC = () => {
 
     verifyPaymentAndLoadData();
   }, [token, sessionId]);
+
+  // Intersection Observer for scroll reveals
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('active');
+          }
+        });
+      },
+      { threshold: 0.1 }
+    );
+
+    const refs = [businessInfoRef, securityRef, tiersRef];
+    refs.forEach((ref) => {
+      if (ref.current) {
+        observer.observe(ref.current);
+      }
+    });
+
+    return () => {
+      refs.forEach((ref) => {
+        if (ref.current) {
+          observer.unobserve(ref.current);
+        }
+      });
+    };
+  }, []);
+
+  // Calculate progress percentage
+  const calculateProgress = () => {
+    const requiredFields = ['businessName', 'adminUserName', 'email', 'password', 'confirmPassword'];
+    const filledFields = requiredFields.filter((field) => {
+      const value = formData[field as keyof BusinessFormData] as string;
+      return value && value.trim() !== '';
+    });
+    return Math.round((filledFields.length / requiredFields.length) * 100);
+  };
 
   const verifyPaymentAndLoadData = async () => {
     try {
@@ -352,12 +396,15 @@ const BusinessSetup: React.FC = () => {
   return (
     <div className={`min-h-screen ${isDark ? 'bg-black' : 'bg-gray-50'} px-6 py-10 relative`}>
       <div className="max-w-2xl mx-auto">
-        {/* Progress Indicator */}
+        {/* Dynamic Progress Indicator */}
         <div className="mb-4 flex items-center space-x-2">
           <div className={`flex-1 h-1 ${isDark ? 'bg-gray-700' : 'bg-gray-200'} rounded-full`}>
-            <div className={`w-1/3 h-full ${isDark ? 'bg-[#B03040]' : 'bg-[#800020]'} rounded-full transition-all duration-300`}></div>
+            <div 
+              className={`h-full ${isDark ? 'bg-[#B03040]' : 'bg-[#800020]'} rounded-full transition-all duration-300`}
+              style={{ width: `${calculateProgress()}%` }}
+            ></div>
           </div>
-          <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Step 2 of 3</span>
+          <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{calculateProgress()}%</span>
         </div>
 
         {/* Clean Header */}
@@ -383,7 +430,7 @@ const BusinessSetup: React.FC = () => {
           <Card className={`p-12 ${isDark ? 'bg-zinc-900/30 border-zinc-800/50' : 'bg-white border-gray-200'} rounded-xl`}>
             
             {/* Business Information Section */}
-            <div className="mb-16">
+            <div ref={businessInfoRef} className="scroll-reveal mb-16">
               <h2 className={`text-lg font-semibold ${isDark ? 'text-gray-100' : 'text-gray-900'} mb-8`}>
                 Business Information
               </h2>
@@ -489,14 +536,14 @@ const BusinessSetup: React.FC = () => {
                     onChange={handleInputChange}
                     rows={3}
                     className={`w-full px-4 py-3 ${isDark ? 'bg-zinc-800/50 border-zinc-700 text-white placeholder-zinc-500 focus:border-gray-500' : 'bg-gray-50 border-gray-300 text-gray-900 placeholder-gray-500 focus:border-gray-400'} border rounded-lg transition-colors resize-none`}
-                    placeholder="Describe your wine business and what makes it special..."
+                    placeholder="Tell your story and how joining your club helps members support your business and its community"
                   />
                 </div>
               </div>
             </div>
 
             {/* Security Section */}
-            <div className="mb-16">
+            <div ref={securityRef} className="scroll-reveal mb-16">
               <h2 className={`text-lg font-semibold ${isDark ? 'text-gray-100' : 'text-gray-900'} mb-8`}>
                 Security Credentials
               </h2>
@@ -559,7 +606,7 @@ const BusinessSetup: React.FC = () => {
             </div>
 
             {/* Customer Membership Tiers Section */}
-            <div className="mb-16">
+            <div ref={tiersRef} className="scroll-reveal mb-16">
               <div className="flex items-center justify-between mb-8">
                 <h2 className={`text-lg font-semibold ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>
                   Customer Membership Tiers
@@ -569,7 +616,7 @@ const BusinessSetup: React.FC = () => {
                   onClick={addCustomerTier}
                   variant="outline"
                   size="sm"
-                  className="flex items-center space-x-2"
+                  className="flex items-center space-x-2 border-red-700 text-red-700 dark:border-white dark:text-white"
                 >
                   <Plus className="h-4 w-4" />
                   <span>Add Tier</span>
@@ -577,10 +624,16 @@ const BusinessSetup: React.FC = () => {
               </div>
 
               {formData.customerTiers.length === 0 ? (
-                <div className={`text-center py-8 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                  <p className="text-sm mb-4">
-                    Click "Add Tier" above to create your first membership tier
-                  </p>
+                <div className={`border-2 border-dashed ${isDark ? 'border-gray-700' : 'border-gray-300'} rounded-xl p-6 text-center`}>
+                  <p className={`mb-4 ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>Create your first membership tier</p>
+                  <Button
+                    type="button"
+                    onClick={addCustomerTier}
+                    className="bg-[#800020] hover:bg-[#600018] text-white"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Create First Tier
+                  </Button>
                 </div>
               ) : (
                 <div className="space-y-8">
@@ -616,11 +669,12 @@ const BusinessSetup: React.FC = () => {
                             <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                             <input
                               type="number"
+                              step="0.01"
                               min="10"
                               max="999"
                               value={tier.monthlyPrice}
                               onChange={(e) => handleTierChange(tierIndex, 'monthlyPrice', parseInt(e.target.value) || 0)}
-                              className={`w-full pl-10 pr-4 py-3 ${isDark ? 'bg-zinc-800/50 border-zinc-700 text-white placeholder-zinc-500 focus:border-gray-500' : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500 focus:border-gray-400'} border rounded-lg transition-colors`}
+                              className={`no-spinner w-full pl-10 pr-4 py-3 ${isDark ? 'bg-zinc-800/50 border-zinc-700 text-white placeholder-zinc-500 focus:border-gray-500' : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500 focus:border-gray-400'} border rounded-lg transition-colors`}
                               placeholder="29"
                             />
                           </div>
@@ -702,7 +756,7 @@ const BusinessSetup: React.FC = () => {
             )}
 
             {/* Submit Button */}
-            <div className="text-center">
+            <div className="flex justify-center">
               <Button
                 type="submit"
                 disabled={loading}

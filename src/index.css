@@ -127,4 +127,27 @@
       0 10px 30px rgba(0, 0, 0, 0.1);
     transform: translateY(-2px);
   }
+
+  /* Scroll reveal animation */
+  .scroll-reveal {
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity .6s ease-out, transform .6s ease-out;
+  }
+  
+  .scroll-reveal.active {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  /* Hide number input spinners */
+  input.no-spinner::-webkit-inner-spin-button,
+  input.no-spinner::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  
+  input.no-spinner[type=number] {
+    -moz-appearance: textfield;
+  }
 }
