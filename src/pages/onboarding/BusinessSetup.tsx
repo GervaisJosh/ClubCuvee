@@ -18,7 +18,7 @@ import { useTheme } from '../../contexts/ThemeContext';
 
 interface BusinessFormData {
   businessName: string;
-  businessOwnerName: string;
+  adminUserName: string;
   email: string;
   password: string;
   confirmPassword: string;
@@ -66,7 +66,7 @@ const BusinessSetup: React.FC = () => {
   
   const [formData, setFormData] = useState<BusinessFormData>({
     businessName: '',
-    businessOwnerName: '',
+    adminUserName: '',
     email: '',
     password: '',
     confirmPassword: '',
@@ -145,8 +145,8 @@ const BusinessSetup: React.FC = () => {
     switch (field) {
       case 'businessName':
         return value.trim().length < 2 ? 'Business name must be at least 2 characters' : '';
-      case 'businessOwnerName':
-        return value.trim().length < 2 ? 'Owner name must be at least 2 characters' : '';
+      case 'adminUserName':
+        return value.trim().length < 2 ? 'Admin name must be at least 2 characters' : '';
       case 'email':
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         return !emailRegex.test(value) ? 'Please enter a valid email address' : '';
@@ -244,7 +244,7 @@ const BusinessSetup: React.FC = () => {
     }
 
     // Validate required fields
-    const requiredFields = ['businessName', 'businessOwnerName', 'email', 'password', 'confirmPassword'];
+    const requiredFields = ['businessName', 'adminUserName', 'email', 'password', 'confirmPassword'];
     const errors: Record<string, string> = {};
     
     requiredFields.forEach(field => {
@@ -352,6 +352,14 @@ const BusinessSetup: React.FC = () => {
   return (
     <div className={`min-h-screen ${isDark ? 'bg-black' : 'bg-gray-50'} px-6 py-10 relative`}>
       <div className="max-w-2xl mx-auto">
+        {/* Progress Indicator */}
+        <div className="mb-4 flex items-center space-x-2">
+          <div className={`flex-1 h-1 ${isDark ? 'bg-gray-700' : 'bg-gray-200'} rounded-full`}>
+            <div className={`w-1/3 h-full ${isDark ? 'bg-[#B03040]' : 'bg-[#800020]'} rounded-full transition-all duration-300`}></div>
+          </div>
+          <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Step 2 of 3</span>
+        </div>
+
         {/* Clean Header */}
         <div className="text-center mb-12">
           <h1 className={`text-4xl font-light ${isDark ? 'text-white' : 'text-gray-900'} mb-4`}>
@@ -376,7 +384,7 @@ const BusinessSetup: React.FC = () => {
             
             {/* Business Information Section */}
             <div className="mb-16">
-              <h2 className={`text-xl font-medium ${isDark ? 'text-white' : 'text-gray-900'} mb-8`}>
+              <h2 className={`text-lg font-semibold ${isDark ? 'text-gray-100' : 'text-gray-900'} mb-8`}>
                 Business Information
               </h2>
               
@@ -401,19 +409,19 @@ const BusinessSetup: React.FC = () => {
 
                 <div className="space-y-3">
                   <label className={`block text-sm font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                    Business Owner Name *
+                    Admin User Name *
                   </label>
                   <input
                     type="text"
-                    name="businessOwnerName"
-                    value={formData.businessOwnerName}
+                    name="adminUserName"
+                    value={formData.adminUserName}
                     onChange={handleInputChange}
                     required
                     className={`w-full px-4 py-3 ${isDark ? 'bg-zinc-800/50 border-zinc-700 text-white placeholder-zinc-500 focus:border-gray-500' : 'bg-gray-50 border-gray-300 text-gray-900 placeholder-gray-500 focus:border-gray-400'} border rounded-lg transition-colors`}
                     placeholder="Full name"
                   />
-                  {validationErrors.businessOwnerName && (
-                    <p className="text-red-500 text-sm">{validationErrors.businessOwnerName}</p>
+                  {validationErrors.adminUserName && (
+                    <p className="text-red-500 text-sm">{validationErrors.adminUserName}</p>
                   )}
                 </div>
 
@@ -481,7 +489,7 @@ const BusinessSetup: React.FC = () => {
                     onChange={handleInputChange}
                     rows={3}
                     className={`w-full px-4 py-3 ${isDark ? 'bg-zinc-800/50 border-zinc-700 text-white placeholder-zinc-500 focus:border-gray-500' : 'bg-gray-50 border-gray-300 text-gray-900 placeholder-gray-500 focus:border-gray-400'} border rounded-lg transition-colors resize-none`}
-                    placeholder="Tell us about your wine business..."
+                    placeholder="Describe your wine business and what makes it special..."
                   />
                 </div>
               </div>
@@ -489,7 +497,7 @@ const BusinessSetup: React.FC = () => {
 
             {/* Security Section */}
             <div className="mb-16">
-              <h2 className={`text-xl font-medium ${isDark ? 'text-white' : 'text-gray-900'} mb-8`}>
+              <h2 className={`text-lg font-semibold ${isDark ? 'text-gray-100' : 'text-gray-900'} mb-8`}>
                 Security Credentials
               </h2>
               
@@ -553,7 +561,7 @@ const BusinessSetup: React.FC = () => {
             {/* Customer Membership Tiers Section */}
             <div className="mb-16">
               <div className="flex items-center justify-between mb-8">
-                <h2 className={`text-xl font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                <h2 className={`text-lg font-semibold ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>
                   Customer Membership Tiers
                 </h2>
                 <Button
@@ -569,21 +577,10 @@ const BusinessSetup: React.FC = () => {
               </div>
 
               {formData.customerTiers.length === 0 ? (
-                <div className={`text-center py-16 ${isDark ? 'bg-zinc-800/30' : 'bg-gray-50'} rounded-lg border-2 border-dashed ${isDark ? 'border-zinc-700' : 'border-gray-300'}`}>
-                  <p className={`text-lg ${isDark ? 'text-gray-300' : 'text-gray-600'} mb-4`}>
-                    Create your first membership tier
+                <div className={`text-center py-8 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                  <p className="text-sm mb-4">
+                    Click "Add Tier" above to create your first membership tier
                   </p>
-                  <p className={`${isDark ? 'text-gray-400' : 'text-gray-500'} mb-6`}>
-                    Design exclusive wine experiences for your customers
-                  </p>
-                  <Button
-                    type="button"
-                    onClick={addCustomerTier}
-                    variant="outline"
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Create First Tier
-                  </Button>
                 </div>
               ) : (
                 <div className="space-y-8">
@@ -709,7 +706,7 @@ const BusinessSetup: React.FC = () => {
               <Button
                 type="submit"
                 disabled={loading}
-                className="bg-[#800020] hover:bg-[#600018] px-8 py-3 text-white font-medium"
+                className="bg-[#800020] hover:bg-[#600018] focus:ring-4 focus:ring-[#800020]/20 px-8 py-3 text-white font-medium transition-all duration-200 transform hover:scale-105 active:scale-95"
               >
                 {loading ? (
                   <div className="flex items-center space-x-2">
