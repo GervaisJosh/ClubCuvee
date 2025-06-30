@@ -21,7 +21,8 @@ import {
   Check,
   Sparkles,
   Zap,
-  Shield
+  Shield,
+  X
 } from 'lucide-react';
 import { useTheme } from '../../contexts/ThemeContext';
 
@@ -214,7 +215,7 @@ const BusinessSetup: React.FC = () => {
         name: '',
         description: '',
         monthlyPrice: 99,
-        benefits: ['', '', '']
+        benefits: ['']
       }]
     }));
     setShowTierForm(true);
@@ -372,8 +373,8 @@ const BusinessSetup: React.FC = () => {
           <div className="relative z-10">
             <div className="mb-6">
               <Wine className="h-10 w-10 text-[#800020] mx-auto mb-4" />
-              <h1 className="text-4xl md:text-5xl font-bold text-[#800020] mb-3">
-                Welcome to Club Cuvée
+              <h1 className="text-4xl md:text-5xl font-light text-[#800020] mb-3">
+                Welcome to Club Cuvée, {formData.businessName || 'Partner'}
               </h1>
               <div className="flex items-center justify-center space-x-2 mb-4">
                 <div className="w-12 h-px bg-gradient-to-r from-transparent to-[#800020]"></div>
@@ -431,7 +432,7 @@ const BusinessSetup: React.FC = () => {
 
               <div className="space-y-2">
                 <label className={`block text-sm font-semibold ${isDark ? 'text-gray-300' : 'text-gray-700'} mb-2`}>
-                  Business Owner Name *
+                  Admin User Name *
                 </label>
                 <div className="relative">
                   <User className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
@@ -612,30 +613,25 @@ const BusinessSetup: React.FC = () => {
               </p>
 
               {!showTierForm && formData.customerTiers.length === 0 ? (
-                <div className={`relative text-center py-20 border-2 border-dashed ${isDark ? 'border-zinc-700/50' : 'border-gray-300/50'} rounded-3xl ${isDark ? 'bg-gradient-to-b from-zinc-800/20 to-transparent' : 'bg-gradient-to-b from-gray-50 to-transparent'}`}>
-                  <div className="absolute inset-0 bg-gradient-radial from-[#800020]/5 via-transparent to-transparent blur-2xl"></div>
-                  <div className="relative z-10">
-                    <div className={`mx-auto h-16 w-16 mb-6 rounded-full ${isDark ? 'bg-zinc-800/50' : 'bg-gray-100'} flex items-center justify-center`}>
-                      <Wine className="h-8 w-8 text-[#800020]" />
-                    </div>
-                    <h3 className={`text-2xl font-semibold ${isDark ? 'text-white' : 'text-gray-900'} mb-3`}>
-                      Create your first membership tier
-                    </h3>
-                    <p className={`${isDark ? 'text-gray-400' : 'text-gray-600'} mb-8 max-w-lg mx-auto text-lg font-light`}>
-                      Design exclusive wine experiences for your customers
-                    </p>
-                    <button 
-                      type="button"
-                      onClick={() => {
-                        addCustomerTier();
-                        setShowTierForm(true);
-                      }} 
-                      className="group bg-[#800020] hover:bg-[#600018] text-white px-10 py-4 rounded-xl font-medium transition-all duration-300 transform hover:scale-105 shadow-xl hover:shadow-2xl inline-flex items-center"
-                    >
-                      <Plus className="w-5 h-5 mr-2 transition-transform duration-300 group-hover:rotate-90" />
-                      CREATE FIRST TIER
-                    </button>
-                  </div>
+                <div className={`text-center py-12 border-2 border-dashed ${isDark ? 'border-zinc-700' : 'border-gray-300'} rounded-lg`}>
+                  <Wine className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+                  <h3 className={`text-lg font-medium ${isDark ? 'text-white' : 'text-gray-900'} mb-2`}>
+                    Create your first membership tier
+                  </h3>
+                  <p className={`${isDark ? 'text-gray-400' : 'text-gray-500'} mb-6`}>
+                    Design exclusive wine experiences for your customers
+                  </p>
+                  <button 
+                    type="button"
+                    onClick={() => {
+                      addCustomerTier();
+                      setShowTierForm(true);
+                    }} 
+                    className="bg-[#800020] hover:bg-[#600018] text-white px-6 py-3 rounded-lg transition-all duration-200 transform hover:scale-105"
+                  >
+                    <Plus className="inline h-4 w-4 mr-2" />
+                    CREATE FIRST TIER
+                  </button>
                 </div>
               ) : (
                 <div className="space-y-8">
@@ -706,15 +702,22 @@ const BusinessSetup: React.FC = () => {
                         </label>
                         <div className="space-y-3">
                           {tier.benefits.map((benefit, benefitIndex) => (
-                            <div key={benefitIndex} className="flex items-center">
-                              <Check className="w-5 h-5 text-emerald-500 mr-3 flex-shrink-0" />
+                            <div key={benefitIndex} className="flex items-center space-x-3">
+                              <CheckCircle className="w-5 h-5 text-emerald-500 flex-shrink-0" />
                               <input
                                 type="text"
                                 value={benefit}
                                 onChange={(e) => updateBenefit(tierIndex, benefitIndex, e.target.value)}
-                                className={`flex-1 px-4 py-3 ${isDark ? 'bg-zinc-800 border-zinc-700 text-white placeholder-zinc-500 focus:border-[#800020]' : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500 focus:border-[#800020]'} border rounded-xl transition-all duration-200`}
+                                className={`flex-1 px-4 py-3 ${isDark ? 'bg-zinc-800 border-zinc-700 text-white placeholder-zinc-500 focus:border-[#800020]' : 'bg-gray-50 border-gray-300 text-gray-900 placeholder-gray-500 focus:border-[#800020]'} border rounded-xl transition-all duration-200`}
                                 placeholder="e.g., 2 premium bottles monthly"
                               />
+                              <button
+                                type="button"
+                                onClick={() => removeBenefit(tierIndex, benefitIndex)}
+                                className="p-2 text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
+                              >
+                                <X className="h-4 w-4" />
+                              </button>
                             </div>
                           ))}
                         </div>
@@ -731,16 +734,15 @@ const BusinessSetup: React.FC = () => {
                 ))}
                 
                 {formData.customerTiers.length > 0 && (
-                  <div className="text-center pt-4">
-                    <Button
+                  <div className="text-center pt-6">
+                    <button
                       type="button"
                       onClick={addCustomerTier}
-                      variant="outline"
-                      className="inline-flex items-center"
+                      className={`w-full max-w-md mx-auto py-3 border-2 border-dashed ${isDark ? 'border-zinc-600 text-gray-300 hover:border-[#800020] hover:text-[#800020]' : 'border-gray-300 text-gray-700 hover:border-[#800020] hover:text-[#800020]'} rounded-xl transition-all duration-200 font-medium`}
                     >
-                      <Plus className="h-4 w-4 mr-2" />
-                      Add Another Tier
-                    </Button>
+                      <Plus className="inline h-4 w-4 mr-2" />
+                      ADD ANOTHER TIER
+                    </button>
                   </div>
                   )}
                 </div>
