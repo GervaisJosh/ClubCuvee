@@ -18,11 +18,10 @@ import {
   MapPin,
   Wine,
   DollarSign,
-  Crown,
+  Check,
   Sparkles,
   Zap,
-  Shield,
-  Rocket
+  Shield
 } from 'lucide-react';
 import { useTheme } from '../../contexts/ThemeContext';
 
@@ -87,7 +86,12 @@ const BusinessSetup: React.FC = () => {
     phone: '',
     website: '',
     description: '',
-    customerTiers: []
+    customerTiers: [{
+      name: '',
+      description: '',
+      monthlyPrice: 99,
+      benefits: ['', '', '']
+    }]
   });
   
   const [showPassword, setShowPassword] = useState(false);
@@ -220,10 +224,13 @@ const BusinessSetup: React.FC = () => {
   };
 
   const removeCustomerTier = (index: number) => {
-    setFormData(prev => ({
-      ...prev,
-      customerTiers: prev.customerTiers.filter((_, i) => i !== index)
-    }));
+    // Don't allow removing if it's the only tier
+    if (formData.customerTiers.length > 1) {
+      setFormData(prev => ({
+        ...prev,
+        customerTiers: prev.customerTiers.filter((_, i) => i !== index)
+      }));
+    }
   };
 
   const addBenefit = (tierIndex: number) => {
@@ -330,10 +337,10 @@ const BusinessSetup: React.FC = () => {
         <div className="text-center">
           <div className="relative">
             <div className="h-16 w-16 animate-spin border-4 border-[#800020] border-t-transparent rounded-full mx-auto mb-8"></div>
-            <Shield className="h-6 w-6 text-[#800020] absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 animate-pulse" />
+            <Wine className="h-6 w-6 text-[#800020] absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2" />
           </div>
-          <p className={`${isDark ? 'text-gray-300' : 'text-gray-700'} text-xl font-light`}>Verifying your premium subscription...</p>
-          <p className={`${isDark ? 'text-gray-500' : 'text-gray-500'} text-sm mt-2`}>Securing your business credentials</p>
+          <p className={`${isDark ? 'text-gray-300' : 'text-gray-700'} text-xl font-light`}>Verifying your subscription...</p>
+          <p className={`${isDark ? 'text-gray-500' : 'text-gray-500'} text-sm mt-2`}>Just a moment while we set things up</p>
         </div>
         <ThemeToggle position="fixed" />
       </div>
@@ -345,9 +352,9 @@ const BusinessSetup: React.FC = () => {
     return (
       <div className={`min-h-screen flex items-center justify-center ${isDark ? 'bg-black' : 'bg-gray-50'} px-6 py-10`}>
         <Card className={`max-w-md mx-auto p-8 text-center ${isDark ? 'bg-zinc-900/50 border-zinc-800' : 'bg-white border-gray-200'} backdrop-blur-sm rounded-2xl`}>
-          <AlertCircle className="h-20 w-20 text-red-500 mx-auto mb-6" />
-          <h1 className={`text-3xl font-bold ${isDark ? 'text-white' : 'text-gray-900'} mb-4`}>Setup Error</h1>
-          <p className={`${isDark ? 'text-gray-300' : 'text-gray-600'} mb-8 leading-relaxed`}>
+          <AlertCircle className="h-16 w-16 text-red-500 mx-auto mb-6" />
+          <h1 className={`text-2xl font-semibold ${isDark ? 'text-white' : 'text-gray-900'} mb-3`}>Setup Error</h1>
+          <p className={`${isDark ? 'text-gray-300' : 'text-gray-600'} mb-6`}>
             {error}
           </p>
           <Button onClick={() => navigate('/business/dashboard')} variant="secondary" className="w-full py-3">
@@ -363,25 +370,25 @@ const BusinessSetup: React.FC = () => {
     <div className={`min-h-screen ${isDark ? 'bg-black' : 'bg-gray-50'} px-6 py-10 relative`}>
       <div className="max-w-4xl mx-auto">
         {/* Luxury Header */}
-        <div className="text-center mb-16 relative">
+        <div className="text-center mb-12 relative">
           <div className="absolute inset-0 bg-gradient-radial from-[#800020]/10 via-transparent to-transparent blur-3xl"></div>
           <div className="relative z-10">
-            <div className="mb-8">
-              <Crown className="h-12 w-12 text-[#800020] mx-auto mb-4 animate-pulse" />
-              <h1 className="text-5xl font-bold bg-gradient-to-r from-[#800020] via-[#a00030] to-[#800020] bg-clip-text text-transparent mb-6 tracking-tight">
-                Build Your Empire
+            <div className="mb-6">
+              <Wine className="h-10 w-10 text-[#800020] mx-auto mb-4" />
+              <h1 className="text-4xl md:text-5xl font-bold text-[#800020] mb-3">
+                Welcome to Club Cuvée
               </h1>
-              <div className="flex items-center justify-center space-x-2 mb-6">
+              <div className="flex items-center justify-center space-x-2 mb-4">
                 <div className="w-12 h-px bg-gradient-to-r from-transparent to-[#800020]"></div>
                 <Sparkles className="h-4 w-4 text-[#800020]" />
                 <div className="w-12 h-px bg-gradient-to-r from-[#800020] to-transparent"></div>
               </div>
             </div>
-            <p className={`text-2xl font-light ${isDark ? 'text-gray-200' : 'text-gray-700'} mb-4`}>
-              Complete your business profile to launch your luxury wine club
+            <p className={`text-xl font-light ${isDark ? 'text-gray-200' : 'text-gray-600'} mb-6`}>
+              Set up your premium wine club in minutes
             </p>
             {paymentData && (
-              <div className={`inline-flex items-center px-6 py-3 ${isDark ? 'bg-emerald-900/20 border-emerald-800/30' : 'bg-emerald-50 border-emerald-200'} border rounded-full backdrop-blur-sm`}>
+              <div className={`inline-flex items-center px-5 py-2.5 ${isDark ? 'bg-emerald-900/20 border-emerald-800/30' : 'bg-emerald-50 border-emerald-200'} border rounded-full backdrop-blur-sm`}>
                 <CheckCircle className="w-5 h-5 text-emerald-500 mr-2" />
                 <span className={`${isDark ? 'text-emerald-300' : 'text-emerald-700'} font-medium`}>
                   Payment Verified • {paymentData.pricing_tier}
@@ -391,15 +398,17 @@ const BusinessSetup: React.FC = () => {
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-12">
-          {/* Business Information */}
-          <Card className={`p-10 ${isDark ? 'bg-zinc-900/50 border-zinc-800' : 'bg-white border-gray-200'} backdrop-blur-sm rounded-3xl shadow-2xl`}>
-            <div className="flex items-center mb-8">
-              <Building className="h-8 w-8 text-[#800020] mr-3" />
-              <h2 className={`text-3xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                Business Information
-              </h2>
-            </div>
+        <form onSubmit={handleSubmit} className="space-y-8">
+          {/* Single consolidated card */}
+          <Card className={`p-8 md:p-12 ${isDark ? 'bg-zinc-900/50 border-zinc-800' : 'bg-white border-gray-200'} backdrop-blur-sm rounded-3xl shadow-2xl`}>
+            {/* Business Information Section */}
+            <div className="pb-10">
+              <div className="flex items-center mb-6">
+                <Building className="h-6 w-6 text-[#800020] mr-3" />
+                <h2 className={`text-2xl font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                  Business Details
+                </h2>
+              </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div className="space-y-2">
@@ -517,16 +526,19 @@ const BusinessSetup: React.FC = () => {
                 />
               </div>
             </div>
-          </Card>
-
-          {/* Security */}
-          <Card className={`p-10 ${isDark ? 'bg-zinc-900/50 border-zinc-800' : 'bg-white border-gray-200'} backdrop-blur-sm rounded-3xl shadow-2xl`}>
-            <div className="flex items-center mb-8">
-              <Lock className="h-8 w-8 text-[#800020] mr-3" />
-              <h2 className={`text-3xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                Security Credentials
-              </h2>
             </div>
+
+            {/* Divider */}
+            <div className={`my-10 h-px ${isDark ? 'bg-zinc-700' : 'bg-gray-200'}`}></div>
+
+            {/* Security Section */}
+            <div className="pb-10">
+              <div className="flex items-center mb-6">
+                <Lock className="h-6 w-6 text-[#800020] mr-3" />
+                <h2 className={`text-2xl font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                  Secure Your Account
+                </h2>
+              </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div className="space-y-2">
@@ -585,62 +597,39 @@ const BusinessSetup: React.FC = () => {
                 )}
               </div>
             </div>
-          </Card>
-
-          {/* Customer Membership Tiers */}
-          <Card className={`p-10 ${isDark ? 'bg-zinc-900/50 border-zinc-800' : 'bg-white border-gray-200'} backdrop-blur-sm rounded-3xl shadow-2xl`}>
-            <div className="flex items-center justify-between mb-8">
-              <div className="flex items-center">
-                <Wine className="h-8 w-8 text-[#800020] mr-3" />
-                <h2 className={`text-3xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                  Customer Membership Tiers
-                </h2>
-              </div>
-              <Button
-                type="button"
-                onClick={addCustomerTier}
-                variant="outline"
-                className="flex items-center space-x-2"
-              >
-                <Plus className="h-5 w-5" />
-                <span>Add Tier</span>
-              </Button>
             </div>
 
-            {formData.customerTiers.length === 0 ? (
-              <div className={`text-center py-12 ${isDark ? 'bg-zinc-800/50' : 'bg-gray-50'} rounded-2xl border-2 border-dashed ${isDark ? 'border-zinc-700' : 'border-gray-300'}`}>
-                <Wine className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                <p className={`text-xl ${isDark ? 'text-gray-300' : 'text-gray-600'} mb-4`}>
-                  Create your first membership tier
-                </p>
-                <p className={`${isDark ? 'text-gray-400' : 'text-gray-500'} mb-6`}>
-                  Design exclusive wine experiences for your customers
-                </p>
-                <Button
-                  type="button"
-                  onClick={addCustomerTier}
-                  className="bg-gradient-to-r from-[#800020] to-[#a00030] hover:from-[#600018] hover:to-[#800028]"
-                >
-                  <Plus className="h-5 w-5 mr-2" />
-                  Create First Tier
-                </Button>
+            {/* Divider */}
+            <div className={`my-10 h-px ${isDark ? 'bg-zinc-700' : 'bg-gray-200'}`}></div>
+
+            {/* Customer Membership Tiers Section */}
+            <div>
+              <div className="flex items-center mb-6">
+                <Wine className="h-6 w-6 text-[#800020] mr-3" />
+                <h2 className={`text-2xl font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                  Membership Tiers
+                </h2>
               </div>
-            ) : (
+              <p className={`${isDark ? 'text-gray-400' : 'text-gray-600'} mb-8`}>
+                Design your membership offering
+              </p>
+
               <div className="space-y-8">
                 {formData.customerTiers.map((tier, tierIndex) => (
-                  <div key={tierIndex} className={`p-8 ${isDark ? 'bg-zinc-800/50 border-zinc-700' : 'bg-gray-50 border-gray-200'} border rounded-2xl relative`}>
-                    <button
-                      type="button"
-                      onClick={() => removeCustomerTier(tierIndex)}
-                      className="absolute top-4 right-4 p-2 text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
-                    >
-                      <Trash2 className="h-5 w-5" />
-                    </button>
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                  <div key={tierIndex} className={`p-8 ${isDark ? 'bg-zinc-800/30' : 'bg-gray-50'} rounded-2xl relative`}>
+                    {formData.customerTiers.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeCustomerTier(tierIndex)}
+                        className="absolute top-4 right-4 p-2 text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    )}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                       <div className="space-y-2">
-                        <label className={`block text-sm font-semibold ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                          Tier Name *
+                        <label className={`block text-sm font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                          Tier Name
                         </label>
                         <input
                           type="text"
@@ -648,15 +637,16 @@ const BusinessSetup: React.FC = () => {
                           onChange={(e) => handleTierChange(tierIndex, 'name', e.target.value)}
                           className={`w-full px-4 py-3 ${isDark ? 'bg-zinc-800 border-zinc-700 text-white placeholder-zinc-500 focus:border-[#800020]' : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500 focus:border-[#800020]'} border rounded-xl transition-all duration-200`}
                           placeholder="e.g., Wine Enthusiast"
+                          required
                         />
                       </div>
 
                       <div className="space-y-2">
-                        <label className={`block text-sm font-semibold ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                          Monthly Price *
+                        <label className={`block text-sm font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                          Monthly Price
                         </label>
                         <div className="relative">
-                          <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                          <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500">$</span>
                           <input
                             type="number"
                             min="10"
@@ -664,74 +654,73 @@ const BusinessSetup: React.FC = () => {
                             value={tier.monthlyPrice}
                             onChange={(e) => handleTierChange(tierIndex, 'monthlyPrice', parseInt(e.target.value) || 0)}
                             className={`w-full pl-10 pr-4 py-3 ${isDark ? 'bg-zinc-800 border-zinc-700 text-white placeholder-zinc-500 focus:border-[#800020]' : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500 focus:border-[#800020]'} border rounded-xl transition-all duration-200`}
-                            placeholder="29"
+                            placeholder="99"
+                            required
                           />
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <label className={`block text-sm font-semibold ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                          Actions
-                        </label>
-                        <div className="flex space-x-2">
-                          <Button
-                            type="button"
-                            onClick={() => addBenefit(tierIndex)}
-                            variant="outline"
-                            size="sm"
-                            className="flex-1"
-                          >
-                            <Plus className="h-4 w-4 mr-1" />
-                            Add Benefit
-                          </Button>
                         </div>
                       </div>
                     </div>
 
                     <div className="space-y-4">
                       <div className="space-y-2">
-                        <label className={`block text-sm font-semibold ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                          Description *
+                        <label className={`block text-sm font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                          Description
                         </label>
                         <textarea
                           value={tier.description}
                           onChange={(e) => handleTierChange(tierIndex, 'description', e.target.value)}
-                          rows={3}
+                          rows={2}
                           className={`w-full px-4 py-3 ${isDark ? 'bg-zinc-800 border-zinc-700 text-white placeholder-zinc-500 focus:border-[#800020]' : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500 focus:border-[#800020]'} border rounded-xl transition-all duration-200 resize-none`}
                           placeholder="Describe what makes this tier special..."
+                          required
                         />
                       </div>
 
                       <div className="space-y-2">
-                        <label className={`block text-sm font-semibold ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                          Benefits & Features *
+                        <label className={`block text-sm font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'} mb-3`}>
+                          Included Benefits
                         </label>
                         <div className="space-y-3">
                           {tier.benefits.map((benefit, benefitIndex) => (
-                            <div key={benefitIndex} className="flex items-center space-x-3">
+                            <div key={benefitIndex} className="flex items-center">
+                              <Check className="w-5 h-5 text-emerald-500 mr-3 flex-shrink-0" />
                               <input
                                 type="text"
                                 value={benefit}
                                 onChange={(e) => updateBenefit(tierIndex, benefitIndex, e.target.value)}
                                 className={`flex-1 px-4 py-3 ${isDark ? 'bg-zinc-800 border-zinc-700 text-white placeholder-zinc-500 focus:border-[#800020]' : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500 focus:border-[#800020]'} border rounded-xl transition-all duration-200`}
-                                placeholder="e.g., 2 premium bottles per month"
+                                placeholder="e.g., 2 premium bottles monthly"
                               />
-                              <button
-                                type="button"
-                                onClick={() => removeBenefit(tierIndex, benefitIndex)}
-                                className="p-2 text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </button>
                             </div>
                           ))}
                         </div>
+                        <button
+                          type="button"
+                          onClick={() => addBenefit(tierIndex)}
+                          className={`text-sm ${isDark ? 'text-[#800020]' : 'text-[#800020]'} hover:underline mt-3`}
+                        >
+                          + Add another benefit
+                        </button>
                       </div>
                     </div>
                   </div>
                 ))}
+                
+                {formData.customerTiers.length > 0 && (
+                  <div className="text-center pt-4">
+                    <Button
+                      type="button"
+                      onClick={addCustomerTier}
+                      variant="outline"
+                      className="inline-flex items-center"
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add Another Tier
+                    </Button>
+                  </div>
+                )}
               </div>
-            )}
+            </div>
           </Card>
 
           {/* Error Display */}
@@ -747,36 +736,24 @@ const BusinessSetup: React.FC = () => {
           )}
 
           {/* Submit Button */}
-          <div className="text-center">
-            <Card className={`p-8 ${isDark ? 'bg-gradient-to-r from-[#800020]/20 to-[#a00030]/20 border-[#800020]/30' : 'bg-gradient-to-r from-[#800020]/10 to-[#a00030]/10 border-[#800020]/20'} border backdrop-blur-sm rounded-3xl`}>
-              <div className="flex items-center justify-center mb-6">
-                <Rocket className="h-8 w-8 text-[#800020] mr-3" />
-                <h3 className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                  Ready to Launch Your Wine Empire?
-                </h3>
-              </div>
-              <Button
-                type="submit"
-                disabled={loading}
-                className="bg-gradient-to-r from-[#800020] to-[#a00030] hover:from-[#600018] hover:to-[#800028] px-12 py-4 text-xl font-bold shadow-2xl transform hover:scale-105 transition-all duration-300"
-              >
-                {loading ? (
-                  <div className="flex items-center space-x-3">
-                    <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    <span>Creating Your Business...</span>
-                  </div>
-                ) : (
-                  <div className="flex items-center space-x-3">
-                    <Zap className="w-6 h-6" />
-                    <span>Launch Wine Club</span>
-                    <Sparkles className="w-6 h-6" />
-                  </div>
-                )}
-              </Button>
-              <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'} mt-4`}>
-                Your premium wine club platform will be ready in seconds
-              </p>
-            </Card>
+          <div className="text-center pt-8">
+            <Button
+              type="submit"
+              disabled={loading}
+              className="bg-[#800020] hover:bg-[#600018] px-10 py-4 text-lg font-medium shadow-lg transform hover:scale-[1.02] transition-all duration-200"
+            >
+              {loading ? (
+                <div className="flex items-center space-x-3">
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  <span>Setting Up Your Club...</span>
+                </div>
+              ) : (
+                'Complete Setup'
+              )}
+            </Button>
+            <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'} mt-3`}>
+              You'll be redirected to your dashboard after setup
+            </p>
           </div>
         </form>
 
