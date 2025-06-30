@@ -86,12 +86,7 @@ const BusinessSetup: React.FC = () => {
     phone: '',
     website: '',
     description: '',
-    customerTiers: [{
-      name: '',
-      description: '',
-      monthlyPrice: 99,
-      benefits: ['', '', '']
-    }]
+    customerTiers: []
   });
   
   const [showPassword, setShowPassword] = useState(false);
@@ -101,6 +96,7 @@ const BusinessSetup: React.FC = () => {
   const [verifyingPayment, setVerifyingPayment] = useState(true);
   const [paymentData, setPaymentData] = useState<PaymentVerificationData | null>(null);
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+  const [showTierForm, setShowTierForm] = useState(false);
 
   useEffect(() => {
     if (!token || !sessionId) {
@@ -217,10 +213,11 @@ const BusinessSetup: React.FC = () => {
       customerTiers: [...prev.customerTiers, {
         name: '',
         description: '',
-        monthlyPrice: 29,
-        benefits: ['']
+        monthlyPrice: 99,
+        benefits: ['', '', '']
       }]
     }));
+    setShowTierForm(true);
   };
 
   const removeCustomerTier = (index: number) => {
@@ -614,8 +611,35 @@ const BusinessSetup: React.FC = () => {
                 Design your membership offering
               </p>
 
-              <div className="space-y-8">
-                {formData.customerTiers.map((tier, tierIndex) => (
+              {!showTierForm && formData.customerTiers.length === 0 ? (
+                <div className={`relative text-center py-20 border-2 border-dashed ${isDark ? 'border-zinc-700/50' : 'border-gray-300/50'} rounded-3xl ${isDark ? 'bg-gradient-to-b from-zinc-800/20 to-transparent' : 'bg-gradient-to-b from-gray-50 to-transparent'}`}>
+                  <div className="absolute inset-0 bg-gradient-radial from-[#800020]/5 via-transparent to-transparent blur-2xl"></div>
+                  <div className="relative z-10">
+                    <div className={`mx-auto h-16 w-16 mb-6 rounded-full ${isDark ? 'bg-zinc-800/50' : 'bg-gray-100'} flex items-center justify-center`}>
+                      <Wine className="h-8 w-8 text-[#800020]" />
+                    </div>
+                    <h3 className={`text-2xl font-semibold ${isDark ? 'text-white' : 'text-gray-900'} mb-3`}>
+                      Create your first membership tier
+                    </h3>
+                    <p className={`${isDark ? 'text-gray-400' : 'text-gray-600'} mb-8 max-w-lg mx-auto text-lg font-light`}>
+                      Design exclusive wine experiences for your customers
+                    </p>
+                    <button 
+                      type="button"
+                      onClick={() => {
+                        addCustomerTier();
+                        setShowTierForm(true);
+                      }} 
+                      className="group bg-[#800020] hover:bg-[#600018] text-white px-10 py-4 rounded-xl font-medium transition-all duration-300 transform hover:scale-105 shadow-xl hover:shadow-2xl inline-flex items-center"
+                    >
+                      <Plus className="w-5 h-5 mr-2 transition-transform duration-300 group-hover:rotate-90" />
+                      CREATE FIRST TIER
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-8">
+                  {formData.customerTiers.map((tier, tierIndex) => (
                   <div key={tierIndex} className={`p-8 ${isDark ? 'bg-zinc-800/30' : 'bg-gray-50'} rounded-2xl relative`}>
                     {formData.customerTiers.length > 1 && (
                       <button
@@ -718,8 +742,9 @@ const BusinessSetup: React.FC = () => {
                       Add Another Tier
                     </Button>
                   </div>
-                )}
-              </div>
+                  )}
+                </div>
+              )}
             </div>
           </Card>
 
@@ -736,24 +761,24 @@ const BusinessSetup: React.FC = () => {
           )}
 
           {/* Submit Button */}
-          <div className="text-center pt-8">
-            <Button
-              type="submit"
+          <div className="flex justify-center mt-12">
+            <button 
+              type="submit" 
               disabled={loading}
-              className="bg-[#800020] hover:bg-[#600018] px-10 py-4 text-lg font-medium shadow-lg transform hover:scale-[1.02] transition-all duration-200"
+              className="bg-[#800020] hover:bg-[#600018] text-white px-12 py-4 rounded-xl text-lg font-medium transition-all duration-200 transform hover:scale-105 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center"
             >
               {loading ? (
-                <div className="flex items-center space-x-3">
+                <div className="flex items-center space-x-2">
                   <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  <span>Setting Up Your Club...</span>
+                  <span>Creating Your Wine Club...</span>
                 </div>
               ) : (
-                'Complete Setup'
+                <>
+                  <Wine className="w-5 h-5 mr-2" />
+                  Launch Your Wine Club
+                </>
               )}
-            </Button>
-            <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'} mt-3`}>
-              You'll be redirected to your dashboard after setup
-            </p>
+            </button>
           </div>
         </form>
 
