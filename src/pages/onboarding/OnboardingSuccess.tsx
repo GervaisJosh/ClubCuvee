@@ -142,54 +142,56 @@ const OnboardingSuccess: React.FC = () => {
   }
 
   return (
-    <div className={`min-h-screen ${isDark ? 'bg-black' : 'bg-gray-50'} px-6 py-10`}>
-      <div className="max-w-4xl mx-auto">
+    <div className={`min-h-screen ${isDark ? 'bg-black' : 'bg-gray-50'} relative`}>
+      <div className="absolute inset-0 bg-gradient-to-br from-transparent via-[#800020]/5 to-transparent pointer-events-none"></div>
+      <div className="max-w-4xl mx-auto px-6 py-12 relative z-10">
         
-        {/* Clean Success Header */}
+        {/* Header Section */}
         <div className="text-center mb-16">
-          <CheckCircle className="h-16 w-16 text-emerald-500 mx-auto mb-6" />
-          <h1 className={`text-4xl font-light ${isDark ? 'text-white' : 'text-gray-900'} mb-4`}>
-            {businessData.business.name} is Ready
+          <CheckCircle className="w-20 h-20 text-green-500 mx-auto mb-6" />
+          <h1 className={`text-4xl font-semibold ${isDark ? 'text-white' : 'text-gray-900'} mb-3`}>
+            Congratulations, {businessData.business.name}!
           </h1>
-          <p className={`text-lg ${isDark ? 'text-gray-400' : 'text-gray-600'} mb-8`}>
+          <p className={`text-lg font-light ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
             Your wine club platform has been successfully configured
           </p>
         </div>
 
-        {/* Membership Tiers */}
-        <Card className={`p-10 mb-12 ${isDark ? 'bg-zinc-900/30 border-zinc-800/50' : 'bg-white border-gray-200'} rounded-xl`}>
-          <div className="text-center mb-10">
-            <h2 className={`text-2xl font-medium ${isDark ? 'text-white' : 'text-gray-900'} mb-4`}>
-              Your Membership Tiers
-            </h2>
-            <p className={`${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-              Ready to accept customer subscriptions
-            </p>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-            {businessData.membershipTiers.map((tier) => (
-              <div key={tier.id} className={`text-center p-6 ${isDark ? 'bg-zinc-800/30 border-zinc-700' : 'bg-gray-50 border-gray-200'} border rounded-lg`}>
-                <div className="w-12 h-12 bg-gray-600 rounded-lg flex items-center justify-center mx-auto mb-4">
-                  <Users className="h-6 w-6 text-white" />
+        {/* Membership Tiers Section */}
+        <div className="mb-16">
+          <Card className={`p-8 ${isDark ? 'bg-zinc-900/30 border-zinc-800/50' : 'bg-white border-gray-200'} rounded-xl shadow-sm`}>
+            <div className="text-center mb-10">
+              <h2 className={`text-2xl font-medium ${isDark ? 'text-white' : 'text-gray-900'} mb-3`}>
+                Your Membership Tiers
+              </h2>
+              <p className={`font-light ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                Ready to accept customer subscriptions
+              </p>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+              {businessData.membershipTiers.map((tier) => (
+                <div key={tier.id} className={`text-center p-6 ${isDark ? 'bg-zinc-800/30 border-zinc-700' : 'bg-gray-50 border-gray-200'} border rounded-lg hover:scale-105 transition-transform duration-200`}>
+                  <div className="w-12 h-12 bg-gray-600 rounded-lg flex items-center justify-center mx-auto mb-4">
+                    <Users className="h-6 w-6 text-white" />
+                  </div>
+                  <h3 className={`text-lg font-medium ${isDark ? 'text-white' : 'text-gray-900'} mb-2`}>
+                    {tier.name}
+                  </h3>
+                  <p className={`text-3xl font-semibold ${isDark ? 'text-white' : 'text-gray-900'} mb-2`}>
+                    ${parseFloat(tier.price).toFixed(2)}
+                    <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'} font-normal`}>/month</span>
+                  </p>
+                  <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'} mb-4`}>
+                    {tier.description}
+                  </p>
+                  <div className="flex items-center justify-center space-x-2 text-green-500 text-sm">
+                    <CheckCircle className="h-4 w-4" />
+                    <span>Ready</span>
+                  </div>
                 </div>
-                <h3 className={`text-lg font-medium ${isDark ? 'text-white' : 'text-gray-900'} mb-2`}>
-                  {tier.name}
-                </h3>
-                <p className="text-2xl font-semibold text-gray-900 dark:text-white mb-2">
-                  ${parseFloat(tier.price).toFixed(2)}
-                  <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'} font-normal`}>/month</span>
-                </p>
-                <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'} mb-4`}>
-                  {tier.description}
-                </p>
-                <div className="flex items-center justify-center space-x-2 text-emerald-500 text-sm">
-                  <CheckCircle className="h-4 w-4" />
-                  <span>Ready</span>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
 
           {/* Customer Link Generation */}
           <div className={`border-t ${isDark ? 'border-zinc-700' : 'border-gray-200'} pt-8`}>
@@ -202,14 +204,13 @@ const OnboardingSuccess: React.FC = () => {
                   <p className={`${isDark ? 'text-gray-400' : 'text-gray-600'} mb-6`}>
                     Generate a link for customers to join your wine club
                   </p>
-                  <Button 
+                  <button
                     onClick={generateCustomerLink}
-                    variant="outline"
-                    className="px-6 py-3"
+                    className={`px-6 py-3 border ${isDark ? 'border-zinc-600 text-gray-300 hover:border-[#B03040] hover:text-[#B03040]' : 'border-gray-300 text-gray-700 hover:border-[#800020] hover:text-[#800020]'} rounded-lg transition-all duration-200 font-medium inline-flex items-center`}
                   >
                     <ExternalLink className="w-4 h-4 mr-2" />
                     Generate Link
-                  </Button>
+                  </button>
                 </div>
               ) : (
                 <div className="space-y-4">
@@ -227,24 +228,25 @@ const OnboardingSuccess: React.FC = () => {
                         readOnly
                         className={`flex-1 px-3 py-2 border rounded-lg text-xs font-mono ${isDark ? 'bg-zinc-800 border-zinc-700 text-white' : 'bg-gray-50 border-gray-300 text-gray-700'}`}
                       />
-                      <Button
+                      <button
                         onClick={() => copyToClipboard(customerLinkGenerated)}
-                        variant="secondary"
-                        size="sm"
+                        className={`px-4 py-2 ${isDark ? 'bg-zinc-700 text-gray-300 hover:bg-zinc-600' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'} rounded-lg transition-all duration-200 inline-flex items-center text-sm font-medium`}
                       >
                         <Copy className="w-4 h-4 mr-1" />
                         {copySuccess ? 'Copied!' : 'Copy'}
-                      </Button>
+                      </button>
                     </div>
                   </div>
                 </div>
               )}
             </div>
           </div>
-        </Card>
+          </Card>
+        </div>
 
-        {/* Account Status */}
-        <Card className={`p-8 mb-12 ${isDark ? 'bg-zinc-900/30 border-zinc-800/50' : 'bg-white border-gray-200'} rounded-xl`}>
+        {/* Account Status Section */}
+        <div className="mb-20">
+          <Card className={`p-8 ${isDark ? 'bg-zinc-900/30 border-zinc-800/50' : 'bg-white border-gray-200'} rounded-xl shadow-sm`}>
           <div className="flex items-center mb-6">
             <Settings className="h-6 w-6 text-gray-600 mr-3" />
             <h3 className={`text-xl font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
@@ -287,107 +289,102 @@ const OnboardingSuccess: React.FC = () => {
               </div>
             </div>
           </div>
-        </Card>
+          </Card>
+        </div>
 
         {/* Next Steps */}
-        <Card className={`p-8 mb-12 ${isDark ? 'bg-zinc-900/30 border-zinc-800/50' : 'bg-white border-gray-200'} rounded-xl`}>
+        <div className="mb-16">
+          <Card className={`p-8 ${isDark ? 'bg-zinc-900/30 border-zinc-800/50' : 'bg-white border-gray-200'} rounded-xl shadow-sm`}>
           <div className="text-center mb-8">
             <h3 className={`text-xl font-medium ${isDark ? 'text-white' : 'text-gray-900'} mb-3`}>Next Steps</h3>
             <p className={`${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Complete your setup to start accepting members</p>
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="text-center p-4">
-              <div className="w-12 h-12 bg-gray-600 rounded-lg flex items-center justify-center mx-auto mb-4">
-                <Settings className="h-6 w-6 text-white" />
+            <div className={`text-center p-6 rounded-lg transition-transform hover:scale-105 duration-200 ${isDark ? 'bg-zinc-800/30' : 'bg-gray-50'}`}>
+              <div className="w-14 h-14 bg-gray-600 rounded-lg flex items-center justify-center mx-auto mb-4">
+                <Settings className="h-7 w-7 text-white" />
               </div>
-              <h4 className={`text-lg font-medium ${isDark ? 'text-white' : 'text-gray-900'} mb-2`}>Configure Inventory</h4>
-              <p className={`${isDark ? 'text-gray-400' : 'text-gray-600'} text-sm mb-4`}>
+              <h4 className={`text-lg font-medium ${isDark ? 'text-white' : 'text-gray-900'} mb-3`}>Configure Inventory</h4>
+              <p className={`${isDark ? 'text-gray-400' : 'text-gray-600'} text-sm mb-5`}>
                 Upload your wine catalog and set pricing
               </p>
-              <Button 
+              <button
                 onClick={() => navigate('/business/dashboard')}
-                variant="outline" 
-                size="sm"
-                className="w-full"
+                className={`w-full py-2.5 px-4 border ${isDark ? 'border-zinc-600 text-gray-300 hover:border-[#B03040] hover:text-[#B03040]' : 'border-gray-300 text-gray-700 hover:border-[#800020] hover:text-[#800020]'} rounded-lg transition-all duration-200 font-medium`}
               >
                 Set up inventory
-              </Button>
+              </button>
             </div>
 
-            <div className="text-center p-4">
-              <div className="w-12 h-12 bg-gray-600 rounded-lg flex items-center justify-center mx-auto mb-4">
-                <Users className="h-6 w-6 text-white" />
+            <div className={`text-center p-6 rounded-lg transition-transform hover:scale-105 duration-200 ${isDark ? 'bg-zinc-800/30' : 'bg-gray-50'}`}>
+              <div className="w-14 h-14 bg-gray-600 rounded-lg flex items-center justify-center mx-auto mb-4">
+                <Users className="h-7 w-7 text-white" />
               </div>
-              <h4 className={`text-lg font-medium ${isDark ? 'text-white' : 'text-gray-900'} mb-2`}>Share Your Club</h4>
-              <p className={`${isDark ? 'text-gray-400' : 'text-gray-600'} text-sm mb-4`}>
+              <h4 className={`text-lg font-medium ${isDark ? 'text-white' : 'text-gray-900'} mb-3`}>Share Your Club</h4>
+              <p className={`${isDark ? 'text-gray-400' : 'text-gray-600'} text-sm mb-5`}>
                 Promote your membership page to customers
               </p>
-              <Button 
+              <button
                 onClick={customerLinkGenerated ? () => copyToClipboard(customerLinkGenerated) : generateCustomerLink}
-                variant="outline" 
-                size="sm"
-                className="w-full"
+                className={`w-full py-2.5 px-4 border ${isDark ? 'border-zinc-600 text-gray-300 hover:border-[#B03040] hover:text-[#B03040]' : 'border-gray-300 text-gray-700 hover:border-[#800020] hover:text-[#800020]'} rounded-lg transition-all duration-200 font-medium`}
               >
                 {customerLinkGenerated ? 'Copy Link' : 'Get Link'}
-              </Button>
+              </button>
             </div>
 
-            <div className="text-center p-4">
-              <div className="w-12 h-12 bg-gray-600 rounded-lg flex items-center justify-center mx-auto mb-4">
-                <BarChart3 className="h-6 w-6 text-white" />
+            <div className={`text-center p-6 rounded-lg transition-transform hover:scale-105 duration-200 ${isDark ? 'bg-zinc-800/30' : 'bg-gray-50'}`}>
+              <div className="w-14 h-14 bg-gray-600 rounded-lg flex items-center justify-center mx-auto mb-4">
+                <BarChart3 className="h-7 w-7 text-white" />
               </div>
-              <h4 className={`text-lg font-medium ${isDark ? 'text-white' : 'text-gray-900'} mb-2`}>Monitor Analytics</h4>
-              <p className={`${isDark ? 'text-gray-400' : 'text-gray-600'} text-sm mb-4`}>
+              <h4 className={`text-lg font-medium ${isDark ? 'text-white' : 'text-gray-900'} mb-3`}>Monitor Analytics</h4>
+              <p className={`${isDark ? 'text-gray-400' : 'text-gray-600'} text-sm mb-5`}>
                 Track memberships and revenue
               </p>
-              <Button 
+              <button
                 onClick={() => navigate('/business/dashboard')}
-                variant="outline" 
-                size="sm"
-                className="w-full"
+                className={`w-full py-2.5 px-4 border ${isDark ? 'border-zinc-600 text-gray-300 hover:border-[#B03040] hover:text-[#B03040]' : 'border-gray-300 text-gray-700 hover:border-[#800020] hover:text-[#800020]'} rounded-lg transition-all duration-200 font-medium`}
               >
                 View dashboard
-              </Button>
+              </button>
             </div>
           </div>
-        </Card>
-
-        {/* Main CTA */}
-        <div className="text-center space-y-6">
-          <Card className={`p-8 ${isDark ? 'bg-zinc-900/30 border-zinc-800/50' : 'bg-white border-gray-200'} rounded-xl`}>
-            <h3 className={`text-xl font-medium ${isDark ? 'text-white' : 'text-gray-900'} mb-6`}>
-              Ready to Get Started?
-            </h3>
-            <Button
-              onClick={() => navigate('/business/dashboard')}
-              className="bg-[#800020] hover:bg-[#600018] px-8 py-3 text-white font-medium"
-            >
-              <ArrowRight className="w-4 h-4 mr-2" />
-              Go to Dashboard
-            </Button>
           </Card>
-          
-          <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-            You can log in with your admin credentials at any time
-          </p>
         </div>
 
-        {/* Support */}
-        <div className="text-center mt-12">
-          <Card className={`inline-block p-6 ${isDark ? 'bg-blue-900/20 border-blue-800/30' : 'bg-blue-50 border-blue-200'} border rounded-lg`}>
-            <h3 className={`text-lg font-medium ${isDark ? 'text-blue-300' : 'text-blue-900'} mb-2`}>
-              Need Help?
-            </h3>
-            <p className={`${isDark ? 'text-blue-400' : 'text-blue-700'} mb-4`}>
-              Our support team is here to help
+        {/* Ready to Get Started Section */}
+        <div className="mb-16">
+          <div className="text-center">
+            <Card className={`p-8 ${isDark ? 'bg-zinc-900/30 border-zinc-800/50' : 'bg-white border-gray-200'} rounded-xl shadow-sm`}>
+              <h3 className={`text-xl font-semibold ${isDark ? 'text-white' : 'text-gray-900'} mb-6`}>
+                Ready to Get Started?
+              </h3>
+              <button
+                onClick={() => navigate('/business/dashboard')}
+                className={`${isDark ? 'bg-[#B03040] hover:bg-[#903035]' : 'bg-[#800020] hover:bg-[#600018]'} text-white px-8 py-3 rounded-lg text-lg font-medium transition-all duration-200 transform hover:scale-105 inline-flex items-center shadow-lg`}
+              >
+                <ArrowRight className="w-5 h-5 mr-2" />
+                Go to Dashboard
+              </button>
+            </Card>
+            
+            <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'} mt-6`}>
+              You can log in with your admin credentials at any time
             </p>
-            <p className="text-sm">
-              <a href="mailto:support@clubcuvee.com" className={`${isDark ? 'text-blue-400' : 'text-blue-600'} hover:underline`}>
-                support@clubcuvee.com
-              </a>
-            </p>
-          </Card>
+          </div>
+        </div>
+
+        {/* Support Section - No box, just text */}
+        <div className="text-center py-8">
+          <h3 className={`text-lg font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'} mb-2`}>
+            Need Help?
+          </h3>
+          <p className={`${isDark ? 'text-gray-400' : 'text-gray-600'} mb-2`}>
+            Our support team is here to help
+          </p>
+          <a href="mailto:support@clubcuvee.com" className={`${isDark ? 'text-[#B03040]' : 'text-[#800020]'} hover:underline`}>
+            support@clubcuvee.com
+          </a>
         </div>
 
         <ThemeToggle position="fixed" />
