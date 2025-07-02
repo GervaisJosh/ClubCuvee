@@ -27,6 +27,7 @@ const RestaurantOnboarding = React.lazy(() => import('./pages/onboarding/token')
 const OnboardToken = React.lazy(() => import('./pages/onboarding/OnboardToken'));
 const BusinessSetup = React.lazy(() => import('./pages/onboarding/BusinessSetup'));
 const OnboardingSuccess = React.lazy(() => import('./pages/onboarding/OnboardingSuccess'));
+const CustomerJoinPage = React.lazy(() => import('./pages/join/[slug]'));
 
 // Private customer dashboard
 const ScopedCustomerDashboard = React.lazy(() => import('./pages/customer/ScopedCustomerDashboard'));
@@ -67,9 +68,26 @@ const App = () => {
               <Route path="/about" element={<About />} />
               <Route path="/pricing" element={<Pricing />} />
               
-              {/* Business invitation redirect */}
+              {/* Customer join page - business slug based */}
               <Route 
-                path="/join/:token" 
+                path="/join/:slug" 
+                element={
+                  <React.Suspense fallback={
+                    <div className="min-h-screen flex items-center justify-center bg-[#fdfaf7] px-6 py-10">
+                      <div className="text-center">
+                        <div className="h-12 w-12 animate-spin border-4 border-[#800020] border-t-transparent rounded-full mx-auto mb-6"></div>
+                        <p className="text-gray-600 text-lg">Loading wine club...</p>
+                      </div>
+                    </div>
+                  }>
+                    <CustomerJoinPage />
+                  </React.Suspense>
+                }
+              />
+              
+              {/* Business invitation redirect - keeping for backward compatibility */}
+              <Route 
+                path="/onboard/:token" 
                 element={
                   <React.Suspense fallback={
                     <div className="min-h-screen flex items-center justify-center bg-[#fdfaf7] px-6 py-10">

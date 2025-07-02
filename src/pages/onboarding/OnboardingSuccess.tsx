@@ -10,6 +10,7 @@ interface BusinessData {
   business: {
     id: string;
     name: string;
+    slug?: string;
     website?: string;
     admin_email: string;
     logo_url?: string;
@@ -44,6 +45,14 @@ const OnboardingSuccess: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [customerLinkGenerated, setCustomerLinkGenerated] = useState<string | null>(null);
   const [copySuccess, setCopySuccess] = useState(false);
+  
+  // Generate URL-friendly slug from business name
+  const generateBusinessSlug = (businessName: string): string => {
+    return businessName
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/(^-|-$)/g, '');
+  };
 
   // Fetch business data on component mount
   useEffect(() => {
@@ -80,24 +89,23 @@ const OnboardingSuccess: React.FC = () => {
   }, [token]);
 
   // Generate customer invitation link
-  const generateCustomerLink = async () => {
+  const generateCustomerLink = () => {
     if (!businessData) return;
 
     try {
-      const response = await fetch('/api/generate-customer-invitation', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ businessId: businessData.business.id }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to generate customer link');
-      }
-
-      const data = await response.json();
-      setCustomerLinkGenerated(data.customerUrl);
+      // Use the slug from the database if available, otherwise generate one
+      const businessSlug = businessData.business.slug || generateBusinessSlug(businessData.business.name);
+      
+      // Get base URL from environment or use default
+      const baseUrl = window.location.origin.includes('localhost') 
+        ? 'http://localhost:5173' 
+        : 'https://club-cuvee.com';
+      
+      // Generate the clean customer link
+      const customerLink = `${baseUrl}/join/${businessSlug}`;
+      
+      setCustomerLinkGenerated(customerLink);
+      
     } catch (err) {
       console.error('Error generating customer link:', err);
     }
@@ -322,8 +330,12 @@ const OnboardingSuccess: React.FC = () => {
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className={`text-center p-6 rounded-lg transition-transform hover:scale-105 duration-200 ${isDark ? 'bg-zinc-800/30' : 'bg-gray-50'}`}>
-              <div className="w-14 h-14 bg-gray-600 rounded-lg flex items-center justify-center mx-auto mb-4">
-                <Settings className="h-7 w-7 text-white" />
+              <div className="w-14 h-14 bg-gray-600 rounded-lg flex items-center justify-center mx-auto mb-4 overflow-hidden">
+                <img 
+                  src="/icons/configure-icon.svg" 
+                  alt="Configure"
+                  className="w-8 h-8 brightness-0 invert"
+                />
               </div>
               <h4 className={`text-lg font-medium ${isDark ? 'text-white' : 'text-gray-900'} mb-3`}>Configure Inventory</h4>
               <p className={`${isDark ? 'text-gray-400' : 'text-gray-600'} text-sm mb-5`}>
@@ -338,8 +350,12 @@ const OnboardingSuccess: React.FC = () => {
             </div>
 
             <div className={`text-center p-6 rounded-lg transition-transform hover:scale-105 duration-200 ${isDark ? 'bg-zinc-800/30' : 'bg-gray-50'}`}>
-              <div className="w-14 h-14 bg-gray-600 rounded-lg flex items-center justify-center mx-auto mb-4">
-                <Users className="h-7 w-7 text-white" />
+              <div className="w-14 h-14 bg-gray-600 rounded-lg flex items-center justify-center mx-auto mb-4 overflow-hidden">
+                <img 
+                  src="/icons/share-club-icon.svg" 
+                  alt="Share"
+                  className="w-8 h-8 brightness-0 invert"
+                />
               </div>
               <h4 className={`text-lg font-medium ${isDark ? 'text-white' : 'text-gray-900'} mb-3`}>Share Your Club</h4>
               <p className={`${isDark ? 'text-gray-400' : 'text-gray-600'} text-sm mb-5`}>
@@ -354,8 +370,12 @@ const OnboardingSuccess: React.FC = () => {
             </div>
 
             <div className={`text-center p-6 rounded-lg transition-transform hover:scale-105 duration-200 ${isDark ? 'bg-zinc-800/30' : 'bg-gray-50'}`}>
-              <div className="w-14 h-14 bg-gray-600 rounded-lg flex items-center justify-center mx-auto mb-4">
-                <BarChart3 className="h-7 w-7 text-white" />
+              <div className="w-14 h-14 bg-gray-600 rounded-lg flex items-center justify-center mx-auto mb-4 overflow-hidden">
+                <img 
+                  src="/icons/analytics-icon.svg" 
+                  alt="Analytics"
+                  className="w-8 h-8 brightness-0 invert"
+                />
               </div>
               <h4 className={`text-lg font-medium ${isDark ? 'text-white' : 'text-gray-900'} mb-3`}>Monitor Analytics</h4>
               <p className={`${isDark ? 'text-gray-400' : 'text-gray-600'} text-sm mb-5`}>

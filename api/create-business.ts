@@ -237,13 +237,24 @@ export default withErrorHandler(async (req: VercelRequest, res: VercelResponse):
       throw new APIError(400, authError?.message || 'Failed to create user account', 'AUTH_ERROR');
     }
 
-    // 6. Create the business record
+    // 6. Create the business record with slug
     const businessId = randomUUID();
+    
+    // Generate URL-friendly slug from business name
+    const baseSlug = businessData.businessName.trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/(^-|-$)/g, '');
+    
+    // Make slug unique by adding a random suffix if needed
+    const businessSlug = `${baseSlug}-${businessId.substring(0, 4)}`;
+    
     const { error: businessError } = await supabaseAdmin
       .from('businesses')
       .insert({
         id: businessId,
         name: businessData.businessName.trim(),
+        slug: businessSlug,
         owner_id: authUser.user.id,
         email: businessData.email.trim(),
         phone: businessData.phone?.trim() || null,
@@ -424,6 +435,7 @@ export default withErrorHandler(async (req: VercelRequest, res: VercelResponse):
       success: true,
       data: {
         businessId: businessId,
+        businessSlug: businessSlug,
         adminUserId: authUser.user.id,
         businessName: businessData.businessName,
         customerTiersCreated: tierInserts.length,
