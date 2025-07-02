@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import Button from '../../components/Button';
 import Card from '../../components/Card';
 import ThemeToggle from '../../components/ThemeToggle';
-import { CheckCircle, ArrowRight, Settings, Users, BarChart3, Copy, ExternalLink } from 'lucide-react';
+import { CheckCircle, ArrowRight, Settings, Users, BarChart3, Copy, ExternalLink, AlertCircle } from 'lucide-react';
 import { useTheme } from '../../contexts/ThemeContext';
 
 interface BusinessData {
@@ -21,6 +21,7 @@ interface BusinessData {
     name: string;
     price: string;
     description: string;
+    benefits?: string[];
     stripe_product_id: string;
     stripe_price_id: string;
     created_at: string;
@@ -185,9 +186,18 @@ const OnboardingSuccess: React.FC = () => {
                   <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'} mb-4`}>
                     {tier.description}
                   </p>
-                  <div className="flex items-center justify-center space-x-2 text-green-500 text-sm">
-                    <CheckCircle className="h-4 w-4" />
-                    <span>Ready</span>
+                  <div className="flex items-center justify-center space-x-2 text-sm">
+                    {tier.stripe_product_id && tier.stripe_price_id ? (
+                      <>
+                        <CheckCircle className="h-4 w-4 text-green-500" />
+                        <span className="text-green-500">Ready</span>
+                      </>
+                    ) : (
+                      <>
+                        <AlertCircle className="h-4 w-4 text-yellow-500" />
+                        <span className={`${isDark ? 'text-yellow-400' : 'text-yellow-600'}`}>Stripe Pending</span>
+                      </>
+                    )}
                   </div>
                 </div>
               ))}
@@ -273,9 +283,19 @@ const OnboardingSuccess: React.FC = () => {
             </div>
             <div className="space-y-4">
               <div className="flex items-center">
-                <CheckCircle className="h-4 w-4 text-emerald-500 mr-3" />
-                <span className={`text-sm ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>Stripe Integration</span>
-                <span className="ml-auto text-sm text-emerald-500">Active</span>
+                {businessData.membershipTiers.every(tier => tier.stripe_product_id && tier.stripe_price_id) ? (
+                  <>
+                    <CheckCircle className="h-4 w-4 text-emerald-500 mr-3" />
+                    <span className={`text-sm ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>Stripe Integration</span>
+                    <span className="ml-auto text-sm text-emerald-500">Active</span>
+                  </>
+                ) : (
+                  <>
+                    <AlertCircle className="h-4 w-4 text-yellow-500 mr-3" />
+                    <span className={`text-sm ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>Stripe Integration</span>
+                    <span className={`ml-auto text-sm ${isDark ? 'text-yellow-400' : 'text-yellow-600'}`}>Partial</span>
+                  </>
+                )}
               </div>
               <div className="flex items-center">
                 <CheckCircle className="h-4 w-4 text-emerald-500 mr-3" />

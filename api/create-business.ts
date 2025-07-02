@@ -291,13 +291,16 @@ export default withErrorHandler(async (req: VercelRequest, res: VercelResponse):
     }
 
     // 8. Create membership tiers for this business
-    const tierInserts = businessData.customerTiers.map((tier) => ({
+    const tierInserts = businessData.customerTiers.map((tier, index) => ({
       business_id: businessId,
       name: tier.name.trim(),
       description: tier.description.trim(),
       monthly_price_cents: Math.round(tier.monthlyPrice * 100),
+      benefits: tier.benefits.filter(b => b.trim()).map(b => b.trim()), // Store benefits as JSONB array
       is_active: true
     }));
+
+    console.log('📝 Creating membership tiers:', tierInserts);
 
     const { data: createdTiers, error: tiersError } = await supabaseAdmin
       .from('membership_tiers')
@@ -305,17 +308,23 @@ export default withErrorHandler(async (req: VercelRequest, res: VercelResponse):
       .select();
 
     if (tiersError || !createdTiers) {
-      console.error('Error creating membership tiers:', tiersError);
+      console.error('❌ Error creating membership tiers:', tiersError);
       // Clean up created records if tier creation fails
       await supabaseAdmin.auth.admin.deleteUser(authUser.user.id);
       await supabaseAdmin.from('businesses').delete().eq('id', businessId);
       throw new APIError(500, 'Failed to create membership tiers', 'DATABASE_ERROR');
     }
+    
+    console.log('✅ Created tiers:', createdTiers);
 
     // 9. Create Stripe products and prices for each tier
     const stripeProductUpdates: StripeProductUpdate[] = [];
+    console.log('🔄 Creating Stripe products for', createdTiers.length, 'tiers');
+    
     for (const tier of createdTiers) {
       try {
+        console.log(`📦 Creating Stripe product for tier: ${tier.name} (ID: ${tier.id})`);
+        
         // Create branded Stripe product
         const product = await stripe.products.create({
           name: `${businessData.businessName.trim()} Wine Club - ${tier.name}`,
@@ -327,6 +336,8 @@ export default withErrorHandler(async (req: VercelRequest, res: VercelResponse):
             business_name: businessData.businessName.trim()
           }
         });
+        
+        console.log(`✅ Created Stripe product: ${product.id}`);
 
         // Create recurring monthly price
         const price = await stripe.prices.create({
@@ -342,6 +353,8 @@ export default withErrorHandler(async (req: VercelRequest, res: VercelResponse):
             business_name: businessData.businessName.trim()
           }
         });
+        
+        console.log(`✅ Created Stripe price: ${price.id}`);
 
         // Queue update for Supabase record
         stripeProductUpdates.push({
@@ -351,24 +364,39 @@ export default withErrorHandler(async (req: VercelRequest, res: VercelResponse):
         });
 
       } catch (stripeError) {
-        console.error(`Stripe product creation failed for tier ${tier.name}:`, stripeError);
+        console.error(`❌ Stripe product creation failed for tier ${tier.name}:`, stripeError);
         // Continue with business creation - allow manual Stripe setup later
         // Don't throw error to avoid blocking the entire onboarding process
       }
     }
 
     // 10. Update Supabase records with Stripe IDs
+    console.log('🔄 Updating', stripeProductUpdates.length, 'tiers with Stripe IDs');
+    
     for (const update of stripeProductUpdates) {
       try {
-        await supabaseAdmin
+        console.log(`📝 Updating tier ${update.tierId} with Stripe IDs:`, {
+          stripe_product_id: update.stripeProductId,
+          stripe_price_id: update.stripePriceId
+        });
+        
+        const { data: updateData, error: updateError } = await supabaseAdmin
           .from('membership_tiers')
           .update({
             stripe_product_id: update.stripeProductId,
             stripe_price_id: update.stripePriceId
           })
-          .eq('id', update.tierId);
+          .eq('id', update.tierId)
+          .select();
+          
+        if (updateError) {
+          console.error(`❌ Failed to update tier ${update.tierId} with Stripe IDs:`, updateError);
+          console.error('Update error details:', updateError);
+        } else {
+          console.log(`✅ Successfully updated tier ${update.tierId}:`, updateData);
+        }
       } catch (updateError) {
-        console.error(`Failed to update tier ${update.tierId} with Stripe IDs:`, updateError);
+        console.error(`❌ Exception updating tier ${update.tierId}:`, updateError);
         // Log but continue - the tier exists, just without Stripe integration
       }
     }
