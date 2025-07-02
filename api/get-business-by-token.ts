@@ -246,6 +246,7 @@ const handler = async (req: VercelRequest, res: VercelResponse): Promise<void> =
       business: {
         id: business.id,
         name: business.name,
+        slug: business.slug, // Include the slug from the database
         website: business.website,
         admin_email: business.email,
         logo_url: null, // TODO: Add logo support later

@@ -10,7 +10,7 @@ interface BusinessData {
   business: {
     id: string;
     name: string;
-    slug?: string;
+    slug: string; // Required - businesses always have slugs
     website?: string;
     admin_email: string;
     logo_url?: string;
@@ -45,6 +45,7 @@ const OnboardingSuccess: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [customerLinkGenerated, setCustomerLinkGenerated] = useState<string | null>(null);
   const [copySuccess, setCopySuccess] = useState(false);
+  const [linkGenerationError, setLinkGenerationError] = useState<string | null>(null);
 
   // Fetch business data on component mount
   useEffect(() => {
@@ -82,14 +83,32 @@ const OnboardingSuccess: React.FC = () => {
 
   // Generate customer invitation link
   const generateCustomerLink = () => {
-    if (!businessData) return;
+    console.log('Generating link, businessData:', businessData);
+    
+    // Clear any previous link generation errors
+    setLinkGenerationError(null);
+    
+    if (!businessData) {
+      console.error('No business data available');
+      setLinkGenerationError('Business data not loaded. Please refresh the page.');
+      return;
+    }
+    
+    // Log the specific business data
+    console.log('Business structure:', {
+      business: businessData.business,
+      slug: businessData.business?.slug,
+      id: businessData.business?.id,
+      name: businessData.business?.name
+    });
 
     try {
       // Use the ACTUAL slug from the database, not a generated one
-      const businessSlug = businessData.business.slug;
+      const businessSlug = businessData.business?.slug;
       
       if (!businessSlug) {
-        setError('Business slug not found. Please contact support.');
+        console.error('Business slug not found in data:', businessData);
+        setLinkGenerationError('Business slug not found. Please contact support.');
         return;
       }
 
@@ -100,11 +119,13 @@ const OnboardingSuccess: React.FC = () => {
 
       // Generate the clean customer link with the FULL slug
       const customerLink = `${baseUrl}/join/${businessSlug}`;
-
+      
+      console.log('Generated customer link:', customerLink);
       setCustomerLinkGenerated(customerLink);
+      setLinkGenerationError(null); // Clear any errors on success
     } catch (err) {
       console.error('Error generating customer link:', err);
-      setError('Failed to generate customer link');
+      setLinkGenerationError('Failed to generate customer link. Please try again.');
     }
   };
 
@@ -219,6 +240,12 @@ const OnboardingSuccess: React.FC = () => {
                   <p className={`${isDark ? 'text-gray-400' : 'text-gray-600'} mb-6`}>
                     Generate a link for customers to join your wine club
                   </p>
+                  {linkGenerationError && (
+                    <div className={`p-3 ${isDark ? 'bg-red-900/20 border-red-800/30 text-red-300' : 'bg-red-50 border-red-200 text-red-700'} border rounded-lg text-sm mb-4`}>
+                      <AlertCircle className="h-4 w-4 inline mr-2" />
+                      {linkGenerationError}
+                    </div>
+                  )}
                   <button
                     onClick={generateCustomerLink}
                     className={`px-6 py-3 border ${isDark ? 'border-zinc-600 text-gray-300 hover:border-[#B03040] hover:text-[#B03040]' : 'border-gray-300 text-gray-700 hover:border-[#800020] hover:text-[#800020]'} rounded-lg transition-all duration-200 font-medium inline-flex items-center`}
