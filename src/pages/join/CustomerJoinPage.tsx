@@ -14,6 +14,8 @@ interface Business {
   description?: string;
   logo_url?: string;
   website?: string;
+  city?: string;
+  state?: string;
 }
 
 interface MembershipTier {
@@ -59,10 +61,10 @@ const CustomerJoinPage: React.FC = () => {
       setLoading(true);
       setError(null);
       
-      // Fetch business by slug
+      // Fetch business by slug WITHOUT joining users table
       const { data: businessData, error: businessError } = await supabase
         .from('businesses')
-        .select('*')
+        .select('id, name, slug, website, description, city, state')  // Only select business fields
         .eq('slug', slug)
         .eq('status', 'active')
         .single();
@@ -211,6 +213,11 @@ const CustomerJoinPage: React.FC = () => {
           <p className={`text-xl ${isDark ? 'text-gray-300' : 'text-gray-600'} max-w-2xl mx-auto`}>
             {business.description || 'Join our exclusive wine club and discover exceptional wines curated just for you.'}
           </p>
+          {(business.city || business.state) && (
+            <p className={`text-lg ${isDark ? 'text-gray-400' : 'text-gray-500'} mt-2`}>
+              {[business.city, business.state].filter(Boolean).join(', ')}
+            </p>
+          )}
         </div>
 
         {/* Membership Tiers */}
