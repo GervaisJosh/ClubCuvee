@@ -42,12 +42,22 @@ const CustomerJoinPage: React.FC = () => {
   useEffect(() => {
     if (slug) {
       fetchBusinessData();
+    } else {
+      setError('Invalid wine club link');
+      setLoading(false);
     }
   }, [slug]);
 
   const fetchBusinessData = async () => {
+    if (!slug) {
+      setError('Invalid wine club link');
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
+      setError(null);
       
       // Fetch business by slug
       const { data: businessData, error: businessError } = await supabase
@@ -57,7 +67,18 @@ const CustomerJoinPage: React.FC = () => {
         .eq('status', 'active')
         .single();
 
-      if (businessError || !businessData) {
+      if (businessError) {
+        console.error('Error fetching business:', businessError);
+        if (businessError.code === 'PGRST116') {
+          setError('Wine club not found');
+        } else {
+          setError('Unable to load wine club information');
+        }
+        setLoading(false);
+        return;
+      }
+
+      if (!businessData) {
         setError('Wine club not found');
         setLoading(false);
         return;
@@ -105,6 +126,7 @@ const CustomerJoinPage: React.FC = () => {
         },
         body: JSON.stringify({
           businessId: business?.id,
+          businessSlug: business?.slug,
           tierId: tier.id,
           priceId: tier.stripe_price_id,
         }),
@@ -128,10 +150,23 @@ const CustomerJoinPage: React.FC = () => {
 
   if (loading) {
     return (
-      <div className={`min-h-screen flex items-center justify-center ${isDark ? 'bg-black' : 'bg-gray-50'}`}>
-        <div className="text-center">
-          <Loader2 className="h-12 w-12 animate-spin text-[#800020] mx-auto mb-4" />
-          <p className={`${isDark ? 'text-gray-300' : 'text-gray-700'}`}>Loading wine club...</p>
+      <div className={`min-h-screen ${isDark ? 'bg-black' : 'bg-gray-50'}`}>
+        <div className="max-w-6xl mx-auto px-6 py-12">
+          <div className="text-center mb-12">
+            <div className="h-20 w-20 bg-gray-200 dark:bg-gray-700 rounded-full mx-auto mb-6 animate-pulse"></div>
+            <div className="h-8 w-64 bg-gray-200 dark:bg-gray-700 rounded mx-auto mb-3 animate-pulse"></div>
+            <div className="h-6 w-96 bg-gray-200 dark:bg-gray-700 rounded mx-auto animate-pulse"></div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="bg-white dark:bg-zinc-900 p-6 rounded-xl shadow-sm animate-pulse">
+                <div className="h-6 w-32 bg-gray-200 dark:bg-gray-700 rounded mx-auto mb-4"></div>
+                <div className="h-10 w-24 bg-gray-200 dark:bg-gray-700 rounded mx-auto mb-4"></div>
+                <div className="h-4 w-full bg-gray-200 dark:bg-gray-700 rounded mb-2"></div>
+                <div className="h-4 w-3/4 bg-gray-200 dark:bg-gray-700 rounded"></div>
+              </div>
+            ))}
+          </div>
         </div>
         <ThemeToggle position="fixed" />
       </div>

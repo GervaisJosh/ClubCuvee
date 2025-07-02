@@ -27,7 +27,7 @@ const RestaurantOnboarding = React.lazy(() => import('./pages/onboarding/token')
 const OnboardToken = React.lazy(() => import('./pages/onboarding/OnboardToken'));
 const BusinessSetup = React.lazy(() => import('./pages/onboarding/BusinessSetup'));
 const OnboardingSuccess = React.lazy(() => import('./pages/onboarding/OnboardingSuccess'));
-const CustomerJoinPage = React.lazy(() => import('./pages/join/[slug]'));
+const CustomerJoinPage = React.lazy(() => import('./pages/join/CustomerJoinPage'));
 
 // Private customer dashboard
 const ScopedCustomerDashboard = React.lazy(() => import('./pages/customer/ScopedCustomerDashboard'));
