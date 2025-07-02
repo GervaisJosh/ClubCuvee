@@ -45,14 +45,6 @@ const OnboardingSuccess: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [customerLinkGenerated, setCustomerLinkGenerated] = useState<string | null>(null);
   const [copySuccess, setCopySuccess] = useState(false);
-  
-  // Generate URL-friendly slug from business name
-  const generateBusinessSlug = (businessName: string): string => {
-    return businessName
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/(^-|-$)/g, '');
-  };
 
   // Fetch business data on component mount
   useEffect(() => {
@@ -93,21 +85,26 @@ const OnboardingSuccess: React.FC = () => {
     if (!businessData) return;
 
     try {
-      // Use the slug from the database if available, otherwise generate one
-      const businessSlug = businessData.business.slug || generateBusinessSlug(businessData.business.name);
+      // Use the ACTUAL slug from the database, not a generated one
+      const businessSlug = businessData.business.slug;
       
+      if (!businessSlug) {
+        setError('Business slug not found. Please contact support.');
+        return;
+      }
+
       // Get base URL from environment or use default
-      const baseUrl = window.location.origin.includes('localhost') 
-        ? 'http://localhost:5173' 
+      const baseUrl = window.location.origin.includes('localhost')
+        ? 'http://localhost:5173'
         : 'https://club-cuvee.com';
-      
-      // Generate the clean customer link
+
+      // Generate the clean customer link with the FULL slug
       const customerLink = `${baseUrl}/join/${businessSlug}`;
-      
+
       setCustomerLinkGenerated(customerLink);
-      
     } catch (err) {
       console.error('Error generating customer link:', err);
+      setError('Failed to generate customer link');
     }
   };
 

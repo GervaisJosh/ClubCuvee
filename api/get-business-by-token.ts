@@ -178,7 +178,7 @@ const handler = async (req: VercelRequest, res: VercelResponse): Promise<void> =
     console.log('🔍 Querying businesses table for business_id:', invitation.business_id);
     const { data: business, error: businessError } = await supabaseAdmin
       .from('businesses')
-      .select('id, name, website, email, status, created_at, updated_at, pricing_tier_id')
+      .select('id, name, slug, website, email, status, created_at, updated_at, pricing_tier_id')
       .eq('id', invitation.business_id)
       .single();
 
