@@ -22,7 +22,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const { businessId, businessSlug, tierId, priceId } = req.body;
+    const { businessId, businessSlug, tierId, priceId, customerEmail } = req.body;
 
     if (!businessId || !tierId || !priceId) {
       return res.status(400).json({ 
@@ -31,7 +31,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // Create Stripe checkout session
-    const session = await stripe.checkout.sessions.create({
+    const sessionConfig: any = {
       payment_method_types: ['card'],
       mode: 'subscription',
       line_items: [
@@ -47,7 +47,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       success_url: `${process.env.NEXT_PUBLIC_APP_URL || 'https://club-cuvee.com'}/customer/welcome?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${process.env.NEXT_PUBLIC_APP_URL || 'https://club-cuvee.com'}/join/${businessSlug || businessId}`,
       allow_promotion_codes: true,
-    });
+    };
+
+    // Pre-fill customer email if provided
+    if (customerEmail) {
+      sessionConfig.customer_email = customerEmail;
+    }
+
+    const session = await stripe.checkout.sessions.create(sessionConfig);
 
     return res.status(200).json({ 
       success: true,
