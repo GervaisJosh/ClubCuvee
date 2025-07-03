@@ -52,13 +52,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
 
+    // Get metadata from the session
+    const metadata = session.metadata || {};
+
     return res.status(200).json({ 
       success: true,
       stripeCustomerId: customer.id,
       subscriptionId: subscription.id,
       subscriptionStatus: subscription.status,
       currentPeriodEnd: subscription.current_period_end,
-      email: customer.email,
+      email: customer.email || session.customer_email,
+      metadata: {
+        businessId: metadata.businessId,
+        tierId: metadata.tierId,
+        customerName: metadata.customerName,
+        customerPhone: metadata.customerPhone,
+        customerAddress: metadata.customerAddress,
+        customerCity: metadata.customerCity,
+        customerState: metadata.customerState,
+        customerZipCode: metadata.customerZipCode,
+        customerWinePreferences: metadata.customerWinePreferences,
+        customerSpecialRequests: metadata.customerSpecialRequests,
+      }
     });
   } catch (error) {
     console.error('Error verifying Stripe session:', error);

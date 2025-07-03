@@ -6,23 +6,6 @@ import Card from '../../components/Card';
 import { CheckCircle, AlertCircle, Wine, Calendar, Heart, ArrowRight, Loader2 } from 'lucide-react';
 import { useTheme } from '../../contexts/ThemeContext';
 
-interface PendingCustomerData {
-  fullName: string;
-  email: string;
-  phone: string;
-  address: string;
-  city: string;
-  state: string;
-  zipCode: string;
-  winePreferences: string;
-  specialRequests: string;
-  businessId: string;
-  businessSlug: string;
-  tierId: string;
-  tierName: string;
-  timestamp: string;
-}
-
 interface BusinessData {
   id: string;
   name: string;
@@ -35,6 +18,23 @@ interface TierData {
   monthly_price_cents: number;
 }
 
+interface CustomerData {
+  id: string;
+  email: string;
+  full_name: string;
+  phone: string;
+  address: string;
+  city: string;
+  state: string;
+  zip_code: string;
+  wine_preferences?: string;
+  special_requests?: string;
+  business_id: string;
+  membership_tier_id: string;
+  stripe_customer_id: string;
+  stripe_subscription_id: string;
+}
+
 const CustomerWelcome: React.FC = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -43,10 +43,9 @@ const CustomerWelcome: React.FC = () => {
   
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [customerData, setCustomerData] = useState<PendingCustomerData | null>(null);
+  const [customerData, setCustomerData] = useState<CustomerData | null>(null);
   const [businessData, setBusinessData] = useState<BusinessData | null>(null);
   const [tierData, setTierData] = useState<TierData | null>(null);
-  const [customerId, setCustomerId] = useState<string | null>(null);
 
   const sessionId = searchParams.get('session_id');
 
@@ -59,18 +58,7 @@ const CustomerWelcome: React.FC = () => {
       }
 
       try {
-        // Get stored customer data from localStorage
-        const storedData = localStorage.getItem('pendingCustomerData');
-        if (!storedData) {
-          setError('Customer information not found. Please start the signup process again.');
-          setLoading(false);
-          return;
-        }
-
-        const pendingData: PendingCustomerData = JSON.parse(storedData);
-        setCustomerData(pendingData);
-
-        // Verify payment with Stripe
+        // Verify payment with Stripe and get session data
         const verifyResponse = await fetch('/api/verify-stripe-session', {
           method: 'POST',
           headers: {
@@ -80,19 +68,75 @@ const CustomerWelcome: React.FC = () => {
         });
 
         if (!verifyResponse.ok) {
-          throw new Error('Payment verification failed');
+          const errorData = await verifyResponse.json();
+          throw new Error(errorData.error || 'Payment verification failed');
         }
 
-        const { stripeCustomerId, subscriptionId } = await verifyResponse.json();
+        const sessionData = await verifyResponse.json();
+        
+        // Extract metadata
+        const {
+          stripeCustomerId,
+          subscriptionId,
+          metadata
+        } = sessionData;
+
+        // Create customer record in Supabase
+        const { data: customer, error: customerError } = await supabase
+          .from('customers')
+          .insert({
+            business_id: metadata.businessId,
+            membership_tier_id: metadata.tierId,
+            stripe_customer_id: stripeCustomerId,
+            stripe_subscription_id: subscriptionId,
+            email: sessionData.email,
+            full_name: metadata.customerName,
+            phone: metadata.customerPhone,
+            address: metadata.customerAddress,
+            city: metadata.customerCity,
+            state: metadata.customerState,
+            zip_code: metadata.customerZipCode,
+            wine_preferences: metadata.customerWinePreferences || null,
+            special_requests: metadata.customerSpecialRequests || null,
+            status: 'active',
+          })
+          .select()
+          .single();
+
+        if (customerError) {
+          console.error('Error creating customer:', customerError);
+          
+          // Check if customer already exists
+          if (customerError.code === '23505') { // Unique constraint violation
+            // Try to fetch existing customer
+            const { data: existingCustomer } = await supabase
+              .from('customers')
+              .select('*')
+              .eq('email', sessionData.email)
+              .eq('business_id', metadata.businessId)
+              .single();
+              
+            if (existingCustomer) {
+              setCustomerData(existingCustomer);
+            } else {
+              throw new Error('Customer record already exists but could not be retrieved');
+            }
+          } else {
+            throw new Error('Failed to create customer record');
+          }
+        } else {
+          setCustomerData(customer);
+        }
 
         // Fetch business data
         const { data: business, error: businessError } = await supabase
           .from('businesses')
           .select('id, name, website')
-          .eq('id', pendingData.businessId)
+          .eq('id', metadata.businessId)
           .single();
 
         if (businessError) {
+          console.error('Error fetching business:', businessError);
           throw new Error('Failed to fetch business information');
         }
         setBusinessData(business);
@@ -101,48 +145,14 @@ const CustomerWelcome: React.FC = () => {
         const { data: tier, error: tierError } = await supabase
           .from('membership_tiers')
           .select('id, name, monthly_price_cents')
-          .eq('id', pendingData.tierId)
+          .eq('id', metadata.tierId)
           .single();
 
         if (tierError) {
+          console.error('Error fetching tier:', tierError);
           throw new Error('Failed to fetch membership tier information');
         }
         setTierData(tier);
-
-        // Create customer record in Supabase
-        const { data: customer, error: customerError } = await supabase
-          .from('customers')
-          .insert({
-            business_id: pendingData.businessId,
-            membership_tier_id: pendingData.tierId,
-            stripe_customer_id: stripeCustomerId,
-            stripe_subscription_id: subscriptionId,
-            email: pendingData.email,
-            full_name: pendingData.fullName,
-            phone: pendingData.phone,
-            address: pendingData.address,
-            city: pendingData.city,
-            state: pendingData.state,
-            zip_code: pendingData.zipCode,
-            wine_preferences: pendingData.winePreferences,
-            special_requests: pendingData.specialRequests,
-            status: 'active',
-          })
-          .select()
-          .single();
-
-        if (customerError) {
-          console.error('Error creating customer:', customerError);
-          throw new Error('Failed to create customer record');
-        }
-
-        setCustomerId(customer.id);
-
-        // Clear localStorage
-        localStorage.removeItem('pendingCustomerData');
-
-        // Create user account if needed
-        // This would be handled by your auth system
 
       } catch (err) {
         console.error('Error:', err);
@@ -200,7 +210,7 @@ const CustomerWelcome: React.FC = () => {
             Your membership has been successfully activated
           </p>
           <p className={`text-lg ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-            Get ready for an amazing wine journey, {customerData.fullName}!
+            Get ready for an amazing wine journey, {customerData.full_name}!
           </p>
         </div>
 
@@ -231,6 +241,17 @@ const CustomerWelcome: React.FC = () => {
               </p>
             </div>
           </div>
+
+          {/* Shipping Information */}
+          <div className={`mt-6 p-4 ${isDark ? 'bg-zinc-800/50 border-zinc-700' : 'bg-gray-50 border-gray-200'} border rounded-lg`}>
+            <h4 className={`text-sm font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'} mb-2`}>
+              Shipping Address
+            </h4>
+            <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+              {customerData.address}<br />
+              {customerData.city}, {customerData.state} {customerData.zip_code}
+            </p>
+          </div>
         </Card>
 
         {/* What's Next */}
@@ -249,7 +270,7 @@ const CustomerWelcome: React.FC = () => {
                   Welcome Email
                 </p>
                 <p className={`${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
-                  Check your email at {customerData.email} for your welcome message and login details
+                  Check your email at {customerData.email} for your welcome message and important information
                 </p>
               </div>
             </div>
@@ -263,7 +284,7 @@ const CustomerWelcome: React.FC = () => {
                   First Shipment
                 </p>
                 <p className={`${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
-                  Your first curated wine selection will be shipped within 3-5 business days
+                  Your first curated wine selection will be prepared and shipped within 3-5 business days
                 </p>
               </div>
             </div>
@@ -274,10 +295,10 @@ const CustomerWelcome: React.FC = () => {
               </div>
               <div>
                 <p className={`font-semibold ${isDark ? 'text-white' : 'text-gray-900'} mb-1`}>
-                  Member Dashboard
+                  Ongoing Enjoyment
                 </p>
                 <p className={`${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
-                  Access your personal dashboard to track shipments, rate wines, and update preferences
+                  Receive monthly shipments, access exclusive events, and enjoy member benefits
                 </p>
               </div>
             </div>
@@ -314,29 +335,20 @@ const CustomerWelcome: React.FC = () => {
             <div className="text-center">
               <Heart className="h-8 w-8 text-[#800020] mx-auto mb-3" />
               <h3 className={`font-semibold ${isDark ? 'text-white' : 'text-gray-900'} mb-2`}>
-                Expert Support
+                Exclusive Access
               </h3>
               <p className={`text-sm ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
-                Access to wine experts and tasting notes
+                Member-only events, tastings, and special offers
               </p>
             </div>
           </div>
         </Card>
 
         {/* Call to Action */}
-        <div className="text-center space-y-4">
-          <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'} mb-4`}>
+        <div className="text-center">
+          <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'} mb-6`}>
             A confirmation email has been sent to {customerData.email}
           </p>
-          
-          <Button
-            onClick={() => navigate(`/join/${customerData.businessSlug}`)}
-            variant="secondary"
-            className="px-8 py-3"
-          >
-            Return to {businessData.name}
-            <ArrowRight className="w-5 h-5 ml-2" />
-          </Button>
         </div>
 
         {/* Contact Support */}
@@ -345,7 +357,7 @@ const CustomerWelcome: React.FC = () => {
             Questions About Your Membership?
           </h3>
           <p className={`${isDark ? 'text-gray-300' : 'text-gray-600'} mb-4`}>
-            Our customer service team is here to help
+            We're here to help! Contact us anytime.
           </p>
           <div className="space-y-2 text-sm">
             <p>
@@ -353,8 +365,8 @@ const CustomerWelcome: React.FC = () => {
             </p>
             {businessData.website && (
               <p>
-                🌐 Business: <a href={businessData.website} target="_blank" rel="noopener noreferrer" className="text-[#800020] hover:underline">
-                  {businessData.name}
+                🌐 Visit: <a href={businessData.website} target="_blank" rel="noopener noreferrer" className="text-[#800020] hover:underline">
+                  {businessData.name} Website
                 </a>
               </p>
             )}

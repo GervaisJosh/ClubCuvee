@@ -22,18 +22,29 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const { businessId, businessSlug, tierId, priceId, customerEmail } = req.body;
+    const { businessId, businessSlug, tierId, priceId, customerData } = req.body;
 
-    if (!businessId || !tierId || !priceId) {
+    if (!businessId || !tierId || !priceId || !customerData) {
       return res.status(400).json({ 
-        error: 'Missing required parameters: businessId, tierId, and priceId are required' 
+        error: 'Missing required parameters: businessId, tierId, priceId, and customerData are required' 
       });
     }
 
-    // Create Stripe checkout session
-    const sessionConfig: any = {
+    // Validate customer data
+    const requiredFields = ['name', 'email', 'phone', 'address', 'city', 'state', 'zipCode'];
+    for (const field of requiredFields) {
+      if (!customerData[field]) {
+        return res.status(400).json({ 
+          error: `Missing required customer field: ${field}` 
+        });
+      }
+    }
+
+    // Create Stripe checkout session with customer metadata
+    const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       mode: 'subscription',
+      customer_email: customerData.email,
       line_items: [
         {
           price: priceId,
@@ -43,18 +54,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       metadata: {
         businessId,
         tierId,
+        customerName: customerData.name,
+        customerPhone: customerData.phone,
+        customerAddress: customerData.address,
+        customerCity: customerData.city,
+        customerState: customerData.state,
+        customerZipCode: customerData.zipCode,
+        customerWinePreferences: customerData.winePreferences || '',
+        customerSpecialRequests: customerData.specialRequests || '',
       },
       success_url: `${process.env.NEXT_PUBLIC_APP_URL || 'https://club-cuvee.com'}/customer/welcome?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${process.env.NEXT_PUBLIC_APP_URL || 'https://club-cuvee.com'}/join/${businessSlug || businessId}`,
       allow_promotion_codes: true,
-    };
-
-    // Pre-fill customer email if provided
-    if (customerEmail) {
-      sessionConfig.customer_email = customerEmail;
-    }
-
-    const session = await stripe.checkout.sessions.create(sessionConfig);
+    });
 
     return res.status(200).json({ 
       success: true,
