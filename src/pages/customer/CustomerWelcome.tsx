@@ -58,8 +58,8 @@ const CustomerWelcome: React.FC = () => {
       }
 
       try {
-        // Verify payment with Stripe and get session data
-        const verifyResponse = await fetch('/api/verify-stripe-session', {
+        // Create customer record using service role API
+        const createResponse = await fetch('/api/create-customer-record', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -67,72 +67,27 @@ const CustomerWelcome: React.FC = () => {
           body: JSON.stringify({ sessionId }),
         });
 
-        if (!verifyResponse.ok) {
-          const errorData = await verifyResponse.json();
-          throw new Error(errorData.error || 'Payment verification failed');
+        if (!createResponse.ok) {
+          const errorData = await createResponse.json();
+          throw new Error(errorData.error || 'Failed to create customer record');
         }
 
-        const sessionData = await verifyResponse.json();
-        
-        // Extract metadata
-        const {
-          stripeCustomerId,
-          subscriptionId,
-          metadata
-        } = sessionData;
+        const { customer, isNew } = await createResponse.json();
+        setCustomerData(customer);
 
-        // Create customer record in Supabase
-        const { data: customer, error: customerError } = await supabase
-          .from('customers')
-          .insert({
-            business_id: metadata.businessId,
-            membership_tier_id: metadata.tierId,
-            stripe_customer_id: stripeCustomerId,
-            stripe_subscription_id: subscriptionId,
-            email: sessionData.email,
-            full_name: metadata.customerName,
-            phone: metadata.customerPhone,
-            address: metadata.customerAddress,
-            city: metadata.customerCity,
-            state: metadata.customerState,
-            zip_code: metadata.customerZipCode,
-            wine_preferences: metadata.customerWinePreferences || null,
-            special_requests: metadata.customerSpecialRequests || null,
-            status: 'active',
-          })
-          .select()
-          .single();
+        console.log(`Customer ${isNew ? 'created' : 'retrieved'} successfully:`, customer.id);
 
-        if (customerError) {
-          console.error('Error creating customer:', customerError);
-          
-          // Check if customer already exists
-          if (customerError.code === '23505') { // Unique constraint violation
-            // Try to fetch existing customer
-            const { data: existingCustomer } = await supabase
-              .from('customers')
-              .select('*')
-              .eq('email', sessionData.email)
-              .eq('business_id', metadata.businessId)
-              .single();
-              
-            if (existingCustomer) {
-              setCustomerData(existingCustomer);
-            } else {
-              throw new Error('Customer record already exists but could not be retrieved');
-            }
-          } else {
-            throw new Error('Failed to create customer record');
-          }
-        } else {
-          setCustomerData(customer);
-        }
+        // Extract metadata from customer record for fetching related data
+        const metadata = {
+          businessId: customer.business_id,
+          tierId: customer.membership_tier_id
+        };
 
         // Fetch business data
         const { data: business, error: businessError } = await supabase
           .from('businesses')
           .select('id, name, website')
-          .eq('id', metadata.businessId)
+          .eq('id', customer.business_id)
           .single();
 
         if (businessError) {
@@ -145,7 +100,7 @@ const CustomerWelcome: React.FC = () => {
         const { data: tier, error: tierError } = await supabase
           .from('membership_tiers')
           .select('id, name, monthly_price_cents')
-          .eq('id', metadata.tierId)
+          .eq('id', customer.membership_tier_id)
           .single();
 
         if (tierError) {
