@@ -115,12 +115,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
 
-    // Create new customer record
+    // Create new customer record with correct column names
     const customerData = {
       business_id: metadata.businessId,
-      membership_tier_id: metadata.tierId,
+      tier_id: metadata.tierId, // Using tier_id (NOT NULL) instead of membership_tier_id
       auth_id: null, // Will be set when customer creates account
-      full_name: metadata.customerName || 'Unknown',
+      name: metadata.customerName || 'Unknown', // Using name (NOT NULL) instead of full_name
       email: customer.email || session.customer_email || '',
       phone: metadata.customerPhone || '',
       address: metadata.customerAddress || '',
@@ -131,7 +131,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       special_requests: metadata.customerSpecialRequests || null,
       stripe_customer_id: customer.id,
       stripe_subscription_id: subscription.id,
-      status: 'active'
+      status: 'active',
+      // Optional columns that also exist
+      full_name: metadata.customerName || null, // Also populate the nullable full_name column
+      membership_tier_id: metadata.tierId || null, // Also populate the nullable membership_tier_id
+      has_completed_onboarding: false,
+      has_seen_tutorial: false
     };
 
     console.log('Creating customer with data:', customerData);

@@ -21,7 +21,8 @@ interface TierData {
 interface CustomerData {
   id: string;
   email: string;
-  full_name: string;
+  name: string; // Changed from full_name to match NOT NULL column
+  full_name?: string; // Optional column
   phone: string;
   address: string;
   city: string;
@@ -30,7 +31,8 @@ interface CustomerData {
   wine_preferences?: string;
   special_requests?: string;
   business_id: string;
-  membership_tier_id: string;
+  tier_id: string; // Changed from membership_tier_id to match NOT NULL column
+  membership_tier_id?: string; // Optional column
   stripe_customer_id: string;
   stripe_subscription_id: string;
 }
@@ -80,7 +82,7 @@ const CustomerWelcome: React.FC = () => {
         // Extract metadata from customer record for fetching related data
         const metadata = {
           businessId: customer.business_id,
-          tierId: customer.membership_tier_id
+          tierId: customer.tier_id // Using tier_id instead of membership_tier_id
         };
 
         // Fetch business data
@@ -100,7 +102,7 @@ const CustomerWelcome: React.FC = () => {
         const { data: tier, error: tierError } = await supabase
           .from('membership_tiers')
           .select('id, name, monthly_price_cents')
-          .eq('id', customer.membership_tier_id)
+          .eq('id', customer.tier_id) // Using tier_id instead of membership_tier_id
           .single();
 
         if (tierError) {
@@ -165,7 +167,7 @@ const CustomerWelcome: React.FC = () => {
             Your membership has been successfully activated
           </p>
           <p className={`text-lg ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-            Get ready for an amazing wine journey, {customerData.full_name}!
+            Get ready for an amazing wine journey, {customerData.name}!
           </p>
         </div>
 
