@@ -118,9 +118,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Create new customer record with correct column names
     const customerData = {
       business_id: metadata.businessId,
-      tier_id: metadata.tierId, // Using tier_id (NOT NULL) instead of membership_tier_id
+      tier_id: metadata.tierId,
       auth_id: null, // Will be set when customer creates account
-      name: metadata.customerName || 'Unknown', // Using name (NOT NULL) instead of full_name
+      name: metadata.customerName || 'Unknown',
       email: customer.email || session.customer_email || '',
       phone: metadata.customerPhone || '',
       address: metadata.customerAddress || '',
@@ -131,11 +131,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       special_requests: metadata.customerSpecialRequests || null,
       stripe_customer_id: customer.id,
       stripe_subscription_id: subscription.id,
-      status: 'active',
-      // Optional columns that also exist
-      full_name: metadata.customerName || null, // Also populate the nullable full_name column
-      membership_tier_id: metadata.tierId || null, // Also populate the nullable membership_tier_id
-      has_completed_onboarding: false,
+      subscription_status: 'active', // Using subscription_status instead of status
+      subscription_start_date: new Date().toISOString(),
+      has_completed_survey: false,
       has_seen_tutorial: false
     };
 

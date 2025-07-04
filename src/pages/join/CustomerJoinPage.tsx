@@ -163,6 +163,22 @@ const CustomerJoinPage: React.FC = () => {
       return;
     }
 
+    // Validate required fields
+    const requiredFields = ['name', 'email', 'phone', 'address', 'city', 'state', 'zipCode'];
+    const missingFields = requiredFields.filter(field => !customerData[field as keyof CustomerFormData]?.trim());
+    
+    if (missingFields.length > 0) {
+      setError('Please fill in all required fields');
+      return;
+    }
+
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(customerData.email)) {
+      setError('Please enter a valid email address');
+      return;
+    }
+
     setProcessingCheckout(true);
     setError(null);
 
@@ -193,10 +209,17 @@ const CustomerJoinPage: React.FC = () => {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to create checkout session');
+        const errorData = await response.json().catch(() => ({ error: 'Failed to create checkout session' }));
+        throw new Error(errorData.error || 'Failed to create checkout session');
       }
 
-      const { checkoutUrl } = await response.json();
+      const data = await response.json();
+      
+      if (!data.checkoutUrl) {
+        throw new Error('No checkout URL received from server');
+      }
+      
+      const { checkoutUrl } = data;
       
       // Redirect to Stripe checkout
       window.location.href = checkoutUrl;
@@ -376,7 +399,7 @@ const CustomerJoinPage: React.FC = () => {
                         ? 'bg-zinc-800 border-zinc-700 text-white placeholder-zinc-500 focus:border-[#800020]' 
                         : 'bg-gray-50 border-gray-300 text-gray-900 placeholder-gray-500 focus:border-[#800020]'
                     } focus:outline-none focus:ring-1 focus:ring-[#800020] transition-all duration-200`}
-                    placeholder="John Doe"
+                    placeholder=""
                   />
                 </div>
                 
@@ -395,7 +418,7 @@ const CustomerJoinPage: React.FC = () => {
                         ? 'bg-zinc-800 border-zinc-700 text-white placeholder-zinc-500 focus:border-[#800020]' 
                         : 'bg-gray-50 border-gray-300 text-gray-900 placeholder-gray-500 focus:border-[#800020]'
                     } focus:outline-none focus:ring-1 focus:ring-[#800020] transition-all duration-200`}
-                    placeholder="john@example.com"
+                    placeholder=""
                   />
                 </div>
                 
@@ -414,7 +437,7 @@ const CustomerJoinPage: React.FC = () => {
                         ? 'bg-zinc-800 border-zinc-700 text-white placeholder-zinc-500 focus:border-[#800020]' 
                         : 'bg-gray-50 border-gray-300 text-gray-900 placeholder-gray-500 focus:border-[#800020]'
                     } focus:outline-none focus:ring-1 focus:ring-[#800020] transition-all duration-200`}
-                    placeholder="(555) 123-4567"
+                    placeholder=""
                   />
                 </div>
                 
@@ -433,7 +456,7 @@ const CustomerJoinPage: React.FC = () => {
                         ? 'bg-zinc-800 border-zinc-700 text-white placeholder-zinc-500 focus:border-[#800020]' 
                         : 'bg-gray-50 border-gray-300 text-gray-900 placeholder-gray-500 focus:border-[#800020]'
                     } focus:outline-none focus:ring-1 focus:ring-[#800020] transition-all duration-200`}
-                    placeholder="123 Main Street"
+                    placeholder=""
                   />
                 </div>
                 
@@ -452,7 +475,7 @@ const CustomerJoinPage: React.FC = () => {
                         ? 'bg-zinc-800 border-zinc-700 text-white placeholder-zinc-500 focus:border-[#800020]' 
                         : 'bg-gray-50 border-gray-300 text-gray-900 placeholder-gray-500 focus:border-[#800020]'
                     } focus:outline-none focus:ring-1 focus:ring-[#800020] transition-all duration-200`}
-                    placeholder="San Francisco"
+                    placeholder=""
                   />
                 </div>
                 
@@ -473,7 +496,7 @@ const CustomerJoinPage: React.FC = () => {
                           ? 'bg-zinc-800 border-zinc-700 text-white placeholder-zinc-500 focus:border-[#800020]' 
                           : 'bg-gray-50 border-gray-300 text-gray-900 placeholder-gray-500 focus:border-[#800020]'
                       } focus:outline-none focus:ring-1 focus:ring-[#800020] transition-all duration-200`}
-                      placeholder="CA"
+                      placeholder=""
                     />
                   </div>
                   
@@ -492,7 +515,7 @@ const CustomerJoinPage: React.FC = () => {
                           ? 'bg-zinc-800 border-zinc-700 text-white placeholder-zinc-500 focus:border-[#800020]' 
                           : 'bg-gray-50 border-gray-300 text-gray-900 placeholder-gray-500 focus:border-[#800020]'
                       } focus:outline-none focus:ring-1 focus:ring-[#800020] transition-all duration-200`}
-                      placeholder="94102"
+                      placeholder=""
                     />
                   </div>
                 </div>
@@ -513,7 +536,7 @@ const CustomerJoinPage: React.FC = () => {
                         ? 'bg-zinc-800 border-zinc-700 text-white placeholder-zinc-500 focus:border-[#800020]' 
                         : 'bg-gray-50 border-gray-300 text-gray-900 placeholder-gray-500 focus:border-[#800020]'
                     } focus:outline-none focus:ring-1 focus:ring-[#800020] transition-all duration-200`}
-                    placeholder="Tell us about your wine preferences (e.g., prefer reds, enjoy bold flavors, etc.)"
+                    placeholder=""
                   />
                 </div>
                 
@@ -531,7 +554,7 @@ const CustomerJoinPage: React.FC = () => {
                         ? 'bg-zinc-800 border-zinc-700 text-white placeholder-zinc-500 focus:border-[#800020]' 
                         : 'bg-gray-50 border-gray-300 text-gray-900 placeholder-gray-500 focus:border-[#800020]'
                     } focus:outline-none focus:ring-1 focus:ring-[#800020] transition-all duration-200`}
-                    placeholder="Any special delivery instructions or requests?"
+                    placeholder=""
                   />
                 </div>
               </div>
