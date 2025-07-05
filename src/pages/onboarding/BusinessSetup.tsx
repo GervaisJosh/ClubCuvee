@@ -4,6 +4,8 @@ import { apiClient } from '../../lib/api-client';
 import Button from '../../components/Button';
 import Card from '../../components/Card';
 import ThemeToggle from '../../components/ThemeToggle';
+import ImageUploadZone from '../../components/ImageUploadZone';
+import { uploadBusinessLogo, uploadTierImage } from '../../lib/services/imageUploadService';
 import { 
   CheckCircle, 
   Plus, 
@@ -22,7 +24,8 @@ import {
   Sparkles,
   Zap,
   Shield,
-  X
+  X,
+  Image
 } from 'lucide-react';
 import { useTheme } from '../../contexts/ThemeContext';
 
@@ -522,6 +525,22 @@ const BusinessSetup: React.FC = () => {
                   className={`w-full px-4 py-4 ${isDark ? 'bg-zinc-800 border-zinc-700 text-white placeholder-zinc-500 focus:border-[#800020] focus:ring-[#800020]/20' : 'bg-gray-50 border-gray-300 text-gray-900 placeholder-gray-500 focus:border-[#800020] focus:ring-[#800020]/20'} border rounded-xl transition-all duration-200 text-lg resize-none`}
                   placeholder="Tell us about your wine business, expertise, and what makes you unique..."
                 />
+              </div>
+
+              {/* Logo Upload Section */}
+              <div className="space-y-2 mt-8">
+                <div className="flex items-center mb-4">
+                  <Image className="h-5 w-5 text-[#800020] mr-2" />
+                  <label className={`text-sm font-semibold ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                    Business Logo (Optional)
+                  </label>
+                </div>
+                <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'} mb-4`}>
+                  Upload your business logo to personalize your wine club
+                </p>
+                <div className="text-sm text-gray-500 mb-2">
+                  Note: Logo upload will be available after saving your business information
+                </div>
               </div>
             </div>
             </div>

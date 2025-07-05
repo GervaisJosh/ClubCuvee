@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabase';
 import Button from '../../components/Button';
 import Card from '../../components/Card';
 import ThemeToggle from '../../components/ThemeToggle';
+import BusinessLogoDisplay from '../../components/BusinessLogoDisplay';
 import { CheckCircle, AlertCircle, Wine, Calendar, Heart, ArrowRight, Loader2, Sparkles, Gift, Clock, Mail } from 'lucide-react';
 import { useTheme } from '../../contexts/ThemeContext';
 
@@ -13,6 +14,7 @@ interface BusinessData {
   website?: string;
   city?: string;
   state?: string;
+  logo_url?: string;
 }
 
 interface TierData {
@@ -21,6 +23,7 @@ interface TierData {
   monthly_price_cents: number;
   description?: string;
   benefits?: string[] | string;
+  image_url?: string;
 }
 
 interface CustomerData {
@@ -88,7 +91,7 @@ const CustomerWelcome: React.FC = () => {
         // Fetch business data with more fields
         const { data: business, error: businessError } = await supabase
           .from('businesses')
-          .select('id, name, website, city, state')
+          .select('id, name, website, city, state, logo_url')
           .eq('id', customer.business_id)
           .single();
 
@@ -101,7 +104,7 @@ const CustomerWelcome: React.FC = () => {
         // Fetch tier data with all fields
         const { data: tier, error: tierError } = await supabase
           .from('membership_tiers')
-          .select('id, name, monthly_price_cents, description, benefits')
+          .select('id, name, monthly_price_cents, description, benefits, image_url')
           .eq('id', customer.tier_id)
           .single();
 
@@ -187,6 +190,15 @@ const CustomerWelcome: React.FC = () => {
           <div className="text-center mb-16 animate-fade-in">
             <div className="mb-8">
               <CheckCircle className="h-24 w-24 text-emerald-500 mx-auto mb-6 animate-scale-in" />
+              
+              {/* Business Logo */}
+              <BusinessLogoDisplay 
+                logoUrl={businessData.logo_url}
+                businessName={businessData.name}
+                size="large"
+                className="mx-auto mb-6"
+              />
+              
               <h1 className={`text-4xl md:text-5xl font-light ${isDark ? 'text-white' : 'text-gray-900'} mb-4`}>
                 Welcome to the {businessData.name} Wine Club
               </h1>
@@ -215,20 +227,31 @@ const CustomerWelcome: React.FC = () => {
             </h2>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <div className={`text-center p-6 ${isDark ? 'bg-[#722f37]/20' : 'bg-[#722f37]/5'} rounded-xl border ${isDark ? 'border-[#722f37]/30' : 'border-[#722f37]/20'} transform transition-all duration-200 hover:scale-105`}>
-                <Wine className="h-12 w-12 text-[#722f37] mx-auto mb-4" />
-                <h3 className={`text-xl font-medium ${isDark ? 'text-white' : 'text-gray-900'} mb-2`}>
-                  {tierData.name}
-                </h3>
-                <p className={`text-3xl font-light ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                  ${(tierData.monthly_price_cents / 100).toFixed(2)}
-                  <span className="text-base font-normal">/month</span>
-                </p>
-                {tierData.description && (
-                  <p className={`text-sm mt-3 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                    {tierData.description}
+              <div className={`relative overflow-hidden p-6 ${isDark ? 'bg-[#722f37]/20' : 'bg-[#722f37]/5'} rounded-xl border ${isDark ? 'border-[#722f37]/30' : 'border-[#722f37]/20'} transform transition-all duration-200 hover:scale-105`}>
+                {tierData.image_url ? (
+                  <div className="absolute inset-0 opacity-20">
+                    <img 
+                      src={tierData.image_url} 
+                      alt={tierData.name}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                ) : null}
+                <div className="relative z-10 text-center">
+                  <Wine className="h-12 w-12 text-[#722f37] mx-auto mb-4" />
+                  <h3 className={`text-xl font-medium ${isDark ? 'text-white' : 'text-gray-900'} mb-2`}>
+                    {tierData.name}
+                  </h3>
+                  <p className={`text-3xl font-light ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                    ${(tierData.monthly_price_cents / 100).toFixed(2)}
+                    <span className="text-base font-normal">/month</span>
                   </p>
-                )}
+                  {tierData.description && (
+                    <p className={`text-sm mt-3 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                      {tierData.description}
+                    </p>
+                  )}
+                </div>
               </div>
 
               <div className={`text-center p-6 ${isDark ? 'bg-emerald-900/20' : 'bg-emerald-50'} rounded-xl border ${isDark ? 'border-emerald-800/30' : 'border-emerald-200'} transform transition-all duration-200 hover:scale-105`}>

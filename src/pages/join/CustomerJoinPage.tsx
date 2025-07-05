@@ -4,6 +4,8 @@ import { supabase } from '../../lib/supabase';
 import Button from '../../components/Button';
 import Card from '../../components/Card';
 import ThemeToggle from '../../components/ThemeToggle';
+import BusinessLogoDisplay from '../../components/BusinessLogoDisplay';
+import TierImageCard from '../../components/TierImageCard';
 import { Wine, CheckCircle, Loader2, MapPin, ChevronRight } from 'lucide-react';
 import { useTheme } from '../../contexts/ThemeContext';
 
@@ -26,6 +28,7 @@ interface MembershipTier {
   benefits?: string[];
   stripe_price_id: string;
   is_active: boolean;
+  image_url?: string;
 }
 
 interface CustomerFormData {
@@ -87,7 +90,7 @@ const CustomerJoinPage: React.FC = () => {
       // Fetch business by slug WITHOUT joining users table
       const { data: businessData, error: businessError } = await supabase
         .from('businesses')
-        .select('id, name, slug, website, description, city, state')
+        .select('id, name, slug, website, description, city, state, logo_url')
         .eq('slug', slug)
         .eq('status', 'active')
         .single();
@@ -271,13 +274,12 @@ const CustomerJoinPage: React.FC = () => {
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="text-center mb-12">
-          {business?.logo_url && (
-            <img 
-              src={business.logo_url} 
-              alt={business.name}
-              className="h-16 w-auto mx-auto mb-6"
-            />
-          )}
+          <BusinessLogoDisplay 
+            logoUrl={business?.logo_url}
+            businessName={business?.name || ''}
+            size="large"
+            className="mx-auto mb-6"
+          />
           <h1 className={`text-4xl md:text-5xl font-light ${isDark ? 'text-white' : 'text-gray-900'} mb-4`}>
             Join {business?.name}
           </h1>
@@ -316,53 +318,12 @@ const CustomerJoinPage: React.FC = () => {
                   'grid-cols-1 md:grid-cols-3 gap-6'
                 }`}>
                   {membershipTiers.map((tier) => (
-                    <div
+                    <TierImageCard
                       key={tier.id}
+                      tier={tier}
                       onClick={() => handleTierSelect(tier.id)}
-                      className={`cursor-pointer p-6 rounded-xl border-2 transition-all duration-200 ${
-                        selectedTierId === tier.id
-                          ? `${isDark ? 'bg-[#800020]/10 border-[#800020]' : 'bg-[#800020]/5 border-[#800020]'} shadow-lg`
-                          : `${isDark ? 'bg-zinc-800/30 border-zinc-700 hover:border-zinc-600' : 'bg-gray-50 border-gray-200 hover:border-gray-300'}`
-                      }`}
-                    >
-                      <div className="text-center mb-4">
-                        <h3 className={`text-xl font-semibold ${isDark ? 'text-white' : 'text-gray-900'} mb-2`}>
-                          {tier.name}
-                        </h3>
-                        <p className={`text-3xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                          ${(tier.monthly_price_cents / 100).toFixed(2)}
-                          <span className={`text-base font-normal ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>/month</span>
-                        </p>
-                      </div>
-                      
-                      <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'} mb-4`}>
-                        {tier.description}
-                      </p>
-                      
-                      {tier.benefits && tier.benefits.length > 0 && (
-                        <ul className="space-y-2">
-                          {tier.benefits.map((benefit, index) => (
-                            <li key={index} className="flex items-start text-sm">
-                              <CheckCircle className={`h-4 w-4 mr-2 flex-shrink-0 mt-0.5 ${
-                                selectedTierId === tier.id ? 'text-[#800020]' : 'text-green-500'
-                              }`} />
-                              <span className={`${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                                {benefit}
-                              </span>
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                      
-                      <div className={`mt-4 text-center ${
-                        selectedTierId === tier.id ? 'block' : 'hidden'
-                      }`}>
-                        <span className="inline-flex items-center text-sm font-medium text-[#800020]">
-                          Selected
-                          <CheckCircle className="h-4 w-4 ml-1" />
-                        </span>
-                      </div>
-                    </div>
+                      selected={selectedTierId === tier.id}
+                    />
                   ))}
                 </div>
               )}
