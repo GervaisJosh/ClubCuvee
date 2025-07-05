@@ -104,6 +104,7 @@ const BusinessSetup: React.FC = () => {
   const [showTierForm, setShowTierForm] = useState(false);
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [debugMode] = useState(true); // Enable debug mode for troubleshooting
 
   useEffect(() => {
     if (!token || !sessionId) {
@@ -256,6 +257,7 @@ const BusinessSetup: React.FC = () => {
     handleTierChange(tierIndex, 'benefits', newBenefits);
   };
 
+
   // Handle logo file selection
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -372,6 +374,26 @@ const BusinessSetup: React.FC = () => {
       setLoading(true);
       setError(null);
 
+      // Check authentication before proceeding
+      if (debugMode) {
+        const { data: { user } } = await supabase.auth.getUser();
+        console.log('=== PRE-UPLOAD AUTH CHECK ===');
+        console.log('Current auth context:', {
+          userId: user?.id,
+          isAuthenticated: !!user,
+          userEmail: user?.email,
+          userRole: user?.role,
+          timestamp: new Date().toISOString()
+        });
+        
+        // Log Supabase client configuration
+        console.log('Supabase client config:', {
+          url: supabase.supabaseUrl,
+          hasAnonKey: !!supabase.supabaseKey,
+          authSessionExists: !!(await supabase.auth.getSession()).data.session
+        });
+      }
+
       const response = await apiClient.post<{
         success: boolean;
         data: {
@@ -387,30 +409,120 @@ const BusinessSetup: React.FC = () => {
       if (response.success) {
         const { businessId } = response.data;
         
+        if (debugMode) {
+          console.log('=== BUSINESS CREATED ===');
+          console.log('Business ID:', businessId);
+          console.log('Admin User ID:', response.data.adminUserId);
+        }
+        
+        // Check upload state before attempting uploads
+        console.log('=== UPLOAD STATE CHECK ===');
+        console.log('Logo upload state:', {
+          hasLogoFile: !!logoFile,
+          logoFileName: logoFile?.name,
+          logoFileSize: logoFile?.size,
+          logoFileType: logoFile?.type,
+          businessIdAvailable: !!businessId
+        });
+        
+        // Check tier images state
+        const tierImagesInfo = formData.customerTiers.map((tier, index) => ({
+          tierIndex: index,
+          tierName: tier.name,
+          hasImageFile: !!tier.imageFile,
+          imageFileName: tier.imageFile?.name,
+          imageFileSize: tier.imageFile?.size
+        }));
+        console.log('Tier images state:', tierImagesInfo);
+        
         // Upload logo if selected (inline function)
         if (logoFile && businessId) {
+          console.log('=== PROCEEDING WITH LOGO UPLOAD ===');
           try {
+            console.log('=== LOGO UPLOAD START ===');
+            console.log('Logo file details:', {
+              name: logoFile.name,
+              size: logoFile.size,
+              sizeInMB: (logoFile.size / 1024 / 1024).toFixed(2) + 'MB',
+              type: logoFile.type,
+              lastModified: new Date(logoFile.lastModified).toISOString()
+            });
+            
+            // Verify business ID exists
+            if (!businessId) {
+              console.error('ERROR: No business ID available for upload!');
+              throw new Error('Business ID is required for upload');
+            }
+            
             const fileExt = logoFile.name.split('.').pop()?.toLowerCase() || 'png';
             const fileName = `${businessId}/logo.${fileExt}`;
+            console.log('Upload configuration:', {
+              bucket: 'business-assets',
+              path: fileName,
+              fileExtension: fileExt,
+              cacheControl: '3600',
+              upsert: true
+            });
 
-            const { error: uploadError } = await supabase.storage
+            // Check auth status right before upload
+            const { data: { session } } = await supabase.auth.getSession();
+            console.log('Auth session before upload:', {
+              hasSession: !!session,
+              sessionUserId: session?.user?.id,
+              accessToken: session?.access_token ? 'Present' : 'Missing'
+            });
+
+            const { data: uploadData, error: uploadError } = await supabase.storage
               .from('business-assets')
               .upload(fileName, logoFile, {
                 cacheControl: '3600',
                 upsert: true
               });
 
-            if (!uploadError) {
+            if (uploadError) {
+              console.error('=== LOGO UPLOAD FAILED ===');
+              console.error('Error object:', uploadError);
+              console.error('Error details:', {
+                message: uploadError.message,
+                error: uploadError.error,
+                statusCode: uploadError.statusCode,
+                details: uploadError.details,
+                hint: uploadError.hint,
+                code: uploadError.code
+              });
+              
+              // Check specific error types
+              if (uploadError.message?.includes('not found')) {
+                console.error('BUCKET ERROR: Storage bucket "business-assets" not found');
+              } else if (uploadError.message?.includes('policy')) {
+                console.error('POLICY ERROR: RLS policy violation');
+              } else if (uploadError.message?.includes('unauthorized')) {
+                console.error('AUTH ERROR: User not authorized');
+              }
+              
+              throw uploadError;
+            } else {
+              console.log('=== LOGO UPLOAD SUCCESS ===');
+              console.log('Upload response:', uploadData);
+              
               // Get public URL
               const { data: { publicUrl } } = supabase.storage
                 .from('business-assets')
                 .getPublicUrl(fileName);
+              
+              console.log('Public URL:', publicUrl);
 
               // Update business record with logo URL
-              await supabase
+              const { error: updateError } = await supabase
                 .from('businesses')
                 .update({ logo_url: publicUrl })
                 .eq('id', businessId);
+                
+              if (updateError) {
+                console.error('Failed to update business with logo URL:', updateError);
+              } else {
+                console.log('Business logo URL updated successfully');
+              }
             }
           } catch (err) {
             console.error('Logo upload error:', err);
@@ -419,40 +531,75 @@ const BusinessSetup: React.FC = () => {
         }
 
         // Upload tier images if selected (inline function)
+        console.log('=== CHECKING TIER IMAGES FOR UPLOAD ===');
+        console.log(`Total tiers to check: ${formData.customerTiers.length}`);
+        
         for (let i = 0; i < formData.customerTiers.length; i++) {
           const tier = formData.customerTiers[i];
+          console.log(`Checking tier ${i}:`, {
+            tierName: tier.name,
+            hasImageFile: !!tier.imageFile,
+            imageFileName: tier.imageFile?.name,
+            willUpload: !!(tier.imageFile && businessId)
+          });
+          
           if (tier.imageFile && businessId) {
+            console.log(`=== PROCEEDING WITH TIER ${i} IMAGE UPLOAD ===`);
             try {
+              console.log(`Starting tier image upload for tier ${i}:`, tier.name);
+              console.log('Tier image file:', tier.imageFile.name, tier.imageFile.size, tier.imageFile.type);
+              
               // First, we need to get the tier ID from the created tiers
-              const { data: tiers } = await supabase
+              const { data: tiers, error: tierError } = await supabase
                 .from('membership_tiers')
                 .select('id, name')
                 .eq('business_id', businessId)
                 .eq('name', tier.name)
                 .single();
 
+              if (tierError) {
+                console.error('Failed to find tier:', tierError);
+                continue;
+              }
+
               if (tiers && tiers.id) {
                 const fileExt = tier.imageFile.name.split('.').pop()?.toLowerCase() || 'png';
                 const fileName = `${businessId}/tier-${tiers.id}.${fileExt}`;
+                console.log('Tier upload path:', fileName);
 
-                const { error: uploadError } = await supabase.storage
+                const { data: uploadData, error: uploadError } = await supabase.storage
                   .from('business-assets')
                   .upload(fileName, tier.imageFile, {
                     cacheControl: '3600',
                     upsert: true
                   });
 
-                if (!uploadError) {
+                if (uploadError) {
+                  console.error('Tier image upload failed:', uploadError);
+                  if (uploadError.message?.includes('not found')) {
+                    console.error('Storage bucket "business-assets" not found. Please create it in Supabase Dashboard.');
+                  }
+                } else {
+                  console.log('Tier image uploaded successfully:', uploadData);
+                  
                   // Get public URL
                   const { data: { publicUrl } } = supabase.storage
                     .from('business-assets')
                     .getPublicUrl(fileName);
+                  
+                  console.log('Tier public URL:', publicUrl);
 
                   // Update tier record with image URL
-                  await supabase
+                  const { error: updateError } = await supabase
                     .from('membership_tiers')
                     .update({ image_url: publicUrl })
                     .eq('id', tiers.id);
+                    
+                  if (updateError) {
+                    console.error('Failed to update tier with image URL:', updateError);
+                  } else {
+                    console.log('Tier image URL updated successfully');
+                  }
                 }
               }
             } catch (err) {
@@ -461,6 +608,10 @@ const BusinessSetup: React.FC = () => {
             }
           }
         }
+        
+        // Log upload summary
+        console.log('=== UPLOAD PROCESS COMPLETE ===');
+        console.log('Business setup completed. Navigating to success page...');
         
         // Navigate to success page
         navigate(`/onboard/${token}/success`);
@@ -540,6 +691,7 @@ const BusinessSetup: React.FC = () => {
                 </span>
               </div>
             )}
+            
           </div>
         </div>
 
