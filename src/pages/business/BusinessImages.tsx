@@ -6,7 +6,6 @@ import Button from '../../components/Button';
 import Card from '../../components/Card';
 import ImageUploadZone from '../../components/ImageUploadZone';
 import BusinessLogoDisplay from '../../components/BusinessLogoDisplay';
-import { uploadBusinessLogo, uploadTierImage } from '../../lib/services/imageUploadService';
 import { Wine, Image, CheckCircle, AlertCircle, Loader2, Building } from 'lucide-react';
 import { useTheme } from '../../contexts/ThemeContext';
 
@@ -24,6 +23,11 @@ interface MembershipTier {
   image_url?: string;
 }
 
+interface UploadResult {
+  url: string;
+  error?: string;
+}
+
 const BusinessImages: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -37,6 +41,129 @@ const BusinessImages: React.FC = () => {
   const [uploadingTierIds, setUploadingTierIds] = useState<Set<string>>(new Set());
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // Inline upload functions - Vercel requires self-contained files
+  const validateImageFile = (file: File, maxSizeMB: number): string | null => {
+    const validTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'];
+    const maxSizeBytes = maxSizeMB * 1024 * 1024;
+
+    if (!validTypes.includes(file.type)) {
+      return 'Please upload a PNG, JPG, JPEG, or WebP image';
+    }
+
+    if (file.size > maxSizeBytes) {
+      return `File size must be less than ${maxSizeMB}MB`;
+    }
+
+    return null;
+  };
+
+  const uploadBusinessLogo = async (
+    file: File,
+    businessId: string
+  ): Promise<UploadResult> => {
+    try {
+      // Validate file
+      const validationError = validateImageFile(file, 2);
+      if (validationError) {
+        return { url: '', error: validationError };
+      }
+
+      // Get file extension
+      const fileExt = file.name.split('.').pop()?.toLowerCase() || 'png';
+      const fileName = `${businessId}/logo.${fileExt}`;
+
+      console.log('Uploading business logo:', fileName);
+
+      // Upload to Supabase storage
+      const { error: uploadError } = await supabase.storage
+        .from('business-assets')
+        .upload(fileName, file, {
+          cacheControl: '3600',
+          upsert: true // Replace existing logo
+        });
+
+      if (uploadError) {
+        console.error('Upload error:', uploadError);
+        return { url: '', error: 'Failed to upload logo' };
+      }
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('business-assets')
+        .getPublicUrl(fileName);
+
+      // Update business record with logo URL
+      const { error: updateError } = await supabase
+        .from('businesses')
+        .update({ logo_url: publicUrl })
+        .eq('id', businessId);
+
+      if (updateError) {
+        console.error('Database update error:', updateError);
+        return { url: '', error: 'Failed to save logo URL' };
+      }
+
+      return { url: publicUrl };
+    } catch (error) {
+      console.error('Logo upload error:', error);
+      return { url: '', error: 'An unexpected error occurred' };
+    }
+  };
+
+  const uploadTierImage = async (
+    file: File,
+    businessId: string,
+    tierId: string
+  ): Promise<UploadResult> => {
+    try {
+      // Validate file
+      const validationError = validateImageFile(file, 3);
+      if (validationError) {
+        return { url: '', error: validationError };
+      }
+
+      // Get file extension
+      const fileExt = file.name.split('.').pop()?.toLowerCase() || 'png';
+      const fileName = `${businessId}/tier-${tierId}.${fileExt}`;
+
+      console.log('Uploading tier image:', fileName);
+
+      // Upload to Supabase storage
+      const { error: uploadError } = await supabase.storage
+        .from('business-assets')
+        .upload(fileName, file, {
+          cacheControl: '3600',
+          upsert: true // Replace existing image
+        });
+
+      if (uploadError) {
+        console.error('Upload error:', uploadError);
+        return { url: '', error: 'Failed to upload image' };
+      }
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('business-assets')
+        .getPublicUrl(fileName);
+
+      // Update membership tier record with image URL
+      const { error: updateError } = await supabase
+        .from('membership_tiers')
+        .update({ image_url: publicUrl })
+        .eq('id', tierId);
+
+      if (updateError) {
+        console.error('Database update error:', updateError);
+        return { url: '', error: 'Failed to save image URL' };
+      }
+
+      return { url: publicUrl };
+    } catch (error) {
+      console.error('Tier image upload error:', error);
+      return { url: '', error: 'An unexpected error occurred' };
+    }
+  };
 
   useEffect(() => {
     if (user) {
