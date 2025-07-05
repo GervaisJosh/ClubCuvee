@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import Button from '../../components/Button';
 import Card from '../../components/Card';
 import ThemeToggle from '../../components/ThemeToggle';
-import { CheckCircle, ArrowRight, Settings, Users, BarChart3, Copy, ExternalLink, AlertCircle, Image } from 'lucide-react';
+import { CheckCircle, ArrowRight, Settings, Users, BarChart3, Copy, ExternalLink, AlertCircle } from 'lucide-react';
 import { useTheme } from '../../contexts/ThemeContext';
 
 interface BusinessData {
@@ -352,7 +352,7 @@ const OnboardingSuccess: React.FC = () => {
             <p className={`${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Complete your setup to start accepting members</p>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className={`text-center p-6 rounded-lg transition-transform hover:scale-105 duration-200 ${isDark ? 'bg-zinc-800/30' : 'bg-gray-50'}`}>
               <div className="w-14 h-14 bg-gray-600 rounded-lg flex items-center justify-center mx-auto mb-4 overflow-hidden">
                 <img 
@@ -390,22 +390,6 @@ const OnboardingSuccess: React.FC = () => {
                 className={`w-full py-2.5 px-4 border ${isDark ? 'border-zinc-600 text-gray-300 hover:border-[#B03040] hover:text-[#B03040]' : 'border-gray-300 text-gray-700 hover:border-[#800020] hover:text-[#800020]'} rounded-lg transition-all duration-200 font-medium`}
               >
                 {customerLinkGenerated ? 'Copy Link' : 'Get Link'}
-              </button>
-            </div>
-
-            <div className={`text-center p-6 rounded-lg transition-transform hover:scale-105 duration-200 ${isDark ? 'bg-zinc-800/30' : 'bg-gray-50'}`}>
-              <div className="w-14 h-14 bg-gray-600 rounded-lg flex items-center justify-center mx-auto mb-4">
-                <Image className="w-8 h-8 text-white" />
-              </div>
-              <h4 className={`text-lg font-medium ${isDark ? 'text-white' : 'text-gray-900'} mb-3`}>Upload Images</h4>
-              <p className={`${isDark ? 'text-gray-400' : 'text-gray-600'} text-sm mb-5`}>
-                Add logo and tier images
-              </p>
-              <button
-                onClick={() => navigate('/business/images')}
-                className={`w-full py-2.5 px-4 border ${isDark ? 'border-zinc-600 text-gray-300 hover:border-[#B03040] hover:text-[#B03040]' : 'border-gray-300 text-gray-700 hover:border-[#800020] hover:text-[#800020]'} rounded-lg transition-all duration-200 font-medium`}
-              >
-                Manage images
               </button>
             </div>
 

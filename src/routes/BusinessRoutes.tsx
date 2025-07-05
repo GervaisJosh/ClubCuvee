@@ -3,7 +3,6 @@ import { Route, Routes } from 'react-router-dom';
 import ProtectedRoute from './ProtectedRoute';
 import BusinessLayout from '../layouts/BusinessLayout';
 import BusinessDashboard from '../pages/business/Dashboard';
-import BusinessImages from '../pages/business/BusinessImages';
 
 const BusinessRoutes: React.FC = () => {
   return (
@@ -12,7 +11,6 @@ const BusinessRoutes: React.FC = () => {
         <Routes>
           <Route index element={<BusinessDashboard />} />
           <Route path="dashboard" element={<BusinessDashboard />} />
-          <Route path="images" element={<BusinessImages />} />
           <Route path="wines" element={<div>Wine Inventory</div>} />
           <Route path="membership-tiers" element={<div>Membership Tiers</div>} />
           <Route path="customers" element={<div>Customers</div>} />

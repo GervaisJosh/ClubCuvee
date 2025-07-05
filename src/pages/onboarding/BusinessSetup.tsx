@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { apiClient } from '../../lib/api-client';
+import { supabase } from '../../lib/supabase';
 import Button from '../../components/Button';
 import Card from '../../components/Card';
 import ThemeToggle from '../../components/ThemeToggle';
@@ -48,6 +49,8 @@ interface CustomerTierFormData {
   description: string;
   monthlyPrice: number;
   benefits: string[];
+  imageFile?: File;
+  imagePreview?: string;
 }
 
 interface PaymentVerificationData {
@@ -99,6 +102,8 @@ const BusinessSetup: React.FC = () => {
   const [paymentData, setPaymentData] = useState<PaymentVerificationData | null>(null);
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
   const [showTierForm, setShowTierForm] = useState(false);
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
 
   useEffect(() => {
     if (!token || !sessionId) {
@@ -251,6 +256,70 @@ const BusinessSetup: React.FC = () => {
     handleTierChange(tierIndex, 'benefits', newBenefits);
   };
 
+  // Handle logo file selection
+  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file size (2MB max)
+    if (file.size > 2 * 1024 * 1024) {
+      setError('Logo file is too large. Maximum size is 2MB.');
+      return;
+    }
+
+    // Validate file type
+    const validTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'];
+    if (!validTypes.includes(file.type)) {
+      setError('Please upload a PNG, JPG, JPEG, or WebP image.');
+      return;
+    }
+
+    setLogoFile(file);
+    setError(null);
+
+    // Show preview
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setLogoPreview(e.target?.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // Handle tier image selection
+  const handleTierImageSelect = (tierIndex: number, e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file size (3MB max for tier images)
+    if (file.size > 3 * 1024 * 1024) {
+      setError('Tier image is too large. Maximum size is 3MB.');
+      return;
+    }
+
+    // Validate file type
+    const validTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'];
+    if (!validTypes.includes(file.type)) {
+      setError('Please upload a PNG, JPG, JPEG, or WebP image.');
+      return;
+    }
+
+    // Show preview
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const preview = e.target?.result as string;
+      setFormData(prev => ({
+        ...prev,
+        customerTiers: prev.customerTiers.map((tier, index) =>
+          index === tierIndex 
+            ? { ...tier, imageFile: file, imagePreview: preview }
+            : tier
+        )
+      }));
+    };
+    reader.readAsDataURL(file);
+    setError(null);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -316,6 +385,83 @@ const BusinessSetup: React.FC = () => {
       });
 
       if (response.success) {
+        const { businessId } = response.data;
+        
+        // Upload logo if selected (inline function)
+        if (logoFile && businessId) {
+          try {
+            const fileExt = logoFile.name.split('.').pop()?.toLowerCase() || 'png';
+            const fileName = `${businessId}/logo.${fileExt}`;
+
+            const { error: uploadError } = await supabase.storage
+              .from('business-assets')
+              .upload(fileName, logoFile, {
+                cacheControl: '3600',
+                upsert: true
+              });
+
+            if (!uploadError) {
+              // Get public URL
+              const { data: { publicUrl } } = supabase.storage
+                .from('business-assets')
+                .getPublicUrl(fileName);
+
+              // Update business record with logo URL
+              await supabase
+                .from('businesses')
+                .update({ logo_url: publicUrl })
+                .eq('id', businessId);
+            }
+          } catch (err) {
+            console.error('Logo upload error:', err);
+            // Don't fail the whole process for image upload errors
+          }
+        }
+
+        // Upload tier images if selected (inline function)
+        for (let i = 0; i < formData.customerTiers.length; i++) {
+          const tier = formData.customerTiers[i];
+          if (tier.imageFile && businessId) {
+            try {
+              // First, we need to get the tier ID from the created tiers
+              const { data: tiers } = await supabase
+                .from('membership_tiers')
+                .select('id, name')
+                .eq('business_id', businessId)
+                .eq('name', tier.name)
+                .single();
+
+              if (tiers && tiers.id) {
+                const fileExt = tier.imageFile.name.split('.').pop()?.toLowerCase() || 'png';
+                const fileName = `${businessId}/tier-${tiers.id}.${fileExt}`;
+
+                const { error: uploadError } = await supabase.storage
+                  .from('business-assets')
+                  .upload(fileName, tier.imageFile, {
+                    cacheControl: '3600',
+                    upsert: true
+                  });
+
+                if (!uploadError) {
+                  // Get public URL
+                  const { data: { publicUrl } } = supabase.storage
+                    .from('business-assets')
+                    .getPublicUrl(fileName);
+
+                  // Update tier record with image URL
+                  await supabase
+                    .from('membership_tiers')
+                    .update({ image_url: publicUrl })
+                    .eq('id', tiers.id);
+                }
+              }
+            } catch (err) {
+              console.error('Tier image upload error:', err);
+              // Don't fail the whole process for image upload errors
+            }
+          }
+        }
+        
         // Navigate to success page
         navigate(`/onboard/${token}/success`);
       } else {
@@ -536,8 +682,38 @@ const BusinessSetup: React.FC = () => {
                 <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'} mb-4`}>
                   Upload your business logo to personalize your wine club
                 </p>
-                <div className="text-sm text-gray-500 mb-2">
-                  Note: Logo upload will be available after saving your business information
+                
+                {/* File Input */}
+                <div className="space-y-4">
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg,image/jpg,image/webp"
+                    onChange={handleLogoUpload}
+                    className={`w-full file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold ${
+                      isDark 
+                        ? 'file:bg-[#800020] file:text-white hover:file:bg-[#600018]' 
+                        : 'file:bg-[#800020] file:text-white hover:file:bg-[#600018]'
+                    } file:cursor-pointer cursor-pointer ${
+                      isDark ? 'text-gray-300' : 'text-gray-700'
+                    }`}
+                  />
+                  <p className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>
+                    Max size: 2MB • PNG, JPG, JPEG, WebP
+                  </p>
+                  
+                  {/* Logo Preview */}
+                  {logoPreview && (
+                    <div className="mt-4">
+                      <p className={`text-sm font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'} mb-2`}>
+                        Logo Preview:
+                      </p>
+                      <img
+                        src={logoPreview}
+                        alt="Logo preview"
+                        className="max-w-[200px] h-auto rounded-lg shadow-md border border-gray-200"
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -745,6 +921,49 @@ const BusinessSetup: React.FC = () => {
                         >
                           + Add another benefit
                         </button>
+                      </div>
+
+                      {/* Tier Image Upload */}
+                      <div className="space-y-2 mt-6">
+                        <div className="flex items-center mb-2">
+                          <Image className="h-4 w-4 text-[#800020] mr-2" />
+                          <label className={`text-sm font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                            Tier Image (Optional)
+                          </label>
+                        </div>
+                        <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'} mb-3`}>
+                          Add an image to represent this membership tier
+                        </p>
+                        
+                        <input
+                          type="file"
+                          accept="image/png,image/jpeg,image/jpg,image/webp"
+                          onChange={(e) => handleTierImageSelect(tierIndex, e)}
+                          className={`w-full file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold ${
+                            isDark 
+                              ? 'file:bg-[#800020] file:text-white hover:file:bg-[#600018]' 
+                              : 'file:bg-[#800020] file:text-white hover:file:bg-[#600018]'
+                          } file:cursor-pointer cursor-pointer ${
+                            isDark ? 'text-gray-300' : 'text-gray-700'
+                          } text-sm`}
+                        />
+                        <p className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-500'} mt-1`}>
+                          Max size: 3MB • PNG, JPG, JPEG, WebP • Recommended: 16:9 or 4:3 aspect ratio
+                        </p>
+                        
+                        {/* Tier Image Preview */}
+                        {tier.imagePreview && (
+                          <div className="mt-3">
+                            <p className={`text-xs font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'} mb-2`}>
+                              Image Preview:
+                            </p>
+                            <img
+                              src={tier.imagePreview}
+                              alt={`${tier.name} preview`}
+                              className="max-w-[300px] h-auto rounded-lg shadow-md border border-gray-200"
+                            />
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
