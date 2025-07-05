@@ -157,7 +157,7 @@ var handler = async (req, res) => {
       return;
     }
     console.log("\u{1F50D} Querying businesses table for business_id:", invitation.business_id);
-    const { data: business, error: businessError } = await supabaseAdmin.from("businesses").select("id, name, website, email, status, created_at, updated_at, pricing_tier_id").eq("id", invitation.business_id).single();
+    const { data: business, error: businessError } = await supabaseAdmin.from("businesses").select("id, name, slug, website, email, status, created_at, updated_at, pricing_tier_id").eq("id", invitation.business_id).single();
     console.log("Business query result:", {
       business: business ? {
         id: business.id,
@@ -204,6 +204,8 @@ var handler = async (req, res) => {
       business: {
         id: business.id,
         name: business.name,
+        slug: business.slug,
+        // Include the slug from the database
         website: business.website,
         admin_email: business.email,
         logo_url: null,

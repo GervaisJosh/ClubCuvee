@@ -185,9 +185,12 @@ var create_business_default = withErrorHandler(async (req, res) => {
       throw new APIError(400, authError?.message || "Failed to create user account", "AUTH_ERROR");
     }
     const businessId = (0, import_crypto.randomUUID)();
+    const baseSlug = businessData.businessName.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+    const businessSlug = `${baseSlug}-${businessId.substring(0, 4)}`;
     const { error: businessError } = await supabaseAdmin.from("businesses").insert({
       id: businessId,
       name: businessData.businessName.trim(),
+      slug: businessSlug,
       owner_id: authUser.user.id,
       email: businessData.email.trim(),
       phone: businessData.phone?.trim() || null,
@@ -223,23 +226,29 @@ var create_business_default = withErrorHandler(async (req, res) => {
       await supabaseAdmin.from("businesses").delete().eq("id", businessId);
       throw new APIError(500, "Failed to create business user profile", "DATABASE_ERROR");
     }
-    const tierInserts = businessData.customerTiers.map((tier) => ({
+    const tierInserts = businessData.customerTiers.map((tier, index) => ({
       business_id: businessId,
       name: tier.name.trim(),
       description: tier.description.trim(),
       monthly_price_cents: Math.round(tier.monthlyPrice * 100),
+      benefits: tier.benefits.filter((b) => b.trim()).map((b) => b.trim()),
+      // Store benefits as JSONB array
       is_active: true
     }));
+    console.log("\u{1F4DD} Creating membership tiers:", tierInserts);
     const { data: createdTiers, error: tiersError } = await supabaseAdmin.from("membership_tiers").insert(tierInserts).select();
     if (tiersError || !createdTiers) {
-      console.error("Error creating membership tiers:", tiersError);
+      console.error("\u274C Error creating membership tiers:", tiersError);
       await supabaseAdmin.auth.admin.deleteUser(authUser.user.id);
       await supabaseAdmin.from("businesses").delete().eq("id", businessId);
       throw new APIError(500, "Failed to create membership tiers", "DATABASE_ERROR");
     }
+    console.log("\u2705 Created tiers:", createdTiers);
     const stripeProductUpdates = [];
+    console.log("\u{1F504} Creating Stripe products for", createdTiers.length, "tiers");
     for (const tier of createdTiers) {
       try {
+        console.log(`\u{1F4E6} Creating Stripe product for tier: ${tier.name} (ID: ${tier.id})`);
         const product = await stripe.products.create({
           name: `${businessData.businessName.trim()} Wine Club - ${tier.name}`,
           description: `${tier.description} | Curated by ${businessData.businessName.trim()}`,
@@ -250,6 +259,7 @@ var create_business_default = withErrorHandler(async (req, res) => {
             business_name: businessData.businessName.trim()
           }
         });
+        console.log(`\u2705 Created Stripe product: ${product.id}`);
         const price = await stripe.prices.create({
           product: product.id,
           unit_amount: tier.monthly_price_cents,
@@ -263,23 +273,35 @@ var create_business_default = withErrorHandler(async (req, res) => {
             business_name: businessData.businessName.trim()
           }
         });
+        console.log(`\u2705 Created Stripe price: ${price.id}`);
         stripeProductUpdates.push({
           tierId: tier.id,
           stripeProductId: product.id,
           stripePriceId: price.id
         });
       } catch (stripeError) {
-        console.error(`Stripe product creation failed for tier ${tier.name}:`, stripeError);
+        console.error(`\u274C Stripe product creation failed for tier ${tier.name}:`, stripeError);
       }
     }
+    console.log("\u{1F504} Updating", stripeProductUpdates.length, "tiers with Stripe IDs");
     for (const update of stripeProductUpdates) {
       try {
-        await supabaseAdmin.from("membership_tiers").update({
+        console.log(`\u{1F4DD} Updating tier ${update.tierId} with Stripe IDs:`, {
           stripe_product_id: update.stripeProductId,
           stripe_price_id: update.stripePriceId
-        }).eq("id", update.tierId);
+        });
+        const { data: updateData, error: updateError } = await supabaseAdmin.from("membership_tiers").update({
+          stripe_product_id: update.stripeProductId,
+          stripe_price_id: update.stripePriceId
+        }).eq("id", update.tierId).select();
+        if (updateError) {
+          console.error(`\u274C Failed to update tier ${update.tierId} with Stripe IDs:`, updateError);
+          console.error("Update error details:", updateError);
+        } else {
+          console.log(`\u2705 Successfully updated tier ${update.tierId}:`, updateData);
+        }
       } catch (updateError) {
-        console.error(`Failed to update tier ${update.tierId} with Stripe IDs:`, updateError);
+        console.error(`\u274C Exception updating tier ${update.tierId}:`, updateError);
       }
     }
     console.log("\u{1F504} Updating invitation status to completed for token:", token);
@@ -297,6 +319,7 @@ var create_business_default = withErrorHandler(async (req, res) => {
       success: true,
       data: {
         businessId,
+        businessSlug,
         adminUserId: authUser.user.id,
         businessName: businessData.businessName,
         customerTiersCreated: tierInserts.length,

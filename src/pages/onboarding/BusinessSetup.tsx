@@ -4,8 +4,6 @@ import { apiClient } from '../../lib/api-client';
 import Button from '../../components/Button';
 import Card from '../../components/Card';
 import ThemeToggle from '../../components/ThemeToggle';
-import ImageUploadZone from '../../components/ImageUploadZone';
-import { uploadBusinessLogo, uploadTierImage } from '../../lib/services/imageUploadService';
 import { 
   CheckCircle, 
   Plus, 
