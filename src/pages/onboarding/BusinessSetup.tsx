@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { apiClient } from '../../lib/api-client';
-import { supabase } from '../../lib/supabase';
+import { createClient } from '@supabase/supabase-js';
 import Button from '../../components/Button';
 import Card from '../../components/Card';
 import ThemeToggle from '../../components/ThemeToggle';
@@ -16,17 +16,28 @@ import {
   Mail,
   Building,
   Lock,
-  MapPin,
   Wine,
-  DollarSign,
-  Check,
   Sparkles,
-  Zap,
-  Shield,
   X,
   Image
 } from 'lucide-react';
 import { useTheme } from '../../contexts/ThemeContext';
+
+// Inline Supabase client creation
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+if (!supabaseUrl || !supabaseAnonKey) {
+  throw new Error('Missing required Supabase environment variables');
+}
+
+const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: true
+  }
+});
 
 interface BusinessFormData {
   businessName: string;
@@ -104,7 +115,6 @@ const BusinessSetup: React.FC = () => {
   const [showTierForm, setShowTierForm] = useState(false);
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
-  const [debugMode] = useState(true); // Enable debug mode for troubleshooting
 
   useEffect(() => {
     if (!token || !sessionId) {
@@ -375,24 +385,23 @@ const BusinessSetup: React.FC = () => {
       setError(null);
 
       // Check authentication before proceeding
-      if (debugMode) {
-        const { data: { user } } = await supabase.auth.getUser();
-        console.log('=== PRE-UPLOAD AUTH CHECK ===');
-        console.log('Current auth context:', {
-          userId: user?.id,
-          isAuthenticated: !!user,
-          userEmail: user?.email,
-          userRole: user?.role,
-          timestamp: new Date().toISOString()
-        });
-        
-        // Log Supabase client configuration
-        console.log('Supabase client config:', {
-          url: supabase.supabaseUrl,
-          hasAnonKey: !!supabase.supabaseKey,
-          authSessionExists: !!(await supabase.auth.getSession()).data.session
-        });
-      }
+      const { data: { user } } = await supabase.auth.getUser();
+      console.log('=== PRE-UPLOAD AUTH CHECK ===');
+      console.log('Current auth context:', {
+        userId: user?.id,
+        isAuthenticated: !!user,
+        userEmail: user?.email,
+        userRole: user?.role,
+        timestamp: new Date().toISOString()
+      });
+      
+      // Log Supabase client configuration
+      const { data: sessionData } = await supabase.auth.getSession();
+      console.log('Supabase client config:', {
+        url: supabaseUrl,
+        hasAnonKey: !!supabaseAnonKey,
+        authSessionExists: !!sessionData.session
+      });
 
       const response = await apiClient.post<{
         success: boolean;
@@ -409,10 +418,31 @@ const BusinessSetup: React.FC = () => {
       if (response.success) {
         const { businessId } = response.data;
         
-        if (debugMode) {
-          console.log('=== BUSINESS CREATED ===');
-          console.log('Business ID:', businessId);
-          console.log('Admin User ID:', response.data.adminUserId);
+        console.log('=== BUSINESS CREATED ===');
+        console.log('Business ID:', businessId);
+        console.log('Admin User ID:', response.data.adminUserId);
+        
+        // CRITICAL: Verify business ownership before uploads
+        console.log('=== VERIFYING BUSINESS OWNERSHIP ===');
+        const { data: { user: currentUser } } = await supabase.auth.getUser();
+        const { data: businessCheck, error: businessCheckError } = await supabase
+          .from('businesses')
+          .select('id, owner_id')
+          .eq('id', businessId)
+          .single();
+        
+        console.log('Business ownership verification:', {
+          businessId: businessCheck?.id,
+          businessOwnerId: businessCheck?.owner_id,
+          currentUserId: currentUser?.id,
+          ownershipMatch: businessCheck?.owner_id === currentUser?.id,
+          checkError: businessCheckError
+        });
+        
+        if (!businessCheck || businessCheck.owner_id !== currentUser?.id) {
+          console.error('OWNERSHIP MISMATCH: Current user does not own the business!');
+          console.error('This will cause RLS policy violations during upload.');
+          console.error('The API might be creating the business with a different user context.');
         }
         
         // Check upload state before attempting uploads
@@ -481,22 +511,30 @@ const BusinessSetup: React.FC = () => {
 
             if (uploadError) {
               console.error('=== LOGO UPLOAD FAILED ===');
-              console.error('Error object:', uploadError);
-              console.error('Error details:', {
-                message: uploadError.message,
-                error: uploadError.error,
-                statusCode: uploadError.statusCode,
-                details: uploadError.details,
-                hint: uploadError.hint,
-                code: uploadError.code
-              });
+              console.error('Full error:', uploadError);
+              
+              // Log available error properties
+              const errorInfo: Record<string, any> = {
+                message: uploadError.message || 'No message',
+                name: uploadError.name || 'Unknown error'
+              };
+              
+              // Add optional properties if they exist
+              if ('statusCode' in uploadError) errorInfo.statusCode = uploadError.statusCode;
+              if ('error' in uploadError) errorInfo.error = uploadError.error;
+              if ('details' in uploadError) errorInfo.details = uploadError.details;
+              if ('hint' in uploadError) errorInfo.hint = uploadError.hint;
+              if ('code' in uploadError) errorInfo.code = uploadError.code;
+              
+              console.error('Error details:', errorInfo);
               
               // Check specific error types
-              if (uploadError.message?.includes('not found')) {
+              const errorMessage = uploadError.message || '';
+              if (errorMessage.includes('not found')) {
                 console.error('BUCKET ERROR: Storage bucket "business-assets" not found');
-              } else if (uploadError.message?.includes('policy')) {
+              } else if (errorMessage.includes('policy')) {
                 console.error('POLICY ERROR: RLS policy violation');
-              } else if (uploadError.message?.includes('unauthorized')) {
+              } else if (errorMessage.includes('unauthorized')) {
                 console.error('AUTH ERROR: User not authorized');
               }
               
@@ -575,9 +613,30 @@ const BusinessSetup: React.FC = () => {
                   });
 
                 if (uploadError) {
-                  console.error('Tier image upload failed:', uploadError);
-                  if (uploadError.message?.includes('not found')) {
-                    console.error('Storage bucket "business-assets" not found. Please create it in Supabase Dashboard.');
+                  console.error('=== TIER IMAGE UPLOAD FAILED ===');
+                  console.error('Full error:', uploadError);
+                  
+                  // Log available error properties
+                  const errorInfo: Record<string, any> = {
+                    message: uploadError.message || 'No message',
+                    name: uploadError.name || 'Unknown error',
+                    tierName: tier.name,
+                    tierId: tiers.id
+                  };
+                  
+                  // Add optional properties if they exist
+                  if ('statusCode' in uploadError) errorInfo.statusCode = uploadError.statusCode;
+                  if ('error' in uploadError) errorInfo.error = uploadError.error;
+                  if ('details' in uploadError) errorInfo.details = uploadError.details;
+                  
+                  console.error('Tier upload error details:', errorInfo);
+                  
+                  // Check specific error types
+                  const errorMessage = uploadError.message || '';
+                  if (errorMessage.includes('not found')) {
+                    console.error('BUCKET ERROR: Storage bucket "business-assets" not found');
+                  } else if (errorMessage.includes('policy')) {
+                    console.error('POLICY ERROR: RLS policy violation for tier image');
                   }
                 } else {
                   console.log('Tier image uploaded successfully:', uploadData);
