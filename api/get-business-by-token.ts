@@ -178,7 +178,7 @@ const handler = async (req: VercelRequest, res: VercelResponse): Promise<void> =
     console.log('🔍 Querying businesses table for business_id:', invitation.business_id);
     const { data: business, error: businessError } = await supabaseAdmin
       .from('businesses')
-      .select('id, name, slug, website, email, status, created_at, updated_at, pricing_tier_id')
+      .select('id, name, slug, website, email, status, created_at, updated_at, pricing_tier_id, logo_url')
       .eq('id', invitation.business_id)
       .single();
 
@@ -222,7 +222,7 @@ const handler = async (req: VercelRequest, res: VercelResponse): Promise<void> =
     console.log('🔍 Querying membership_tiers for business_id:', business.id);
     const { data: membershipTiers, error: tiersError } = await supabaseAdmin
       .from('membership_tiers')
-      .select('id, name, description, monthly_price_cents, stripe_product_id, stripe_price_id, created_at')
+      .select('id, name, description, monthly_price_cents, stripe_product_id, stripe_price_id, created_at, benefits, image_url')
       .eq('business_id', business.id)
       .order('created_at', { ascending: true });
 
@@ -249,7 +249,7 @@ const handler = async (req: VercelRequest, res: VercelResponse): Promise<void> =
         slug: business.slug, // Include the slug from the database
         website: business.website,
         admin_email: business.email,
-        logo_url: null, // TODO: Add logo support later
+        logo_url: business.logo_url || null,
         subscription_tier: pricingTierName,
         created_at: business.created_at
       },
@@ -258,9 +258,11 @@ const handler = async (req: VercelRequest, res: VercelResponse): Promise<void> =
         name: tier.name,
         price: (tier.monthly_price_cents / 100).toFixed(2), // Convert cents to dollars as string
         description: tier.description,
+        benefits: tier.benefits || [],
         stripe_product_id: tier.stripe_product_id || '',
         stripe_price_id: tier.stripe_price_id || '',
-        created_at: tier.created_at
+        created_at: tier.created_at,
+        image_url: tier.image_url || null
       })),
       invitation: {
         id: invitation.id,

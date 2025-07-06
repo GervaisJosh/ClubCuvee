@@ -546,8 +546,29 @@ const BusinessSetup: React.FC = () => {
             console.log('Auth session before upload:', {
               hasSession: !!session,
               sessionUserId: session?.user?.id,
-              accessToken: session?.access_token ? 'Present' : 'Missing'
+              sessionEmail: session?.user?.email,
+              accessToken: session?.access_token ? 'Present' : 'Missing',
+              businessIdForUpload: businessId
             });
+            
+            // Verify business ownership for RLS
+            const { data: businessOwnerCheck, error: ownerCheckError } = await supabase
+              .from('businesses')
+              .select('owner_id')
+              .eq('id', businessId)
+              .single();
+              
+            console.log('Business ownership check before upload:', {
+              businessId,
+              businessOwnerId: businessOwnerCheck?.owner_id,
+              currentUserId: session?.user?.id,
+              ownershipMatch: businessOwnerCheck?.owner_id === session?.user?.id,
+              error: ownerCheckError
+            });
+            
+            if (businessOwnerCheck?.owner_id !== session?.user?.id) {
+              console.error('CRITICAL: User does not own the business! RLS will block upload.');
+            }
 
             const { data: uploadData, error: uploadError } = await supabase.storage
               .from('business-assets')
