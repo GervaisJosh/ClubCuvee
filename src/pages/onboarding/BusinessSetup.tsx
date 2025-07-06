@@ -403,6 +403,12 @@ const BusinessSetup: React.FC = () => {
         authSessionExists: !!sessionData.session
       });
 
+      // Get the current session to include auth token
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        throw new Error('No authentication token available');
+      }
+      
       const response = await apiClient.post<{
         success: boolean;
         data: {
@@ -413,6 +419,10 @@ const BusinessSetup: React.FC = () => {
         token,
         sessionId,
         businessData: formData
+      }, {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`
+        }
       });
 
       if (response.success) {

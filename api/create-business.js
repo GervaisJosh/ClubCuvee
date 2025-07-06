@@ -170,19 +170,19 @@ var create_business_default = withErrorHandler(async (req, res) => {
         throw new APIError(400, "Each customer tier must have at least one benefit", "VALIDATION_ERROR");
       }
     }
-    const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
-      email: businessData.email,
-      password: businessData.password,
-      email_confirm: true,
-      user_metadata: {
-        full_name: businessData.businessOwnerName,
-        is_admin: true,
-        business_name: businessData.businessName
-      }
-    });
-    if (authError || !authUser.user) {
-      console.error("Error creating auth user:", authError);
-      throw new APIError(400, authError?.message || "Failed to create user account", "AUTH_ERROR");
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      throw new APIError(401, "No authorization token provided", "UNAUTHORIZED");
+    }
+    const authToken = authHeader.substring(7);
+    const { data: { user: authUser }, error: authError } = await supabaseAdmin.auth.getUser(authToken);
+    if (authError || !authUser) {
+      console.error("Error getting authenticated user:", authError);
+      throw new APIError(401, "Invalid or expired authentication token", "AUTH_ERROR");
+    }
+    console.log("Authenticated user:", authUser.id, authUser.email);
+    if (authUser.email !== businessData.email) {
+      throw new APIError(400, "Email does not match authenticated user", "VALIDATION_ERROR");
     }
     const businessId = (0, import_crypto.randomUUID)();
     const baseSlug = businessData.businessName.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
@@ -191,7 +191,7 @@ var create_business_default = withErrorHandler(async (req, res) => {
       id: businessId,
       name: businessData.businessName.trim(),
       slug: businessSlug,
-      owner_id: authUser.user.id,
+      owner_id: authUser.id,
       email: businessData.email.trim(),
       phone: businessData.phone?.trim() || null,
       website: businessData.website?.trim() || null,
@@ -209,11 +209,10 @@ var create_business_default = withErrorHandler(async (req, res) => {
     }).select("id").single();
     if (businessError) {
       console.error("Error creating business:", businessError);
-      await supabaseAdmin.auth.admin.deleteUser(authUser.user.id);
       throw new APIError(500, "Failed to create business record", "DATABASE_ERROR");
     }
     const { error: profileError } = await supabaseAdmin.from("business_users").insert({
-      auth_id: authUser.user.id,
+      auth_id: authUser.id,
       business_id: businessId,
       email: businessData.email.trim(),
       full_name: businessData.businessOwnerName.trim(),
@@ -222,7 +221,6 @@ var create_business_default = withErrorHandler(async (req, res) => {
     });
     if (profileError) {
       console.error("Error creating business user profile:", profileError);
-      await supabaseAdmin.auth.admin.deleteUser(authUser.user.id);
       await supabaseAdmin.from("businesses").delete().eq("id", businessId);
       throw new APIError(500, "Failed to create business user profile", "DATABASE_ERROR");
     }
@@ -239,7 +237,6 @@ var create_business_default = withErrorHandler(async (req, res) => {
     const { data: createdTiers, error: tiersError } = await supabaseAdmin.from("membership_tiers").insert(tierInserts).select();
     if (tiersError || !createdTiers) {
       console.error("\u274C Error creating membership tiers:", tiersError);
-      await supabaseAdmin.auth.admin.deleteUser(authUser.user.id);
       await supabaseAdmin.from("businesses").delete().eq("id", businessId);
       throw new APIError(500, "Failed to create membership tiers", "DATABASE_ERROR");
     }
@@ -320,7 +317,7 @@ var create_business_default = withErrorHandler(async (req, res) => {
       data: {
         businessId,
         businessSlug,
-        adminUserId: authUser.user.id,
+        adminUserId: authUser.id,
         businessName: businessData.businessName,
         customerTiersCreated: tierInserts.length,
         stripeProductsCreated: stripeProductUpdates.length,

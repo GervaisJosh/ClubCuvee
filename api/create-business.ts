@@ -220,21 +220,28 @@ export default withErrorHandler(async (req: VercelRequest, res: VercelResponse):
       }
     }
 
-    // 5. Create the admin user account in Supabase Auth
-    const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
-      email: businessData.email,
-      password: businessData.password,
-      email_confirm: true,
-      user_metadata: {
-        full_name: businessData.businessOwnerName,
-        is_admin: true,
-        business_name: businessData.businessName
-      }
-    });
-
-    if (authError || !authUser.user) {
-      console.error('Error creating auth user:', authError);
-      throw new APIError(400, authError?.message || 'Failed to create user account', 'AUTH_ERROR');
+    // 5. Get the authenticated user from the request
+    // Extract the auth token from the Authorization header
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      throw new APIError(401, 'No authorization token provided', 'UNAUTHORIZED');
+    }
+    
+    const authToken = authHeader.substring(7); // Remove 'Bearer ' prefix
+    
+    // Verify the token and get the user
+    const { data: { user: authUser }, error: authError } = await supabaseAdmin.auth.getUser(authToken);
+    
+    if (authError || !authUser) {
+      console.error('Error getting authenticated user:', authError);
+      throw new APIError(401, 'Invalid or expired authentication token', 'AUTH_ERROR');
+    }
+    
+    console.log('Authenticated user:', authUser.id, authUser.email);
+    
+    // Verify the email matches what was provided
+    if (authUser.email !== businessData.email) {
+      throw new APIError(400, 'Email does not match authenticated user', 'VALIDATION_ERROR');
     }
 
     // 6. Create the business record with slug
@@ -255,7 +262,7 @@ export default withErrorHandler(async (req: VercelRequest, res: VercelResponse):
         id: businessId,
         name: businessData.businessName.trim(),
         slug: businessSlug,
-        owner_id: authUser.user.id,
+        owner_id: authUser.id,
         email: businessData.email.trim(),
         phone: businessData.phone?.trim() || null,
         website: businessData.website?.trim() || null,
@@ -276,8 +283,7 @@ export default withErrorHandler(async (req: VercelRequest, res: VercelResponse):
 
     if (businessError) {
       console.error('Error creating business:', businessError);
-      // Clean up the auth user if business creation fails
-      await supabaseAdmin.auth.admin.deleteUser(authUser.user.id);
+      // Don't delete the user - they already existed
       throw new APIError(500, 'Failed to create business record', 'DATABASE_ERROR');
     }
 
@@ -285,7 +291,7 @@ export default withErrorHandler(async (req: VercelRequest, res: VercelResponse):
     const { error: profileError } = await supabaseAdmin
       .from('business_users')
       .insert({
-        auth_id: authUser.user.id,
+        auth_id: authUser.id,
         business_id: businessId,
         email: businessData.email.trim(),
         full_name: businessData.businessOwnerName.trim(),
@@ -295,8 +301,7 @@ export default withErrorHandler(async (req: VercelRequest, res: VercelResponse):
 
     if (profileError) {
       console.error('Error creating business user profile:', profileError);
-      // Clean up created records if profile creation fails
-      await supabaseAdmin.auth.admin.deleteUser(authUser.user.id);
+      // Clean up business record if profile creation fails (don't delete the user)
       await supabaseAdmin.from('businesses').delete().eq('id', businessId);
       throw new APIError(500, 'Failed to create business user profile', 'DATABASE_ERROR');
     }
@@ -320,8 +325,7 @@ export default withErrorHandler(async (req: VercelRequest, res: VercelResponse):
 
     if (tiersError || !createdTiers) {
       console.error('❌ Error creating membership tiers:', tiersError);
-      // Clean up created records if tier creation fails
-      await supabaseAdmin.auth.admin.deleteUser(authUser.user.id);
+      // Clean up created records if tier creation fails (don't delete the user)
       await supabaseAdmin.from('businesses').delete().eq('id', businessId);
       throw new APIError(500, 'Failed to create membership tiers', 'DATABASE_ERROR');
     }
@@ -436,7 +440,7 @@ export default withErrorHandler(async (req: VercelRequest, res: VercelResponse):
       data: {
         businessId: businessId,
         businessSlug: businessSlug,
-        adminUserId: authUser.user.id,
+        adminUserId: authUser.id,
         businessName: businessData.businessName,
         customerTiersCreated: tierInserts.length,
         stripeProductsCreated: stripeProductUpdates.length,
