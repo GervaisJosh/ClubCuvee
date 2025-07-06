@@ -170,18 +170,34 @@ var create_business_default = withErrorHandler(async (req, res) => {
         throw new APIError(400, "Each customer tier must have at least one benefit", "VALIDATION_ERROR");
       }
     }
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      throw new APIError(401, "No authorization token provided", "UNAUTHORIZED");
+    console.log("Creating auth account for business email:", businessData.email);
+    let businessAuthUser;
+    const { data: newAuthUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
+      email: businessData.email.trim(),
+      email_confirm: true,
+      // Auto-confirm since admin is creating
+      password: businessData.password
+      // Set the password they provided
+    });
+    if (authError) {
+      if (authError.message?.includes("already exists")) {
+        console.log("Auth user already exists for email, fetching existing user...");
+        const { data: { users } } = await supabaseAdmin.auth.admin.listUsers();
+        const existingUser = users.find((u) => u.email === businessData.email.trim());
+        if (existingUser) {
+          businessAuthUser = existingUser;
+          console.log("Using existing auth user:", businessAuthUser.id);
+        } else {
+          throw new APIError(400, "Email already in use", "EMAIL_EXISTS");
+        }
+      } else {
+        console.error("Error creating auth user:", authError);
+        throw new APIError(500, "Failed to create business account", "AUTH_ERROR");
+      }
+    } else {
+      businessAuthUser = newAuthUser;
+      console.log("Created new auth user:", businessAuthUser.id);
     }
-    const authToken = authHeader.substring(7);
-    const { data: { user: authUser }, error: authError } = await supabaseAdmin.auth.getUser(authToken);
-    if (authError || !authUser) {
-      console.error("Error getting authenticated user:", authError);
-      throw new APIError(401, "Invalid or expired authentication token", "AUTH_ERROR");
-    }
-    console.log("Authenticated user:", authUser.id, authUser.email);
-    console.log("Business email:", businessData.email);
     const businessId = (0, import_crypto.randomUUID)();
     const baseSlug = businessData.businessName.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
     const businessSlug = `${baseSlug}-${businessId.substring(0, 4)}`;
@@ -189,7 +205,8 @@ var create_business_default = withErrorHandler(async (req, res) => {
       id: businessId,
       name: businessData.businessName.trim(),
       slug: businessSlug,
-      owner_id: authUser.id,
+      owner_id: businessAuthUser.id,
+      // The business email's auth ID, not the admin's
       email: businessData.email.trim(),
       phone: businessData.phone?.trim() || null,
       website: businessData.website?.trim() || null,
@@ -210,14 +227,16 @@ var create_business_default = withErrorHandler(async (req, res) => {
       throw new APIError(500, "Failed to create business record", "DATABASE_ERROR");
     }
     const { error: profileError } = await supabaseAdmin.from("business_users").insert({
-      auth_id: authUser.id,
+      auth_id: businessAuthUser.id,
+      // The business email's auth ID
       business_id: businessId,
       email: businessData.email.trim(),
       full_name: businessData.businessOwnerName.trim(),
-      role: "admin",
-      is_active: true
+      role: "business_admin",
+      is_active: true,
+      created_at: (/* @__PURE__ */ new Date()).toISOString()
     });
-    if (profileError) {
+    if (profileError && !profileError.message?.includes("already exists")) {
       console.error("Error creating business user profile:", profileError);
       await supabaseAdmin.from("businesses").delete().eq("id", businessId);
       throw new APIError(500, "Failed to create business user profile", "DATABASE_ERROR");
@@ -315,7 +334,9 @@ var create_business_default = withErrorHandler(async (req, res) => {
       data: {
         businessId,
         businessSlug,
-        adminUserId: authUser.id,
+        businessAuthUserId: businessAuthUser.id,
+        // The business email's auth ID
+        businessEmail: businessData.email,
         businessName: businessData.businessName,
         customerTiersCreated: tierInserts.length,
         stripeProductsCreated: stripeProductUpdates.length,

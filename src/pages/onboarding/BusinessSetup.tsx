@@ -443,76 +443,54 @@ const BusinessSetup: React.FC = () => {
       setLoading(true);
       setError(null);
 
-      // Check authentication before proceeding
-      const { data: { user } } = await supabase.auth.getUser();
-      console.log('=== PRE-UPLOAD AUTH CHECK ===');
-      console.log('Current auth context:', {
-        userId: user?.id,
-        isAuthenticated: !!user,
-        userEmail: user?.email,
-        userRole: user?.role,
-        timestamp: new Date().toISOString()
-      });
-      
-      // Log Supabase client configuration
-      const { data: sessionData } = await supabase.auth.getSession();
-      console.log('Supabase client config:', {
-        url: supabaseUrl,
-        hasAnonKey: !!supabaseAnonKey,
-        authSessionExists: !!sessionData.session
-      });
-
-      // Get the current session to include auth token
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.access_token) {
-        throw new Error('No authentication token available');
-      }
+      // No authentication required - the API will create the auth account
+      console.log('=== CREATING BUSINESS ACCOUNT ===');
+      console.log('Business email:', formData.email);
+      console.log('Token:', token);
+      console.log('Session ID:', sessionId);
       
       const response = await apiClient.post<{
         success: boolean;
         data: {
           businessId: string;
-          adminUserId: string;
+          businessAuthUserId: string;
+          businessEmail: string;
         };
       }>('/api/create-business', {
         token,
         sessionId,
         businessData: formData
-      }, {
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`
-        }
       });
 
       if (response.success) {
-        const { businessId } = response.data;
+        const { businessId, businessAuthUserId, businessEmail } = response.data;
         
         console.log('=== BUSINESS CREATED ===');
         console.log('Business ID:', businessId);
-        console.log('Admin User ID:', response.data.adminUserId);
+        console.log('Business Auth User ID:', businessAuthUserId);
+        console.log('Business Email:', businessEmail);
         
-        // CRITICAL: Verify business ownership before uploads
-        console.log('=== VERIFYING BUSINESS OWNERSHIP ===');
-        const { data: { user: currentUser } } = await supabase.auth.getUser();
-        const { data: businessCheck, error: businessCheckError } = await supabase
-          .from('businesses')
-          .select('id, owner_id')
-          .eq('id', businessId)
-          .single();
-        
-        console.log('Business ownership verification:', {
-          businessId: businessCheck?.id,
-          businessOwnerId: businessCheck?.owner_id,
-          currentUserId: currentUser?.id,
-          ownershipMatch: businessCheck?.owner_id === currentUser?.id,
-          checkError: businessCheckError
+        // Now sign in as the business user to upload images
+        console.log('=== SIGNING IN AS BUSINESS USER ===');
+        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+          email: formData.email,
+          password: formData.password
         });
         
-        if (!businessCheck || businessCheck.owner_id !== currentUser?.id) {
-          console.error('OWNERSHIP MISMATCH: Current user does not own the business!');
-          console.error('This will cause RLS policy violations during upload.');
-          console.error('The API might be creating the business with a different user context.');
+        if (signInError) {
+          console.error('Failed to sign in as business user:', signInError);
+          throw new Error('Failed to authenticate business account');
         }
+        
+        console.log('Successfully signed in as business user');
+        
+        // Verify we're now authenticated as the business owner
+        const { data: { user: currentUser } } = await supabase.auth.getUser();
+        console.log('Current authenticated user:', {
+          userId: currentUser?.id,
+          email: currentUser?.email,
+          matchesBusinessAuth: currentUser?.id === businessAuthUserId
+        });
         
         // Check upload state before attempting uploads
         console.log('=== UPLOAD STATE CHECK ===');

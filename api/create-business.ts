@@ -220,27 +220,42 @@ export default withErrorHandler(async (req: VercelRequest, res: VercelResponse):
       }
     }
 
-    // 5. Get the authenticated user from the request
-    // Extract the auth token from the Authorization header
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      throw new APIError(401, 'No authorization token provided', 'UNAUTHORIZED');
+    // 5. Create an auth account for the BUSINESS EMAIL (not the admin)
+    // This gives them an auth_id immediately
+    console.log('Creating auth account for business email:', businessData.email);
+    
+    let businessAuthUser: any;
+    
+    // First, create an auth user for the business email
+    const { data: newAuthUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
+      email: businessData.email.trim(),
+      email_confirm: true, // Auto-confirm since admin is creating
+      password: businessData.password, // Set the password they provided
+    });
+
+    if (authError) {
+      // Check if user already exists
+      if (authError.message?.includes('already exists')) {
+        console.log('Auth user already exists for email, fetching existing user...');
+        // Get existing user
+        const { data: { users } } = await supabaseAdmin.auth.admin.listUsers();
+        const existingUser = users.find(u => u.email === businessData.email.trim());
+        
+        if (existingUser) {
+          // Use existing user's ID
+          businessAuthUser = existingUser;
+          console.log('Using existing auth user:', businessAuthUser.id);
+        } else {
+          throw new APIError(400, 'Email already in use', 'EMAIL_EXISTS');
+        }
+      } else {
+        console.error('Error creating auth user:', authError);
+        throw new APIError(500, 'Failed to create business account', 'AUTH_ERROR');
+      }
+    } else {
+      businessAuthUser = newAuthUser;
+      console.log('Created new auth user:', businessAuthUser.id);
     }
-    
-    const authToken = authHeader.substring(7); // Remove 'Bearer ' prefix
-    
-    // Verify the token and get the user
-    const { data: { user: authUser }, error: authError } = await supabaseAdmin.auth.getUser(authToken);
-    
-    if (authError || !authUser) {
-      console.error('Error getting authenticated user:', authError);
-      throw new APIError(401, 'Invalid or expired authentication token', 'AUTH_ERROR');
-    }
-    
-    console.log('Authenticated user:', authUser.id, authUser.email);
-    console.log('Business email:', businessData.email);
-    
-    // Note: Businesses can use any email - not restricted to auth user's email
 
     // 6. Create the business record with slug
     const businessId = randomUUID();
@@ -260,7 +275,7 @@ export default withErrorHandler(async (req: VercelRequest, res: VercelResponse):
         id: businessId,
         name: businessData.businessName.trim(),
         slug: businessSlug,
-        owner_id: authUser.id,
+        owner_id: businessAuthUser.id, // The business email's auth ID, not the admin's
         email: businessData.email.trim(),
         phone: businessData.phone?.trim() || null,
         website: businessData.website?.trim() || null,
@@ -281,25 +296,25 @@ export default withErrorHandler(async (req: VercelRequest, res: VercelResponse):
 
     if (businessError) {
       console.error('Error creating business:', businessError);
-      // Don't delete the user - they already existed
       throw new APIError(500, 'Failed to create business record', 'DATABASE_ERROR');
     }
 
-    // 7. Create the business admin user profile
+    // 7. Create the business admin user profile with the new auth_id
     const { error: profileError } = await supabaseAdmin
       .from('business_users')
       .insert({
-        auth_id: authUser.id,
+        auth_id: businessAuthUser.id, // The business email's auth ID
         business_id: businessId,
         email: businessData.email.trim(),
         full_name: businessData.businessOwnerName.trim(),
-        role: 'admin',
-        is_active: true
+        role: 'business_admin',
+        is_active: true,
+        created_at: new Date().toISOString()
       });
 
-    if (profileError) {
+    if (profileError && !profileError.message?.includes('already exists')) {
       console.error('Error creating business user profile:', profileError);
-      // Clean up business record if profile creation fails (don't delete the user)
+      // Clean up business record if profile creation fails
       await supabaseAdmin.from('businesses').delete().eq('id', businessId);
       throw new APIError(500, 'Failed to create business user profile', 'DATABASE_ERROR');
     }
@@ -438,7 +453,8 @@ export default withErrorHandler(async (req: VercelRequest, res: VercelResponse):
       data: {
         businessId: businessId,
         businessSlug: businessSlug,
-        adminUserId: authUser.id,
+        businessAuthUserId: businessAuthUser.id, // The business email's auth ID
+        businessEmail: businessData.email,
         businessName: businessData.businessName,
         customerTiersCreated: tierInserts.length,
         stripeProductsCreated: stripeProductUpdates.length,
