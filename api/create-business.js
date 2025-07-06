@@ -181,9 +181,7 @@ var create_business_default = withErrorHandler(async (req, res) => {
       throw new APIError(401, "Invalid or expired authentication token", "AUTH_ERROR");
     }
     console.log("Authenticated user:", authUser.id, authUser.email);
-    if (authUser.email !== businessData.email) {
-      throw new APIError(400, "Email does not match authenticated user", "VALIDATION_ERROR");
-    }
+    console.log("Business email:", businessData.email);
     const businessId = (0, import_crypto.randomUUID)();
     const baseSlug = businessData.businessName.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
     const businessSlug = `${baseSlug}-${businessId.substring(0, 4)}`;

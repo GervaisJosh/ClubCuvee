@@ -115,6 +115,7 @@ const BusinessSetup: React.FC = () => {
   const [showTierForm, setShowTierForm] = useState(false);
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [formErrors, setFormErrors] = useState<string[]>([]);
 
   useEffect(() => {
     if (!token || !sessionId) {
@@ -268,7 +269,85 @@ const BusinessSetup: React.FC = () => {
   };
 
 
-  // Handle logo file selection
+  // Comprehensive form validation
+  const validateForm = (): { isValid: boolean; errors: string[] } => {
+    const errors: string[] = [];
+    
+    // Business Info validation
+    if (!formData.businessName.trim()) {
+      errors.push('Business name is required');
+    } else if (formData.businessName.trim().length < 2) {
+      errors.push('Business name must be at least 2 characters');
+    }
+    
+    if (!formData.businessOwnerName.trim()) {
+      errors.push('Admin name is required');
+    } else if (formData.businessOwnerName.trim().length < 2) {
+      errors.push('Admin name must be at least 2 characters');
+    }
+    
+    if (!formData.email.trim()) {
+      errors.push('Business email is required');
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      errors.push('Please enter a valid email address');
+    }
+    
+    if (!formData.password) {
+      errors.push('Password is required');
+    } else if (formData.password.length < 8) {
+      errors.push('Password must be at least 8 characters');
+    } else if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(formData.password)) {
+      errors.push('Password must contain uppercase, lowercase, and number');
+    }
+    
+    if (formData.password !== formData.confirmPassword) {
+      errors.push('Passwords do not match');
+    }
+    
+    // Optional field validation
+    if (formData.phone && !/^\+?[\d\s\-\(\)]+$/.test(formData.phone)) {
+      errors.push('Please enter a valid phone number');
+    }
+    
+    if (formData.website && !formData.website.startsWith('http')) {
+      errors.push('Website must start with http:// or https://');
+    }
+    
+    // Membership Tiers validation
+    if (formData.customerTiers.length === 0) {
+      errors.push('At least one membership tier is required');
+    }
+    
+    formData.customerTiers.forEach((tier, index) => {
+      const tierNum = index + 1;
+      
+      if (!tier.name.trim()) {
+        errors.push(`Tier ${tierNum}: Name is required`);
+      }
+      
+      if (!tier.description.trim()) {
+        errors.push(`Tier ${tierNum}: Description is required`);
+      }
+      
+      if (tier.monthlyPrice < 10) {
+        errors.push(`Tier ${tierNum}: Price must be at least $10`);
+      } else if (tier.monthlyPrice > 999) {
+        errors.push(`Tier ${tierNum}: Price cannot exceed $999`);
+      }
+      
+      const validBenefits = tier.benefits.filter(b => b.trim());
+      if (validBenefits.length === 0) {
+        errors.push(`Tier ${tierNum}: At least one benefit is required`);
+      }
+    });
+    
+    return {
+      isValid: errors.length === 0,
+      errors
+    };
+  };
+
+  // Handle logo file selection - NO UPLOAD until form submission
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -286,10 +365,11 @@ const BusinessSetup: React.FC = () => {
       return;
     }
 
+    // Just store file in state - DO NOT upload yet
     setLogoFile(file);
     setError(null);
 
-    // Show preview
+    // Create preview for display
     const reader = new FileReader();
     reader.onload = (e) => {
       setLogoPreview(e.target?.result as string);
@@ -297,7 +377,7 @@ const BusinessSetup: React.FC = () => {
     reader.readAsDataURL(file);
   };
 
-  // Handle tier image selection
+  // Handle tier image selection - NO UPLOAD until form submission
   const handleTierImageSelect = (tierIndex: number, e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -315,7 +395,7 @@ const BusinessSetup: React.FC = () => {
       return;
     }
 
-    // Show preview
+    // Just store file and preview in state - DO NOT upload yet
     const reader = new FileReader();
     reader.onload = (e) => {
       const preview = e.target?.result as string;
@@ -340,45 +420,24 @@ const BusinessSetup: React.FC = () => {
       return;
     }
 
-    // Validate required fields
-    const requiredFields = ['businessName', 'businessOwnerName', 'email', 'password', 'confirmPassword'];
-    const errors: Record<string, string> = {};
+    // Use comprehensive validation
+    const validation = validateForm();
     
-    requiredFields.forEach(field => {
-      const value = formData[field as keyof BusinessFormData] as string;
-      const error = validateField(field, value);
-      if (error) {
-        errors[field] = error;
-      }
-    });
-
-    // Validate customer tiers
-    if (formData.customerTiers.length === 0) {
-      setError('Please add at least one customer membership tier');
+    if (!validation.isValid) {
+      // Set form errors for display
+      setFormErrors(validation.errors);
+      
+      // Scroll to top to show errors
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      
+      // Set a general error message
+      setError('Please fix the errors below before submitting');
       return;
     }
-
-    formData.customerTiers.forEach((tier, index) => {
-      if (!tier.name.trim()) {
-        errors[`tier_${index}_name`] = 'Tier name is required';
-      }
-      if (!tier.description.trim()) {
-        errors[`tier_${index}_description`] = 'Tier description is required';
-      }
-      if (tier.monthlyPrice < 10 || tier.monthlyPrice > 999) {
-        errors[`tier_${index}_price`] = 'Price must be between $10 and $999';
-      }
-      if (tier.benefits.filter(b => b.trim()).length === 0) {
-        errors[`tier_${index}_benefits`] = 'At least one benefit is required';
-      }
-    });
-
-    setValidationErrors(errors);
-
-    if (Object.keys(errors).length > 0) {
-      setError('Please fix the validation errors before submitting');
-      return;
-    }
+    
+    // Clear any previous errors
+    setFormErrors([]);
+    setError(null);
 
     try {
       setLoading(true);
@@ -763,6 +822,25 @@ const BusinessSetup: React.FC = () => {
             
           </div>
         </div>
+
+        {/* Form Errors Display */}
+        {formErrors.length > 0 && (
+          <div className={`mb-8 p-6 ${isDark ? 'bg-red-900/20 border-red-800' : 'bg-red-50 border-red-200'} border rounded-xl`}>
+            <div className="flex items-start">
+              <AlertCircle className="h-5 w-5 text-red-500 mr-3 mt-0.5 flex-shrink-0" />
+              <div className="flex-1">
+                <h3 className={`${isDark ? 'text-red-200' : 'text-red-800'} font-semibold mb-2`}>
+                  Please fix the following errors:
+                </h3>
+                <ul className={`list-disc list-inside ${isDark ? 'text-red-300' : 'text-red-700'} space-y-1`}>
+                  {formErrors.map((error, index) => (
+                    <li key={index} className="text-sm">{error}</li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-8">
           {/* Single consolidated card */}

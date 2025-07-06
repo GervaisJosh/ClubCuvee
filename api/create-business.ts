@@ -238,11 +238,9 @@ export default withErrorHandler(async (req: VercelRequest, res: VercelResponse):
     }
     
     console.log('Authenticated user:', authUser.id, authUser.email);
+    console.log('Business email:', businessData.email);
     
-    // Verify the email matches what was provided
-    if (authUser.email !== businessData.email) {
-      throw new APIError(400, 'Email does not match authenticated user', 'VALIDATION_ERROR');
-    }
+    // Note: Businesses can use any email - not restricted to auth user's email
 
     // 6. Create the business record with slug
     const businessId = randomUUID();
