@@ -3,7 +3,8 @@ import { useNavigate, useParams } from 'react-router-dom';
 import Button from '../../components/Button';
 import Card from '../../components/Card';
 import ThemeToggle from '../../components/ThemeToggle';
-import { CheckCircle, ArrowRight, Settings, Users, BarChart3, Copy, ExternalLink, AlertCircle } from 'lucide-react';
+import BusinessLogoDisplay from '../../components/BusinessLogoDisplay';
+import { CheckCircle, ArrowRight, Settings, Users, Copy, ExternalLink, AlertCircle } from 'lucide-react';
 import { useTheme } from '../../contexts/ThemeContext';
 
 interface BusinessData {
@@ -26,6 +27,7 @@ interface BusinessData {
     stripe_product_id: string;
     stripe_price_id: string;
     created_at: string;
+    image_url?: string;
   }>;
   invitation: {
     id: string;
@@ -176,6 +178,12 @@ const OnboardingSuccess: React.FC = () => {
         {/* Header Section */}
         <div className="text-center mb-16">
           <CheckCircle className="w-20 h-20 text-green-500 mx-auto mb-6" />
+          <BusinessLogoDisplay
+            logoUrl={businessData.business.logo_url}
+            businessName={businessData.business.name}
+            size="large"
+            className="mx-auto mb-6"
+          />
           <h1 className={`text-4xl font-semibold ${isDark ? 'text-white' : 'text-gray-900'} mb-3`}>
             Congratulations, {businessData.business.name}!
           </h1>
@@ -198,32 +206,45 @@ const OnboardingSuccess: React.FC = () => {
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
               {businessData.membershipTiers.map((tier) => (
-                <div key={tier.id} className={`text-center p-6 ${isDark ? 'bg-zinc-800/30 border-zinc-700' : 'bg-gray-50 border-gray-200'} border rounded-lg hover:scale-105 transition-transform duration-200`}>
-                  <div className="w-12 h-12 bg-gray-600 rounded-lg flex items-center justify-center mx-auto mb-4">
-                    <Users className="h-6 w-6 text-white" />
-                  </div>
-                  <h3 className={`text-lg font-medium ${isDark ? 'text-white' : 'text-gray-900'} mb-2`}>
-                    {tier.name}
-                  </h3>
-                  <p className={`text-3xl font-semibold ${isDark ? 'text-white' : 'text-gray-900'} mb-2`}>
-                    ${parseFloat(tier.price).toFixed(2)}
-                    <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'} font-normal`}>/month</span>
-                  </p>
-                  <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'} mb-4`}>
-                    {tier.description}
-                  </p>
-                  <div className="flex items-center justify-center space-x-2 text-sm">
-                    {tier.stripe_product_id && tier.stripe_price_id ? (
-                      <>
-                        <CheckCircle className="h-4 w-4 text-green-500" />
-                        <span className="text-green-500">Ready</span>
-                      </>
-                    ) : (
-                      <>
-                        <AlertCircle className="h-4 w-4 text-yellow-500" />
-                        <span className={`${isDark ? 'text-yellow-400' : 'text-yellow-600'}`}>Stripe Pending</span>
-                      </>
+                <div key={tier.id} className={`relative overflow-hidden ${isDark ? 'bg-zinc-800/30 border-zinc-700' : 'bg-gray-50 border-gray-200'} border rounded-lg hover:scale-105 transition-transform duration-200`}>
+                  {tier.image_url && (
+                    <div className="h-32 w-full overflow-hidden">
+                      <img 
+                        src={tier.image_url} 
+                        alt={tier.name}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  )}
+                  <div className="p-6 text-center">
+                    {!tier.image_url && (
+                      <div className="w-12 h-12 bg-gray-600 rounded-lg flex items-center justify-center mx-auto mb-4">
+                        <Users className="h-6 w-6 text-white" />
+                      </div>
                     )}
+                    <h3 className={`text-lg font-medium ${isDark ? 'text-white' : 'text-gray-900'} mb-2`}>
+                      {tier.name}
+                    </h3>
+                    <p className={`text-3xl font-semibold ${isDark ? 'text-white' : 'text-gray-900'} mb-2`}>
+                      ${parseFloat(tier.price).toFixed(2)}
+                      <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'} font-normal`}>/month</span>
+                    </p>
+                    <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'} mb-4`}>
+                      {tier.description}
+                    </p>
+                    <div className="flex items-center justify-center space-x-2 text-sm">
+                      {tier.stripe_product_id && tier.stripe_price_id ? (
+                        <>
+                          <CheckCircle className="h-4 w-4 text-green-500" />
+                          <span className="text-green-500">Ready</span>
+                        </>
+                      ) : (
+                        <>
+                          <AlertCircle className="h-4 w-4 text-yellow-500" />
+                          <span className={`${isDark ? 'text-yellow-400' : 'text-yellow-600'}`}>Stripe Pending</span>
+                        </>
+                      )}
+                    </div>
                   </div>
                 </div>
               ))}
