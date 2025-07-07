@@ -565,7 +565,7 @@ const BusinessSetup: React.FC = () => {
         console.log('Tier images state:', tierImagesInfo);
         
         // Upload logo if selected (inline function)
-        if (logoFile && businessId && authenticatedClient) {
+        if (logoFile && businessId) {
           console.log('=== PROCEEDING WITH LOGO UPLOAD ===');
           try {
             console.log('=== LOGO UPLOAD START ===');
@@ -594,7 +594,7 @@ const BusinessSetup: React.FC = () => {
             });
 
             // Check auth status right before upload
-            const { data: { session } } = await authenticatedClient.auth.getSession();
+            const { data: { session } } = await newAuthenticatedClient.auth.getSession();
             console.log('Auth session before upload:', {
               hasSession: !!session,
               sessionUserId: session?.user?.id,
@@ -604,7 +604,7 @@ const BusinessSetup: React.FC = () => {
             });
             
             // Verify business ownership for RLS
-            const { data: businessOwnerCheck, error: ownerCheckError } = await authenticatedClient
+            const { data: businessOwnerCheck, error: ownerCheckError } = await newAuthenticatedClient
               .from('businesses')
               .select('owner_id')
               .eq('id', businessId)
@@ -631,7 +631,7 @@ const BusinessSetup: React.FC = () => {
             // Log the auth header that will be used
             console.log('Upload will use auth token:', session.access_token.substring(0, 20) + '...');
 
-            const { data: uploadData, error: uploadError } = await authenticatedClient.storage
+            const { data: uploadData, error: uploadError } = await newAuthenticatedClient.storage
               .from('business-assets')
               .upload(fileName, logoFile, {
                 cacheControl: '3600',
@@ -673,14 +673,14 @@ const BusinessSetup: React.FC = () => {
               console.log('Upload response:', uploadData);
               
               // Get public URL
-              const { data: { publicUrl } } = authenticatedClient.storage
+              const { data: { publicUrl } } = newAuthenticatedClient.storage
                 .from('business-assets')
                 .getPublicUrl(fileName);
               
               console.log('Public URL:', publicUrl);
 
               // Update business record with logo URL
-              const { error: updateError } = await authenticatedClient
+              const { error: updateError } = await newAuthenticatedClient
                 .from('businesses')
                 .update({ logo_url: publicUrl })
                 .eq('id', businessId);
@@ -710,14 +710,14 @@ const BusinessSetup: React.FC = () => {
             willUpload: !!(tier.imageFile && businessId)
           });
           
-          if (tier.imageFile && businessId && authenticatedClient) {
+          if (tier.imageFile && businessId) {
             console.log(`=== PROCEEDING WITH TIER ${i} IMAGE UPLOAD ===`);
             try {
               console.log(`Starting tier image upload for tier ${i}:`, tier.name);
               console.log('Tier image file:', tier.imageFile.name, tier.imageFile.size, tier.imageFile.type);
               
               // First, we need to get the tier ID from the created tiers
-              const { data: tiers, error: tierError } = await authenticatedClient
+              const { data: tiers, error: tierError } = await newAuthenticatedClient
                 .from('membership_tiers')
                 .select('id, name')
                 .eq('business_id', businessId)
@@ -734,7 +734,7 @@ const BusinessSetup: React.FC = () => {
                 const fileName = `${businessId}/tier-${tiers.id}.${fileExt}`;
                 console.log('Tier upload path:', fileName);
 
-                const { data: uploadData, error: uploadError } = await authenticatedClient.storage
+                const { data: uploadData, error: uploadError } = await newAuthenticatedClient.storage
                   .from('business-assets')
                   .upload(fileName, tier.imageFile, {
                     cacheControl: '3600',
@@ -771,14 +771,14 @@ const BusinessSetup: React.FC = () => {
                   console.log('Tier image uploaded successfully:', uploadData);
                   
                   // Get public URL
-                  const { data: { publicUrl } } = authenticatedClient.storage
+                  const { data: { publicUrl } } = newAuthenticatedClient.storage
                     .from('business-assets')
                     .getPublicUrl(fileName);
                   
                   console.log('Tier public URL:', publicUrl);
 
                   // Update tier record with image URL
-                  const { error: updateError } = await authenticatedClient
+                  const { error: updateError } = await newAuthenticatedClient
                     .from('membership_tiers')
                     .update({ image_url: publicUrl })
                     .eq('id', tiers.id);

@@ -37,17 +37,8 @@ const Login = () => {
       if (user) {
         setUser(user);
         
-        // Fetch the user profile to determine their role
-        const profile = await getUserProfileByAuthId(user.id);
-        
-        // If we have a specific page the user was trying to access, try to redirect there
-        if (from) {
-          await redirectBasedOnRole(user.id, navigate, '/customer/dashboard', from);
-        } else {
-          // Otherwise, redirect to the appropriate dashboard based on role
-          const homePath = getHomePathFromProfile(profile);
-          navigate(homePath);
-        }
+        // Navigate to auth-redirect which will determine the user type and redirect appropriately
+        navigate('/auth-redirect');
       } else {
         throw new Error('No user returned from signIn');
       }

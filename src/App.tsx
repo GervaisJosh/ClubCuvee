@@ -10,6 +10,8 @@ import ProtectedRoute from './routes/ProtectedRoute';
 import AdminRoutes from './routes/AdminRoutes';
 import BusinessRoutes from './routes/BusinessRoutes';
 import CustomerRoutes from './routes/CustomerRoutes';
+import AuthRouter from './components/auth/AuthRouter';
+import { AdminRoute, BusinessRoute, CustomerRoute } from './components/auth/RouteGuards';
 
 // Public pages
 import Login from './pages/Login';
@@ -67,6 +69,9 @@ const App = () => {
               <Route path="/features" element={<Features />} />
               <Route path="/about" element={<About />} />
               <Route path="/pricing" element={<Pricing />} />
+              
+              {/* Auth redirect route - determines user type and redirects appropriately */}
+              <Route path="/auth-redirect" element={<AuthRouter />} />
               
               {/* Customer join page - business slug based */}
               <Route 
@@ -220,10 +225,10 @@ const App = () => {
                 }
               />
 
-              {/* Portal routes */}
-              <Route path="/admin/*" element={<AdminRoutes />} />
-              <Route path="/business/*" element={<BusinessRoutes />} />
-              <Route path="/customer/*" element={<CustomerRoutes />} />
+              {/* Portal routes with proper guards */}
+              <Route path="/admin/*" element={<AdminRoute><AdminRoutes /></AdminRoute>} />
+              <Route path="/business/*" element={<BusinessRoute><BusinessRoutes /></BusinessRoute>} />
+              <Route path="/customer/*" element={<CustomerRoute><CustomerRoutes /></CustomerRoute>} />
               
               {/* Default redirect */}
               <Route path="/" element={<Navigate to="/landing" replace />} />
