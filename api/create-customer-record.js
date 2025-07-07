@@ -38,7 +38,7 @@ module.exports = __toCommonJS(create_customer_record_exports);
 var import_supabase_js = require("@supabase/supabase-js");
 var import_stripe = __toESM(require("stripe"), 1);
 var stripe = new import_stripe.default(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: "2023-10-16",
+  apiVersion: "2025-02-24.acacia",
   typescript: true
 });
 var supabaseAdmin = (0, import_supabase_js.createClient)(

@@ -1,18 +1,5 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
-import { ZodError } from 'zod';
-
-// Inline error handling (no external dependencies)
-class APIError extends Error {
-  constructor(
-    public statusCode: number,
-    message: string,
-    public code?: string
-  ) {
-    super(message);
-    this.name = 'APIError';
-  }
-}
 
 const setCommonHeaders = (res: VercelResponse) => {
   res.setHeader('Content-Type', 'application/json');
