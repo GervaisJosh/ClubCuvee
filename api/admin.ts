@@ -21,47 +21,6 @@ const setCommonHeaders = (res: VercelResponse) => {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 };
 
-const errorHandler = (
-  error: unknown,
-  req: VercelRequest,
-  res: VercelResponse
-) => {
-  console.error('API Error:', error);
-  setCommonHeaders(res);
-
-  if (req.method === 'OPTIONS') {
-    return res.status(204).end();
-  }
-
-  if (error instanceof APIError) {
-    return res.status(error.statusCode).json({
-      status: 'error',
-      error: {
-        message: error.message,
-        code: error.code,
-      },
-    });
-  }
-
-  if (error instanceof ZodError) {
-    return res.status(400).json({
-      status: 'error',
-      error: {
-        message: 'Validation error',
-        code: 'VALIDATION_ERROR',
-        details: error.errors,
-      },
-    });
-  }
-
-  return res.status(500).json({
-    status: 'error',
-    error: {
-      message: 'Internal server error',
-      code: 'INTERNAL_ERROR',
-    },
-  });
-};
 
 // Inline admin utilities
 const setUserAdminStatus = async (userId: string, isAdmin: boolean) => {

@@ -38,7 +38,7 @@ module.exports = __toCommonJS(create_customer_record_exports);
 var import_supabase_js = require("@supabase/supabase-js");
 var import_stripe = __toESM(require("stripe"), 1);
 var stripe = new import_stripe.default(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: "2025-02-24.acacia",
+  apiVersion: "2023-10-16",
   typescript: true
 });
 var supabaseAdmin = (0, import_supabase_js.createClient)(
@@ -96,7 +96,7 @@ async function handler(req, res) {
       email: customer.email || session.customer_email,
       metadata
     });
-    const { data: existingCustomer, error: checkError } = await supabaseAdmin.from("customers").select("id").eq("stripe_customer_id", customer.id).single();
+    const { data: existingCustomer } = await supabaseAdmin.from("customers").select("id").eq("stripe_customer_id", customer.id).single();
     if (existingCustomer) {
       console.log("Customer already exists:", existingCustomer.id);
       const { data: customerData2, error: fetchError } = await supabaseAdmin.from("customers").select("*").eq("id", existingCustomer.id).single();

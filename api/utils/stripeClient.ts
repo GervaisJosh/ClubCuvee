@@ -1,5 +1,14 @@
 import Stripe from 'stripe';
-import { handleStripeError } from '@/lib/utils/errorHandler';
+import { randomUUID } from 'crypto';
+
+// Inline error handler for Stripe errors
+function handleStripeError(error: any): Error {
+  if (error instanceof Stripe.errors.StripeError) {
+    console.error('Stripe API Error:', error);
+    return new Error(`Stripe error: ${error.message}`);
+  }
+  return error instanceof Error ? error : new Error(String(error));
+}
 
 const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
 if (!stripeSecretKey) {
@@ -7,7 +16,7 @@ if (!stripeSecretKey) {
 }
 
 export const stripe = new Stripe(stripeSecretKey || 'invalid_key', {
-  apiVersion: '2025-02-24.acacia',
+  apiVersion: '2023-10-16',
   maxNetworkRetries: 3,
   typescript: true,
   appInfo: {
@@ -20,7 +29,7 @@ export const stripe = new Stripe(stripeSecretKey || 'invalid_key', {
 export const stripeApi = {
   createCheckoutSession: async (data: Stripe.Checkout.SessionCreateParams) => {
     try {
-      const idempotencyKey = crypto.randomUUID();
+      const idempotencyKey = randomUUID();
       return await stripe.checkout.sessions.create(data, {
         idempotencyKey
       });
@@ -31,7 +40,7 @@ export const stripeApi = {
 
   createCustomer: async (data: Stripe.CustomerCreateParams) => {
     try {
-      const idempotencyKey = crypto.randomUUID();
+      const idempotencyKey = randomUUID();
       return await stripe.customers.create(data, {
         idempotencyKey
       });
@@ -42,7 +51,7 @@ export const stripeApi = {
 
   createSubscription: async (data: Stripe.SubscriptionCreateParams) => {
     try {
-      const idempotencyKey = crypto.randomUUID();
+      const idempotencyKey = randomUUID();
       return await stripe.subscriptions.create(data, {
         idempotencyKey
       });

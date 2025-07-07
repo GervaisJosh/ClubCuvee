@@ -1,11 +1,99 @@
-import { stripe } from '../utils/stripeClient';
-import { supabaseAdmin } from '@/lib/supabaseAdmin';
-import { validateRequest, validatePrice } from '../utils/validation';
-import { sendApiError } from '../utils/errorHandler';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { randomUUID } from 'crypto';
+import { createClient } from '@supabase/supabase-js';
+import Stripe from 'stripe';
 
-import { ensurePriceString, ensurePriceNumber, convertPriceToStripeCents } from '@/src/utils/priceUtils';
+// Initialize Stripe
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+  apiVersion: '2023-10-16',
+});
+
+// Initialize Supabase Admin Client
+const supabaseAdmin = createClient(
+  process.env.SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  }
+);
+
+// Inline validation functions
+function validateRequest(
+  data: any,
+  requiredFields: string[],
+  customValidators?: Record<string, (value: any) => { field: string; message: string } | null>
+): { isValid: boolean; errors: Array<{ field: string; message: string }> } {
+  const errors: Array<{ field: string; message: string }> = [];
+
+  // Check required fields
+  for (const field of requiredFields) {
+    if (!data[field]) {
+      errors.push({ field, message: `${field} is required` });
+    }
+  }
+
+  // Run custom validators
+  if (customValidators) {
+    for (const [field, validator] of Object.entries(customValidators)) {
+      if (data[field] !== undefined) {
+        const error = validator(data[field]);
+        if (error) {
+          errors.push(error);
+        }
+      }
+    }
+  }
+
+  return {
+    isValid: errors.length === 0,
+    errors
+  };
+}
+
+function validatePrice(value: any): boolean {
+  const num = typeof value === 'string' ? parseFloat(value) : value;
+  return !isNaN(num) && num > 0;
+}
+
+// Inline error handler
+function sendApiError(res: VercelResponse, error: any, statusCode: number = 500, includeDetails: boolean = false) {
+  console.error('API Error:', error);
+  
+  const response: any = {
+    error: error.message || 'Internal server error',
+    type: error.type || 'unknown_error'
+  };
+
+  if (includeDetails && error.details) {
+    response.details = error.details;
+  }
+
+  return res.status(statusCode).json(response);
+}
+
+// Inline price utilities
+function ensurePriceString(price: string | number): string {
+  if (typeof price === 'string') {
+    return price;
+  }
+  return price.toFixed(2);
+}
+
+function ensurePriceNumber(price: string | number): number {
+  if (typeof price === 'number') {
+    return price;
+  }
+  const parsed = parseFloat(price);
+  return isNaN(parsed) ? 0 : parsed;
+}
+
+function convertPriceToStripeCents(price: string | number): number {
+  const numPrice = ensurePriceNumber(price);
+  return Math.round(numPrice * 100);
+}
 
 // Type definitions for clarity and safety
 interface MembershipTierData {

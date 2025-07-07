@@ -320,7 +320,7 @@ export default withErrorHandler(async (req: VercelRequest, res: VercelResponse):
     }
 
     // 8. Create membership tiers for this business
-    const tierInserts = businessData.customerTiers.map((tier, index) => ({
+    const tierInserts = businessData.customerTiers.map((tier) => ({
       business_id: businessId,
       name: tier.name.trim(),
       description: tier.description.trim(),

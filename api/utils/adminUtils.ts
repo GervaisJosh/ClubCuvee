@@ -1,4 +1,16 @@
-import { supabaseAdmin } from '../../lib/supabaseAdmin';
+import { createClient } from '@supabase/supabase-js';
+
+// Initialize Supabase Admin Client
+const supabaseAdmin = createClient(
+  process.env.SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  }
+);
 
 /**
  * Sets the is_admin flag for a user

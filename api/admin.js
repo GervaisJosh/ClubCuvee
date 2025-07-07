@@ -26,7 +26,6 @@ __export(admin_exports, {
 });
 module.exports = __toCommonJS(admin_exports);
 var import_supabase_js = require("@supabase/supabase-js");
-var import_zod = require("zod");
 var setCommonHeaders = (res) => {
   res.setHeader("Content-Type", "application/json");
   res.setHeader("Access-Control-Allow-Origin", "*");

@@ -4,7 +4,7 @@ import Stripe from 'stripe';
 
 // Initialize Stripe
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2025-02-24.acacia',
+  apiVersion: '2023-10-16',
   typescript: true,
 });
 
@@ -85,7 +85,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
 
     // Check if customer already exists
-    const { data: existingCustomer, error: checkError } = await supabaseAdmin
+    const { data: existingCustomer } = await supabaseAdmin
       .from('customers')
       .select('id')
       .eq('stripe_customer_id', customer.id)

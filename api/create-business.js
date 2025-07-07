@@ -241,7 +241,7 @@ var create_business_default = withErrorHandler(async (req, res) => {
       await supabaseAdmin.from("businesses").delete().eq("id", businessId);
       throw new APIError(500, "Failed to create business user profile", "DATABASE_ERROR");
     }
-    const tierInserts = businessData.customerTiers.map((tier, index) => ({
+    const tierInserts = businessData.customerTiers.map((tier) => ({
       business_id: businessId,
       name: tier.name.trim(),
       description: tier.description.trim(),

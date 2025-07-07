@@ -1,19 +1,6 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
 import Stripe from 'stripe';
-import { ZodError } from 'zod';
-
-// Inline error handling (no external dependencies)
-class APIError extends Error {
-  constructor(
-    public statusCode: number,
-    message: string,
-    public code?: string
-  ) {
-    super(message);
-    this.name = 'APIError';
-  }
-}
 
 // Inline validation utility
 const validateRequest = (body: any, requiredFields: string[]) => {

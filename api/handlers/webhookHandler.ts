@@ -1,9 +1,53 @@
-import { stripe } from '../utils/stripeClient';
-import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { Readable } from 'stream';
 import Stripe from 'stripe';
-import { sendErrorResponse, AppError } from '../utils/errorHandler';
+import { createClient } from '@supabase/supabase-js';
+
+// Initialize Stripe
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+  apiVersion: '2023-10-16',
+});
+
+// Initialize Supabase Admin Client
+const supabaseAdmin = createClient(
+  process.env.SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  }
+);
+
+// Inline error handling
+class AppError extends Error {
+  constructor(public statusCode: number, message: string) {
+    super(message);
+    this.name = 'AppError';
+  }
+}
+
+function sendErrorResponse(res: VercelResponse, error: Error) {
+  console.error('Webhook Error:', error);
+  
+  if (error instanceof AppError) {
+    return res.status(error.statusCode).json({
+      error: error.message
+    });
+  }
+  
+  // For Stripe signature errors
+  if (error.message.includes('webhook')) {
+    return res.status(400).json({
+      error: 'Invalid webhook signature'
+    });
+  }
+  
+  return res.status(500).json({
+    error: 'Internal server error'
+  });
+}
 
 // For verifying Stripe signatures, we need the raw request body
 async function readRawBody(readable: Readable) {
