@@ -1,8 +1,6 @@
 import React, { createContext, useState, useEffect, useContext } from 'react'
 import { supabase } from '../supabase'
 import { User, Session } from '@supabase/supabase-js'
-import { getUserProfile } from '../api/supabaseQueries';
-import { getUserProfileByAuthId } from '../services/userService';
 
 
 interface AuthContextType {
@@ -47,25 +45,64 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const fetchUserProfile = async (userId: string) => {
     try {
-      // Use the enhanced function that ensures a user profile exists
-      const profile = await getUserProfileByAuthId(userId);
-      setUserProfile(profile);
+      // First, check if this is a business user by looking in the businesses table
+      const { data: businessUser, error: businessError } = await supabase
+        .from('businesses')
+        .select('*')
+        .eq('owner_id', userId)
+        .single();
       
-      // Set admin status from user profile
-      // Explicitly convert to boolean to ensure consistent type
-      if (profile) {
-        setIsAdmin(profile.is_admin === true);
-        
-        // Log admin status for debugging
-        if (profile.is_admin) {
-          console.info('User has admin privileges');
-        }
-      } else {
+      if (businessUser && !businessError) {
+        // This is a business user - use business data as profile
+        console.log('User is a business owner:', businessUser.name);
+        setUserProfile({
+          id: businessUser.id,
+          auth_id: userId,
+          email: businessUser.email,
+          name: businessUser.name,
+          is_business: true,
+          business_id: businessUser.id,
+          is_admin: false // Business users are not system admins
+        });
         setIsAdmin(false);
-        console.warn('No user profile found even after creation attempt');
+        return;
       }
+      
+      // Check if this is a customer
+      const { data: customerUser, error: customerError } = await supabase
+        .from('customers')
+        .select('*')
+        .eq('auth_id', userId)
+        .single();
+      
+      if (customerUser && !customerError) {
+        // This is a customer user
+        console.log('User is a customer:', customerUser.name);
+        setUserProfile({
+          id: customerUser.id,
+          auth_id: userId,
+          email: customerUser.email,
+          name: customerUser.name,
+          is_customer: true,
+          customer_id: customerUser.id,
+          is_admin: false
+        });
+        setIsAdmin(false);
+        return;
+      }
+      
+      // If not found in businesses or customers, it might be a system admin
+      // For now, just set a minimal profile
+      console.log('User not found in businesses or customers tables');
+      setUserProfile({
+        auth_id: userId,
+        is_admin: false
+      });
+      setIsAdmin(false);
+      
     } catch (error) {
       console.error('Error fetching user profile:', error);
+      setUserProfile(null);
       setIsAdmin(false);
     }
   }
