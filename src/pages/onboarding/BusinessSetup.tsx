@@ -116,6 +116,7 @@ const BusinessSetup: React.FC = () => {
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [formErrors, setFormErrors] = useState<string[]>([]);
+  const [authenticatedClient, setAuthenticatedClient] = useState<ReturnType<typeof createClient> | null>(null);
 
   useEffect(() => {
     if (!token || !sessionId) {
@@ -484,13 +485,64 @@ const BusinessSetup: React.FC = () => {
         
         console.log('Successfully signed in as business user');
         
+        // Get the session immediately after sign-in
+        const { data: { session: newSession } } = await supabase.auth.getSession();
+        
+        if (!newSession || !newSession.access_token) {
+          console.error('No session after sign-in, attempting to get user...');
+          // Try to get the user which might refresh the session
+          const { data: { user }, error: userError } = await supabase.auth.getUser();
+          if (userError || !user) {
+            console.error('Failed to get authenticated user:', userError);
+            throw new Error('Failed to establish authenticated session');
+          }
+          
+          // Get session again
+          const { data: { session: retrySession } } = await supabase.auth.getSession();
+          if (!retrySession || !retrySession.access_token) {
+            throw new Error('Failed to establish authenticated session');
+          }
+        }
+        
+        // Create a new Supabase client with explicit auth headers
+        const finalSession = newSession || (await supabase.auth.getSession()).data.session;
+        if (!finalSession) {
+          throw new Error('No session available for authenticated client');
+        }
+        
+        const newAuthenticatedClient = createClient(supabaseUrl, supabaseAnonKey, {
+          global: {
+            headers: {
+              Authorization: `Bearer ${finalSession.access_token}`
+            }
+          },
+          auth: {
+            autoRefreshToken: true,
+            persistSession: true,
+            detectSessionInUrl: true
+          }
+        });
+        
+        // Store the authenticated client in state
+        setAuthenticatedClient(newAuthenticatedClient);
+        
         // Verify we're now authenticated as the business owner
-        const { data: { user: currentUser } } = await supabase.auth.getUser();
+        const { data: { user: currentUser } } = await newAuthenticatedClient.auth.getUser();
+        const { data: { session: currentSession } } = await newAuthenticatedClient.auth.getSession();
+        
         console.log('Current authenticated user:', {
           userId: currentUser?.id,
           email: currentUser?.email,
-          matchesBusinessAuth: currentUser?.id === businessAuthUserId
+          matchesBusinessAuth: currentUser?.id === businessAuthUserId,
+          hasSession: !!currentSession,
+          sessionUserId: currentSession?.user?.id,
+          accessToken: currentSession?.access_token ? 'Present' : 'Missing'
         });
+        
+        if (!currentSession || !currentSession.access_token) {
+          console.error('CRITICAL: No valid session in authenticated client!');
+          throw new Error('Failed to establish authenticated session');
+        }
         
         // Check upload state before attempting uploads
         console.log('=== UPLOAD STATE CHECK ===');
@@ -513,7 +565,7 @@ const BusinessSetup: React.FC = () => {
         console.log('Tier images state:', tierImagesInfo);
         
         // Upload logo if selected (inline function)
-        if (logoFile && businessId) {
+        if (logoFile && businessId && authenticatedClient) {
           console.log('=== PROCEEDING WITH LOGO UPLOAD ===');
           try {
             console.log('=== LOGO UPLOAD START ===');
@@ -542,7 +594,7 @@ const BusinessSetup: React.FC = () => {
             });
 
             // Check auth status right before upload
-            const { data: { session } } = await supabase.auth.getSession();
+            const { data: { session } } = await authenticatedClient.auth.getSession();
             console.log('Auth session before upload:', {
               hasSession: !!session,
               sessionUserId: session?.user?.id,
@@ -552,7 +604,7 @@ const BusinessSetup: React.FC = () => {
             });
             
             // Verify business ownership for RLS
-            const { data: businessOwnerCheck, error: ownerCheckError } = await supabase
+            const { data: businessOwnerCheck, error: ownerCheckError } = await authenticatedClient
               .from('businesses')
               .select('owner_id')
               .eq('id', businessId)
@@ -569,8 +621,17 @@ const BusinessSetup: React.FC = () => {
             if (businessOwnerCheck?.owner_id !== session?.user?.id) {
               console.error('CRITICAL: User does not own the business! RLS will block upload.');
             }
+            
+            // Double-check we have a valid session before upload
+            if (!session || !session.access_token) {
+              console.error('CRITICAL: No valid session for upload!');
+              throw new Error('Authentication session missing');
+            }
+            
+            // Log the auth header that will be used
+            console.log('Upload will use auth token:', session.access_token.substring(0, 20) + '...');
 
-            const { data: uploadData, error: uploadError } = await supabase.storage
+            const { data: uploadData, error: uploadError } = await authenticatedClient.storage
               .from('business-assets')
               .upload(fileName, logoFile, {
                 cacheControl: '3600',
@@ -612,14 +673,14 @@ const BusinessSetup: React.FC = () => {
               console.log('Upload response:', uploadData);
               
               // Get public URL
-              const { data: { publicUrl } } = supabase.storage
+              const { data: { publicUrl } } = authenticatedClient.storage
                 .from('business-assets')
                 .getPublicUrl(fileName);
               
               console.log('Public URL:', publicUrl);
 
               // Update business record with logo URL
-              const { error: updateError } = await supabase
+              const { error: updateError } = await authenticatedClient
                 .from('businesses')
                 .update({ logo_url: publicUrl })
                 .eq('id', businessId);
@@ -649,14 +710,14 @@ const BusinessSetup: React.FC = () => {
             willUpload: !!(tier.imageFile && businessId)
           });
           
-          if (tier.imageFile && businessId) {
+          if (tier.imageFile && businessId && authenticatedClient) {
             console.log(`=== PROCEEDING WITH TIER ${i} IMAGE UPLOAD ===`);
             try {
               console.log(`Starting tier image upload for tier ${i}:`, tier.name);
               console.log('Tier image file:', tier.imageFile.name, tier.imageFile.size, tier.imageFile.type);
               
               // First, we need to get the tier ID from the created tiers
-              const { data: tiers, error: tierError } = await supabase
+              const { data: tiers, error: tierError } = await authenticatedClient
                 .from('membership_tiers')
                 .select('id, name')
                 .eq('business_id', businessId)
@@ -673,7 +734,7 @@ const BusinessSetup: React.FC = () => {
                 const fileName = `${businessId}/tier-${tiers.id}.${fileExt}`;
                 console.log('Tier upload path:', fileName);
 
-                const { data: uploadData, error: uploadError } = await supabase.storage
+                const { data: uploadData, error: uploadError } = await authenticatedClient.storage
                   .from('business-assets')
                   .upload(fileName, tier.imageFile, {
                     cacheControl: '3600',
@@ -710,14 +771,14 @@ const BusinessSetup: React.FC = () => {
                   console.log('Tier image uploaded successfully:', uploadData);
                   
                   // Get public URL
-                  const { data: { publicUrl } } = supabase.storage
+                  const { data: { publicUrl } } = authenticatedClient.storage
                     .from('business-assets')
                     .getPublicUrl(fileName);
                   
                   console.log('Tier public URL:', publicUrl);
 
                   // Update tier record with image URL
-                  const { error: updateError } = await supabase
+                  const { error: updateError } = await authenticatedClient
                     .from('membership_tiers')
                     .update({ image_url: publicUrl })
                     .eq('id', tiers.id);
