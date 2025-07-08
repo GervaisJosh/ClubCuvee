@@ -107,7 +107,7 @@ export default withErrorHandler(async (req: VercelRequest, res: VercelResponse):
   // Query restaurant_invitations table directly (the correct table)
   const { data: inviteDetails, error: detailsError } = await supabaseAdmin
     .from('restaurant_invitations')
-    .select('restaurant_name, email, tier, expires_at, status')
+    .select('restaurant_name, email, business_id, tier, expires_at, status')
     .eq('token', token)
     .single();
 
@@ -141,6 +141,20 @@ export default withErrorHandler(async (req: VercelRequest, res: VercelResponse):
     }
   }
 
+  // If business_id exists, get the business details
+  let businessSlug = null;
+  if (inviteDetails.business_id) {
+    const { data: businessData, error: businessError } = await supabaseAdmin
+      .from('businesses')
+      .select('slug')
+      .eq('id', inviteDetails.business_id)
+      .single();
+    
+    if (!businessError && businessData) {
+      businessSlug = businessData.slug;
+    }
+  }
+
   // Return data in the format expected by OnboardToken.tsx
   res.status(200).json({
     success: true,
@@ -148,6 +162,8 @@ export default withErrorHandler(async (req: VercelRequest, res: VercelResponse):
       is_valid: true,
       business_name: inviteDetails.restaurant_name,  // Frontend expects business_name
       business_email: inviteDetails.email,           // Frontend expects business_email  
+      business_id: inviteDetails.business_id,        // Return the business ID
+      business_slug: businessSlug,                   // Return the business slug
       pricing_tier: pricing_tier_id,                 // Frontend expects UUID, not tier name
       expires_at: inviteDetails.expires_at
     }

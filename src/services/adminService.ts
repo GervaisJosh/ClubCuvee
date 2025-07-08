@@ -1,4 +1,4 @@
-import { supabase } from '../supabase';
+import { supabase } from '../lib/supabase';
 
 /**
  * Checks if the current user is an admin

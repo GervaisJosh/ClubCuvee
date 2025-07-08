@@ -1,12 +1,27 @@
 import React, { createContext, useState, useEffect, useContext } from 'react'
-import { supabase } from '../supabase'
+import { supabase } from '../lib/supabase'
 import { User, Session } from '@supabase/supabase-js'
 
+export type UserType = 'admin' | 'business' | 'customer' | 'none';
+
+interface UserProfile {
+  id?: string;
+  auth_id: string;
+  email?: string;
+  name?: string;
+  is_admin?: boolean;
+  is_business?: boolean;
+  is_customer?: boolean;
+  business_id?: string;
+  customer_id?: string;
+}
 
 interface AuthContextType {
   user: User | null
   session: Session | null
-  userProfile: any | null
+  userProfile: UserProfile | null
+  userType: UserType
+  loading: boolean
   isAdmin: boolean
   setUser: (user: User | null) => void
   signOut: () => Promise<void>
@@ -17,15 +32,20 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null)
   const [session, setSession] = useState<Session | null>(null)
-  const [userProfile, setUserProfile] = useState<any | null>(null)
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
+  const [userType, setUserType] = useState<UserType>('none')
   const [isAdmin, setIsAdmin] = useState<boolean>(false)
+  const [loading, setLoading] = useState<boolean>(true)
 
   useEffect(() => {
+    setLoading(true)
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session)
       setUser(session?.user ?? null)
       if (session?.user) {
-        fetchUserProfile(session.user.id)
+        determineUserType(session.user).finally(() => setLoading(false))
+      } else {
+        setLoading(false)
       }
     })
 
@@ -33,9 +53,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setSession(session)
       setUser(session?.user ?? null)
       if (session?.user) {
-        fetchUserProfile(session.user.id)
+        determineUserType(session.user)
       } else {
         setUserProfile(null)
+        setUserType('none')
         setIsAdmin(false)
       }
     })
@@ -43,66 +64,78 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => subscription.unsubscribe()
   }, [])
 
-  const fetchUserProfile = async (userId: string) => {
+  const determineUserType = async (authUser: User) => {
     try {
-      // First, check if this is a business user by looking in the businesses table
+      // 1. Check admin first (highest priority) - using app_metadata
+      if (authUser.app_metadata?.is_admin === true) {
+        console.log('User is admin (from app_metadata)');
+        setUserProfile({
+          auth_id: authUser.id,
+          email: authUser.email,
+          is_admin: true
+        });
+        setUserType('admin');
+        setIsAdmin(true);
+        return;
+      }
+
+      // 2. Check business owner
       const { data: businessUser, error: businessError } = await supabase
         .from('businesses')
         .select('*')
-        .eq('owner_id', userId)
-        .single();
+        .eq('owner_id', authUser.id)
+        .maybeSingle();
       
       if (businessUser && !businessError) {
-        // This is a business user - use business data as profile
         console.log('User is a business owner:', businessUser.name);
         setUserProfile({
           id: businessUser.id,
-          auth_id: userId,
+          auth_id: authUser.id,
           email: businessUser.email,
           name: businessUser.name,
           is_business: true,
-          business_id: businessUser.id,
-          is_admin: false // Business users are not system admins
+          business_id: businessUser.id
         });
+        setUserType('business');
         setIsAdmin(false);
         return;
       }
       
-      // Check if this is a customer
+      // 3. Check customer
       const { data: customerUser, error: customerError } = await supabase
         .from('customers')
         .select('*')
-        .eq('auth_id', userId)
-        .single();
+        .eq('auth_id', authUser.id)
+        .maybeSingle();
       
       if (customerUser && !customerError) {
-        // This is a customer user
         console.log('User is a customer:', customerUser.name);
         setUserProfile({
           id: customerUser.id,
-          auth_id: userId,
+          auth_id: authUser.id,
           email: customerUser.email,
           name: customerUser.name,
           is_customer: true,
-          customer_id: customerUser.id,
-          is_admin: false
+          customer_id: customerUser.id
         });
+        setUserType('customer');
         setIsAdmin(false);
         return;
       }
       
-      // If not found in businesses or customers, it might be a system admin
-      // For now, just set a minimal profile
-      console.log('User not found in businesses or customers tables');
+      // 4. No profile found
+      console.log('User has no profile yet');
       setUserProfile({
-        auth_id: userId,
-        is_admin: false
+        auth_id: authUser.id,
+        email: authUser.email
       });
+      setUserType('none');
       setIsAdmin(false);
       
     } catch (error) {
-      console.error('Error fetching user profile:', error);
+      console.error('Error determining user type:', error);
       setUserProfile(null);
+      setUserType('none');
       setIsAdmin(false);
     }
   }
@@ -112,11 +145,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (error) throw error
     setUser(null)
     setUserProfile(null)
+    setUserType('none')
     setIsAdmin(false)
   }
 
   return (
-    <AuthContext.Provider value={{ user, session, userProfile, isAdmin, setUser, signOut }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      session, 
+      userProfile, 
+      userType,
+      loading,
+      isAdmin, 
+      setUser, 
+      signOut 
+    }}>
       {children}
     </AuthContext.Provider>
   )

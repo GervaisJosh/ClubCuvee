@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { apiClient } from '../../lib/api-client';
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '../../lib/supabase';
 import Button from '../../components/Button';
 import Card from '../../components/Card';
 import ThemeToggle from '../../components/ThemeToggle';
+import ImageUploadField from '../../components/ImageUploadField';
 import { 
   CheckCircle, 
   Plus, 
@@ -22,22 +23,7 @@ import {
   Image
 } from 'lucide-react';
 import { useTheme } from '../../contexts/ThemeContext';
-
-// Inline Supabase client creation
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Missing required Supabase environment variables');
-}
-
-const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  auth: {
-    autoRefreshToken: true,
-    persistSession: true,
-    detectSessionInUrl: true
-  }
-});
+import { useAuth } from '../../contexts/AuthContext';
 
 interface BusinessFormData {
   businessName: string;
@@ -60,8 +46,6 @@ interface CustomerTierFormData {
   description: string;
   monthlyPrice: number;
   benefits: string[];
-  imageFile?: File;
-  imagePreview?: string;
 }
 
 interface PaymentVerificationData {
@@ -113,10 +97,11 @@ const BusinessSetup: React.FC = () => {
   const [paymentData, setPaymentData] = useState<PaymentVerificationData | null>(null);
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
   const [showTierForm, setShowTierForm] = useState(false);
-  const [logoFile, setLogoFile] = useState<File | null>(null);
-  const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [formErrors, setFormErrors] = useState<string[]>([]);
   const [authenticatedClient, setAuthenticatedClient] = useState<ReturnType<typeof createClient> | null>(null);
+  const [businessId, setBusinessId] = useState<string | null>(null);
+  const [tierImageUrls, setTierImageUrls] = useState<Record<number, string>>({});
 
   useEffect(() => {
     if (!token || !sessionId) {
@@ -148,6 +133,7 @@ const BusinessSetup: React.FC = () => {
           data: {
             business_name: string;
             business_email: string;
+            business_id: string;
             pricing_tier: string | null;
           };
         }>('/api/validate-business-invitation', { token });
@@ -158,6 +144,7 @@ const BusinessSetup: React.FC = () => {
             businessName: inviteResponse.data.business_name,
             email: response.data.session.customer_email || inviteResponse.data.business_email
           }));
+          setBusinessId(inviteResponse.data.business_id);
         }
       } else {
         setError('Payment verification failed. Your subscription is not active. Please contact support.');
@@ -348,70 +335,7 @@ const BusinessSetup: React.FC = () => {
     };
   };
 
-  // Handle logo file selection - NO UPLOAD until form submission
-  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
 
-    // Validate file size (2MB max)
-    if (file.size > 2 * 1024 * 1024) {
-      setError('Logo file is too large. Maximum size is 2MB.');
-      return;
-    }
-
-    // Validate file type
-    const validTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'];
-    if (!validTypes.includes(file.type)) {
-      setError('Please upload a PNG, JPG, JPEG, or WebP image.');
-      return;
-    }
-
-    // Just store file in state - DO NOT upload yet
-    setLogoFile(file);
-    setError(null);
-
-    // Create preview for display
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      setLogoPreview(e.target?.result as string);
-    };
-    reader.readAsDataURL(file);
-  };
-
-  // Handle tier image selection - NO UPLOAD until form submission
-  const handleTierImageSelect = (tierIndex: number, e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    // Validate file size (3MB max for tier images)
-    if (file.size > 3 * 1024 * 1024) {
-      setError('Tier image is too large. Maximum size is 3MB.');
-      return;
-    }
-
-    // Validate file type
-    const validTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'];
-    if (!validTypes.includes(file.type)) {
-      setError('Please upload a PNG, JPG, JPEG, or WebP image.');
-      return;
-    }
-
-    // Just store file and preview in state - DO NOT upload yet
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const preview = e.target?.result as string;
-      setFormData(prev => ({
-        ...prev,
-        customerTiers: prev.customerTiers.map((tier, index) =>
-          index === tierIndex 
-            ? { ...tier, imageFile: file, imagePreview: preview }
-            : tier
-        )
-      }));
-    };
-    reader.readAsDataURL(file);
-    setError(null);
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -450,6 +374,16 @@ const BusinessSetup: React.FC = () => {
       console.log('Token:', token);
       console.log('Session ID:', sessionId);
       
+      // Add image URLs to form data
+      const businessDataWithImages = {
+        ...formData,
+        logoUrl: logoUrl || null,
+        customerTiers: formData.customerTiers.map((tier, index) => ({
+          ...tier,
+          imageUrl: tierImageUrls[index] || null
+        }))
+      };
+
       const response = await apiClient.post<{
         success: boolean;
         data: {
@@ -460,7 +394,7 @@ const BusinessSetup: React.FC = () => {
       }>('/api/create-business', {
         token,
         sessionId,
-        businessData: formData
+        businessData: businessDataWithImages
       });
 
       if (response.success) {
@@ -1042,38 +976,17 @@ const BusinessSetup: React.FC = () => {
                   Upload your business logo to personalize your wine club
                 </p>
                 
-                {/* File Input */}
-                <div className="space-y-4">
-                  <input
-                    type="file"
-                    accept="image/png,image/jpeg,image/jpg,image/webp"
-                    onChange={handleLogoUpload}
-                    className={`w-full file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold ${
-                      isDark 
-                        ? 'file:bg-[#800020] file:text-white hover:file:bg-[#600018]' 
-                        : 'file:bg-[#800020] file:text-white hover:file:bg-[#600018]'
-                    } file:cursor-pointer cursor-pointer ${
-                      isDark ? 'text-gray-300' : 'text-gray-700'
-                    }`}
+                {businessId && (
+                  <ImageUploadField
+                    label=""
+                    onUploadComplete={(url) => setLogoUrl(url)}
+                    businessId={businessId}
+                    uploadPath="logo"
+                    maxSizeMB={2}
+                    existingImageUrl={logoUrl || undefined}
+                    disabled={loading}
                   />
-                  <p className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>
-                    Max size: 2MB • PNG, JPG, JPEG, WebP
-                  </p>
-                  
-                  {/* Logo Preview */}
-                  {logoPreview && (
-                    <div className="mt-4">
-                      <p className={`text-sm font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'} mb-2`}>
-                        Logo Preview:
-                      </p>
-                      <img
-                        src={logoPreview}
-                        alt="Logo preview"
-                        className="max-w-[200px] h-auto rounded-lg shadow-md border border-gray-200"
-                      />
-                    </div>
-                  )}
-                </div>
+                )}
               </div>
             </div>
             </div>
@@ -1294,34 +1207,18 @@ const BusinessSetup: React.FC = () => {
                           Add an image to represent this membership tier
                         </p>
                         
-                        <input
-                          type="file"
-                          accept="image/png,image/jpeg,image/jpg,image/webp"
-                          onChange={(e) => handleTierImageSelect(tierIndex, e)}
-                          className={`w-full file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold ${
-                            isDark 
-                              ? 'file:bg-[#800020] file:text-white hover:file:bg-[#600018]' 
-                              : 'file:bg-[#800020] file:text-white hover:file:bg-[#600018]'
-                          } file:cursor-pointer cursor-pointer ${
-                            isDark ? 'text-gray-300' : 'text-gray-700'
-                          } text-sm`}
-                        />
-                        <p className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-500'} mt-1`}>
-                          Max size: 3MB • PNG, JPG, JPEG, WebP • Recommended: 16:9 or 4:3 aspect ratio
-                        </p>
-                        
-                        {/* Tier Image Preview */}
-                        {tier.imagePreview && (
-                          <div className="mt-3">
-                            <p className={`text-xs font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'} mb-2`}>
-                              Image Preview:
-                            </p>
-                            <img
-                              src={tier.imagePreview}
-                              alt={`${tier.name} preview`}
-                              className="max-w-[300px] h-auto rounded-lg shadow-md border border-gray-200"
-                            />
-                          </div>
+                        {businessId && (
+                          <ImageUploadField
+                            label=""
+                            onUploadComplete={(url) => {
+                              setTierImageUrls(prev => ({ ...prev, [tierIndex]: url }));
+                            }}
+                            businessId={businessId}
+                            uploadPath={`tiers/tier-${tierIndex}`}
+                            maxSizeMB={3}
+                            existingImageUrl={tierImageUrls[tierIndex] || undefined}
+                            disabled={loading}
+                          />
                         )}
                       </div>
                     </div>

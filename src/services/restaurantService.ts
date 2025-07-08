@@ -1,4 +1,4 @@
-import { supabase } from '../supabase';
+import { supabase } from '../lib/supabase';
 import type { Restaurant, RestaurantFormData, RestaurantInvitation } from '../types';
 
 export const restaurantService = {

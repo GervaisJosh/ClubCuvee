@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Wine, LogIn } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { supabase } from '../supabase';
+import { supabase } from '../lib/supabase';
 import { useTheme } from '../contexts/ThemeContext';
 import AuthLayout from '../components/AuthLayout';
 import { redirectBasedOnRole } from '../utils/authRedirects';

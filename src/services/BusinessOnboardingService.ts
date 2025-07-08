@@ -1,4 +1,4 @@
-import { supabase } from '../supabase';
+import { supabase } from '../lib/supabase';
 import Stripe from 'stripe';
 import type { Restaurant, RestaurantInvitation, MembershipTier } from '../types';
 

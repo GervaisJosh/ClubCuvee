@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '../supabase';
+import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { getAPIKeys, connectToBinWise } from '../services/apiServices';
 import { Wine, Key } from 'lucide-react';

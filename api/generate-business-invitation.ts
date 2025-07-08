@@ -141,6 +141,36 @@ export default withErrorHandler(async (req: VercelRequest, res: VercelResponse):
     }
   }
 
+  // Generate business ID and slug early
+  const businessId = randomUUID();
+  
+  // Generate URL-friendly slug from business name
+  const baseSlug = business_name.trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '');
+  
+  // Make slug unique by adding a random suffix
+  const businessSlug = `${baseSlug}-${businessId.substring(0, 4)}`;
+
+  // Create business record with status='invited'
+  const { error: businessError } = await supabaseAdmin
+    .from('businesses')
+    .insert({
+      id: businessId,
+      name: business_name.trim(),
+      slug: businessSlug,
+      email: business_email.trim(),
+      status: 'invited', // Will be updated to 'active' after onboarding
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    });
+
+  if (businessError) {
+    console.error('Error creating business record:', businessError);
+    throw new APIError(500, 'Failed to create business record', 'DATABASE_ERROR');
+  }
+
   // Generate invitation token and insert into restaurant_invitations
   const invitationToken = randomUUID();
   const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days from now
@@ -151,6 +181,7 @@ export default withErrorHandler(async (req: VercelRequest, res: VercelResponse):
       token: invitationToken,
       email: business_email,
       restaurant_name: business_name,
+      business_id: businessId, // Store the business ID in the invitation
       tier: pricing_tier || 'standard',
       expires_at: expiresAt.toISOString(),
       status: 'pending'
@@ -160,10 +191,14 @@ export default withErrorHandler(async (req: VercelRequest, res: VercelResponse):
 
   if (error) {
     console.error('Error generating restaurant invitation:', error);
+    // Clean up the business record if invitation fails
+    await supabaseAdmin.from('businesses').delete().eq('id', businessId);
     throw new APIError(500, 'Failed to generate restaurant invitation', 'DATABASE_ERROR');
   }
 
   if (!data) {
+    // Clean up the business record if no data returned
+    await supabaseAdmin.from('businesses').delete().eq('id', businessId);
     throw new APIError(500, 'Failed to generate invitation token', 'DATABASE_ERROR');
   }
 
@@ -179,7 +214,9 @@ export default withErrorHandler(async (req: VercelRequest, res: VercelResponse):
     data: {
       token: invitationData.token,
       invitation_url: fullInvitationUrl,
-      expires_at: invitationData.expires_at
+      expires_at: invitationData.expires_at,
+      business_id: businessId,
+      business_slug: businessSlug
     }
   });
 });

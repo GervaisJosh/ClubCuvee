@@ -1,4 +1,4 @@
-import { supabase } from '../supabase';
+import { supabase } from '../lib/supabase';
 
 /**
  * Ensures there's at least one wine in the wine_inventory table for testing

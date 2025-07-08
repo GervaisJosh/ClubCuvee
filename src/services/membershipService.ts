@@ -1,4 +1,4 @@
-import { supabase } from '../supabase';
+import { supabase } from '../lib/supabase';
 import { stripeService } from './stripeService';
 import type { MembershipTier } from '../types';
 

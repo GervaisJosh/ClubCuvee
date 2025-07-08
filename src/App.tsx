@@ -23,6 +23,7 @@ import Features from './pages/Features';
 import About from './pages/About';
 import Pricing from './pages/Pricing';
 import CustomerSignup from './pages/CustomerSignup';
+import Unauthorized from './pages/Unauthorized';
 
 // Restaurant onboarding with lazy loading
 const RestaurantOnboarding = React.lazy(() => import('./pages/onboarding/token'));
@@ -229,6 +230,9 @@ const App = () => {
               <Route path="/admin/*" element={<AdminRoute><AdminRoutes /></AdminRoute>} />
               <Route path="/business/*" element={<BusinessRoute><BusinessRoutes /></BusinessRoute>} />
               <Route path="/customer/*" element={<CustomerRoute><CustomerRoutes /></CustomerRoute>} />
+              
+              {/* Unauthorized page */}
+              <Route path="/unauthorized" element={<Unauthorized />} />
               
               {/* Default redirect */}
               <Route path="/" element={<Navigate to="/landing" replace />} />

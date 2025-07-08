@@ -1,4 +1,4 @@
-import { supabase } from '../supabase';
+import { supabase } from '../lib/supabase';
 
 export interface User {
   local_id: string; // Primary key in Users table

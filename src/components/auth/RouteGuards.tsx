@@ -1,13 +1,15 @@
-import React, { ReactNode, useEffect, useState } from 'react';
+import React, { ReactNode } from 'react';
 import { Navigate } from 'react-router-dom';
-import { useAuth } from '../../contexts/AuthContext';
-import { supabase } from '../../lib/supabase';
+import { useAuth, UserType } from '../../contexts/AuthContext';
 import { Wine } from 'lucide-react';
-
-const ADMIN_EMAILS = ['joshua@monopole.ai'];
 
 interface RouteGuardProps {
   children: ReactNode;
+}
+
+interface ProtectedRouteProps extends RouteGuardProps {
+  allowedTypes: UserType[];
+  redirectTo?: string;
 }
 
 const LoadingScreen: React.FC = () => (
@@ -22,114 +24,59 @@ const LoadingScreen: React.FC = () => (
   </div>
 );
 
-export const AdminRoute: React.FC<RouteGuardProps> = ({ children }) => {
-  const { user, loading } = useAuth();
-  const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
+// Generic protected route component
+export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ 
+  children, 
+  allowedTypes,
+  redirectTo = '/login'
+}) => {
+  const { user, userType, loading } = useAuth();
 
-  useEffect(() => {
-    const checkAdmin = async () => {
-      if (!user || !user.email) {
-        setIsAdmin(false);
-        return;
-      }
-
-      setIsAdmin(ADMIN_EMAILS.includes(user.email));
-    };
-
-    if (!loading) {
-      checkAdmin();
-    }
-  }, [user, loading]);
-
-  if (loading || isAdmin === null) {
+  if (loading) {
     return <LoadingScreen />;
   }
 
-  if (!user || !isAdmin) {
+  if (!user) {
     return <Navigate to="/login" replace />;
   }
 
+  if (!allowedTypes.includes(userType)) {
+    return <Navigate to={redirectTo} replace />;
+  }
+
   return <>{children}</>;
+};
+
+// Specific route guards using the generic ProtectedRoute
+export const AdminRoute: React.FC<RouteGuardProps> = ({ children }) => {
+  return (
+    <ProtectedRoute allowedTypes={['admin']} redirectTo="/unauthorized">
+      {children}
+    </ProtectedRoute>
+  );
 };
 
 export const BusinessRoute: React.FC<RouteGuardProps> = ({ children }) => {
-  const { user, loading } = useAuth();
-  const [isBusiness, setIsBusiness] = useState<boolean | null>(null);
-
-  useEffect(() => {
-    const checkBusiness = async () => {
-      if (!user) {
-        setIsBusiness(false);
-        return;
-      }
-
-      try {
-        const { data, error } = await supabase
-          .from('businesses')
-          .select('id')
-          .eq('owner_id', user.id)
-          .single();
-
-        setIsBusiness(!!data && !error);
-      } catch (error) {
-        console.error('Error checking business status:', error);
-        setIsBusiness(false);
-      }
-    };
-
-    if (!loading) {
-      checkBusiness();
-    }
-  }, [user, loading]);
-
-  if (loading || isBusiness === null) {
-    return <LoadingScreen />;
-  }
-
-  if (!user || !isBusiness) {
-    return <Navigate to="/login" replace />;
-  }
-
-  return <>{children}</>;
+  return (
+    <ProtectedRoute allowedTypes={['business']} redirectTo="/unauthorized">
+      {children}
+    </ProtectedRoute>
+  );
 };
 
 export const CustomerRoute: React.FC<RouteGuardProps> = ({ children }) => {
-  const { user, loading } = useAuth();
-  const [isCustomer, setIsCustomer] = useState<boolean | null>(null);
+  return (
+    <ProtectedRoute allowedTypes={['customer']} redirectTo="/unauthorized">
+      {children}
+    </ProtectedRoute>
+  );
+};
 
-  useEffect(() => {
-    const checkCustomer = async () => {
-      if (!user) {
-        setIsCustomer(false);
-        return;
-      }
-
-      try {
-        const { data, error } = await supabase
-          .from('customers')
-          .select('id')
-          .eq('auth_id', user.id)
-          .single();
-
-        setIsCustomer(!!data && !error);
-      } catch (error) {
-        console.error('Error checking customer status:', error);
-        setIsCustomer(false);
-      }
-    };
-
-    if (!loading) {
-      checkCustomer();
-    }
-  }, [user, loading]);
-
-  if (loading || isCustomer === null) {
-    return <LoadingScreen />;
-  }
-
-  if (!user || !isCustomer) {
-    return <Navigate to="/login" replace />;
-  }
-
-  return <>{children}</>;
+// Route guard that allows multiple user types
+export const AuthenticatedRoute: React.FC<RouteGuardProps> = ({ children }) => {
+  return (
+    <ProtectedRoute allowedTypes={['admin', 'business', 'customer']} redirectTo="/login">
+      {children}
+    </ProtectedRoute>
+  );
 };

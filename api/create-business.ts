@@ -86,6 +86,7 @@ interface CustomerTierData {
   description: string;
   monthlyPrice: number;
   benefits: string[];
+  imageUrl?: string;
 }
 
 interface StripeProductUpdate {
@@ -107,6 +108,7 @@ interface BusinessFormData {
   phone: string;
   website: string;
   description: string;
+  logoUrl?: string;
   customerTiers: CustomerTierData[];
 }
 
@@ -147,7 +149,7 @@ export default withErrorHandler(async (req: VercelRequest, res: VercelResponse):
     // 1. Validate the invitation token and verify payment was completed
     const { data: invite, error: inviteError } = await supabaseAdmin
       .from('restaurant_invitations')
-      .select('id, restaurant_name, email, tier, expires_at, status, payment_session_id')
+      .select('id, restaurant_name, email, business_id, tier, expires_at, status, payment_session_id')
       .eq('token', token)
       .single();
 
@@ -257,46 +259,79 @@ export default withErrorHandler(async (req: VercelRequest, res: VercelResponse):
       console.log('Created new auth user:', businessAuthUser.id);
     }
 
-    // 6. Create the business record with slug
-    const businessId = randomUUID();
+    // 6. Update the existing business record (created during invitation)
+    let businessId = invite.business_id;
     
-    // Generate URL-friendly slug from business name
-    const baseSlug = businessData.businessName.trim()
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/(^-|-$)/g, '');
-    
-    // Make slug unique by adding a random suffix if needed
-    const businessSlug = `${baseSlug}-${businessId.substring(0, 4)}`;
-    
-    const { error: businessError } = await supabaseAdmin
-      .from('businesses')
-      .insert({
-        id: businessId,
-        name: businessData.businessName.trim(),
-        slug: businessSlug,
-        owner_id: businessAuthUser.id, // The business email's auth ID, not the admin's
-        email: businessData.email.trim(),
-        phone: businessData.phone?.trim() || null,
-        website: businessData.website?.trim() || null,
-        description: businessData.description?.trim() || null,
-        business_address: businessData.businessAddress?.trim() || null,
-        city: businessData.city?.trim() || null,
-        state: businessData.state?.trim() || null,
-        zip_code: businessData.zipCode?.trim() || null,
-        pricing_tier_id: pricingTier.id,
-        stripe_customer_id: subscription.customer as string,
-        stripe_subscription_id: subscriptionId,
-        status: 'active',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      })
-      .select('id')
-      .single();
+    // If no business_id in invitation (old invitations), create one
+    if (!businessId) {
+      businessId = randomUUID();
+      
+      // Generate URL-friendly slug from business name
+      const baseSlug = businessData.businessName.trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/(^-|-$)/g, '');
+      
+      // Make slug unique by adding a random suffix if needed
+      const businessSlug = `${baseSlug}-${businessId.substring(0, 4)}`;
+      
+      const { error: businessError } = await supabaseAdmin
+        .from('businesses')
+        .insert({
+          id: businessId,
+          name: businessData.businessName.trim(),
+          slug: businessSlug,
+          owner_id: businessAuthUser.id,
+          email: businessData.email.trim(),
+          phone: businessData.phone?.trim() || null,
+          website: businessData.website?.trim() || null,
+          description: businessData.description?.trim() || null,
+          business_address: businessData.businessAddress?.trim() || null,
+          city: businessData.city?.trim() || null,
+          state: businessData.state?.trim() || null,
+          zip_code: businessData.zipCode?.trim() || null,
+          logo_url: businessData.logoUrl || null,
+          pricing_tier_id: pricingTier.id,
+          stripe_customer_id: subscription.customer as string,
+          stripe_subscription_id: subscriptionId,
+          status: 'active',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .select('id')
+        .single();
 
-    if (businessError) {
-      console.error('Error creating business:', businessError);
-      throw new APIError(500, 'Failed to create business record', 'DATABASE_ERROR');
+      if (businessError) {
+        console.error('Error creating business:', businessError);
+        throw new APIError(500, 'Failed to create business record', 'DATABASE_ERROR');
+      }
+    } else {
+      // Update existing business record
+      const { error: businessError } = await supabaseAdmin
+        .from('businesses')
+        .update({
+          owner_id: businessAuthUser.id,
+          email: businessData.email.trim(),
+          phone: businessData.phone?.trim() || null,
+          website: businessData.website?.trim() || null,
+          description: businessData.description?.trim() || null,
+          business_address: businessData.businessAddress?.trim() || null,
+          city: businessData.city?.trim() || null,
+          state: businessData.state?.trim() || null,
+          zip_code: businessData.zipCode?.trim() || null,
+          logo_url: businessData.logoUrl || null,
+          pricing_tier_id: pricingTier.id,
+          stripe_customer_id: subscription.customer as string,
+          stripe_subscription_id: subscriptionId,
+          status: 'active',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', businessId);
+
+      if (businessError) {
+        console.error('Error updating business:', businessError);
+        throw new APIError(500, 'Failed to update business record', 'DATABASE_ERROR');
+      }
     }
 
     // 7. Create the business admin user profile with the new auth_id
@@ -326,6 +361,7 @@ export default withErrorHandler(async (req: VercelRequest, res: VercelResponse):
       description: tier.description.trim(),
       monthly_price_cents: Math.round(tier.monthlyPrice * 100),
       benefits: tier.benefits.filter(b => b.trim()).map(b => b.trim()), // Store benefits as JSONB array
+      image_url: tier.imageUrl || null,
       is_active: true
     }));
 
