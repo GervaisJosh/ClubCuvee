@@ -1,22 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { CheckCircle, ChevronRight, CreditCard, Lock, User } from 'lucide-react';
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '../lib/supabase';
 import { loadStripe } from '@stripe/stripe-js';
 
-// Initialize Supabase client and Stripe promise
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+// Initialize Stripe promise
 const stripePublicKey = import.meta.env.VITE_STRIPE_PUBLIC_KEY;
-
-const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  auth: {
-    autoRefreshToken: true,
-    persistSession: true,
-    detectSessionInUrl: true
-  }
-});
-
 const stripePromise = loadStripe(stripePublicKey);
 
 // Interfaces for type safety

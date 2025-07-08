@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { CheckCircle, Upload, Edit, Trash2, Plus } from 'lucide-react';
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '../lib/supabase';
 import MembershipTierModal, { MembershipTier } from '../components/membership-tier-modal';
 
 // Define proper types for TypeScript
@@ -24,28 +24,6 @@ interface FormErrors {
   general?: string;
 }
 
-// Initialize Supabase with environment variables
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-// Ensure we have the required credentials
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.error('Missing Supabase credentials. Check your environment variables.');
-}
-
-const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  auth: {
-    autoRefreshToken: true,
-    persistSession: true,
-    detectSessionInUrl: true,
-  },
-  global: {
-    headers: {
-      'Content-Type': 'application/json',
-      apikey: supabaseAnonKey,
-    },
-  },
-});
 
 // Main Registration Component
 const SofiesWineBarRegistration = () => {

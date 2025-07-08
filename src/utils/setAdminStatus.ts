@@ -1,4 +1,5 @@
-import { createClient } from '@supabase/supabase-js';
+// Dynamic import for Vercel - this file requires special handling for admin operations
+const createClientModule = () => import('@supabase/supabase-js');
 
 // This utility requires Supabase service role key to modify app_metadata
 // It should be run from a secure backend environment, not from the frontend
@@ -12,6 +13,9 @@ export async function setAdminStatus(userId: string, isAdmin: boolean) {
     throw new Error('Missing required Supabase credentials for admin operations');
   }
 
+  // Dynamic import for admin client
+  const { createClient } = await createClientModule();
+  
   // Create admin client with service role key
   const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
     auth: {
