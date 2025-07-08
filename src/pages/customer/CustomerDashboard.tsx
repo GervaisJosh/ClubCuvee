@@ -3,7 +3,7 @@ import { Wine, Star, ShoppingCart, Calendar, ArrowRight } from 'lucide-react';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '../../supabase';
+import { supabase } from '../../lib/supabase';
 import DefaultText from '../../components/DefaultText';
 import Card from '../../components/Card';
 import Section from '../../components/Section';
