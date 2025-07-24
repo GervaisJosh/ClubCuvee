@@ -1,5 +1,4 @@
 {
-  "functions": {
-    "api/**/*.ts": {}
-  }
+  "buildCommand": "vite build",
+  "outputDirectory": "dist"
 }
