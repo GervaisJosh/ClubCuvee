@@ -414,3 +414,14 @@ lib/
 scripts/
 supabase/
 tests/
+
+# Compiled API files (Vercel builds these automatically)
+api/**/*.js
+api/**/*.js.map
+api/**/*.d.ts
+api/**/*.tsbuildinfo
+
+# Keep hand-written JS config files
+!api/.eslintrc.js
+!api/jest.config.js
+!api/**/.eslintrc.js

@@ -3,4 +3,10 @@ node_modules
 .env
 .env.local
 .vscode
-dist
+# dist - Removed to allow frontend deployment
+README.md
+*.test.ts
+*.spec.ts
+__tests__
+.github
+docs
