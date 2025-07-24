@@ -4,21 +4,19 @@
   "version": "0.1.0",
   "type": "module",
   "engines": {
-    "node": "22.x"
+    "node": ">=20.0.0"
   },
   "scripts": {
     "dev": "vite",
     "dev:api": "vercel dev",
     "build": "vite build",
-    "build:api": "tsx scripts/build-api.ts",
-    "build:all": "rimraf dist && npm run build:api && npm run build",
-    "vercel-build": "npm run build:api && npm run build",
+    "build:all": "rimraf dist && npm run build",
     "lint": "eslint .",
     "test:recommendations": "tsx src/utils/tests/testRecommendations.ts",
     "test:api": "node tests/api-endpoints.test.js",
     "setup": "node scripts/setup.js",
     "preview": "vite preview",
-    "clean": "rimraf api/**/*.js api/**/*.js.map dist"
+    "clean": "rimraf dist"
   },
   "dependencies": {
     "@emailjs/browser": "^4.4.1",
