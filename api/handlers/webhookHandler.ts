@@ -5,7 +5,7 @@ import { createClient } from '@supabase/supabase-js';
 
 // Initialize Stripe
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2025-02-24.acacia',
+  apiVersion: '2025-06-30.basil',
 });
 
 // Initialize Supabase Admin Client
@@ -289,8 +289,8 @@ async function updateSubscriptionByCustomerId(customerId: string, subscription: 
     .from('customers')
     .update({
       subscription_status: subscription.status,
-      current_period_end: subscription.current_period_end 
-        ? new Date(subscription.current_period_end * 1000).toISOString() 
+      current_period_end: subscription.items.data[0]?.current_period_end 
+        ? new Date(subscription.items.data[0].current_period_end * 1000).toISOString() 
         : null,
       updated_at: new Date().toISOString(),
     })
@@ -308,8 +308,8 @@ async function updateSubscriptionByCustomerId(customerId: string, subscription: 
       .update({
         stripe_subscription_id: subscription.id,
         subscription_status: subscription.status,
-        current_period_end: subscription.current_period_end 
-          ? new Date(subscription.current_period_end * 1000).toISOString() 
+        current_period_end: subscription.items.data[0]?.current_period_end 
+          ? new Date(subscription.items.data[0].current_period_end * 1000).toISOString() 
           : null,
         updated_at: new Date().toISOString(),
       })
@@ -377,7 +377,9 @@ async function updateSubscriptionCancellation(_customerId: string, subscription:
  * Handle invoice.payment_succeeded event
  */
 async function handlePaymentSucceeded(invoice: Stripe.Invoice) {
-  if (!invoice.subscription) return;
+  // Check if invoice has a subscription - cast to any to handle API changes
+  const subscriptionId = (invoice as any).subscription || (invoice as any).parent?.subscription;
+  if (!subscriptionId) return;
 
   try {
     // Record payment in your "subscription_payments" table
@@ -385,7 +387,7 @@ async function handlePaymentSucceeded(invoice: Stripe.Invoice) {
       .from('subscription_payments')
       .insert([{
         stripe_invoice_id: invoice.id,
-        stripe_subscription_id: invoice.subscription,
+        stripe_subscription_id: subscriptionId,
         stripe_customer_id: invoice.customer,
         amount: invoice.amount_paid / 100, // from cents
         currency: invoice.currency,
@@ -408,14 +410,16 @@ async function handlePaymentSucceeded(invoice: Stripe.Invoice) {
  * Handle invoice.payment_failed event
  */
 async function handlePaymentFailed(invoice: Stripe.Invoice) {
-  if (!invoice.subscription) return;
+  // Check if invoice has a subscription - cast to any to handle API changes
+  const subscriptionId = (invoice as any).subscription || (invoice as any).parent?.subscription;
+  if (!subscriptionId) return;
 
   try {
     // Find the matching customer by subscription
     const { data: foundCustomer, error: custError } = await supabaseAdmin
       .from('customers')
       .select('id, email')
-      .eq('stripe_subscription_id', invoice.subscription)
+      .eq('stripe_subscription_id', subscriptionId)
       .maybeSingle();
 
     if (custError) {

@@ -1,13 +1,12 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
-import type { Database } from '../../src/types/supabase';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2025-02-24.acacia',
+  apiVersion: '2025-06-30.basil',
 });
 
-const supabaseUrl = process.env.VITE_SUPABASE_URL;
+const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!;
 
@@ -15,7 +14,12 @@ if (!supabaseUrl || !supabaseServiceKey || !webhookSecret) {
   throw new Error('Missing required environment variables');
 }
 
-const supabase = createClient<Database>(supabaseUrl, supabaseServiceKey);
+const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+  auth: {
+    autoRefreshToken: false,
+    persistSession: false
+  }
+});
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
@@ -224,24 +228,28 @@ async function handlePrivateInvitationCheckout(session: Stripe.Checkout.Session,
 async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
   console.log('Processing invoice.payment_succeeded:', invoice.id);
 
-  if (invoice.subscription) {
+  // Check if invoice has a subscription - cast to any to handle API changes
+  const subscriptionId = (invoice as any).subscription || (invoice as any).parent?.subscription;
+  if (subscriptionId) {
     // Update subscription status to active
-    await updateSubscriptionStatus(invoice.subscription as string, 'active');
+    await updateSubscriptionStatus(subscriptionId as string, 'active');
     
     // Update customer membership status if applicable
-    await updateCustomerMembershipStatus(invoice.subscription as string, 'active');
+    await updateCustomerMembershipStatus(subscriptionId as string, 'active');
   }
 }
 
 async function handleInvoicePaymentFailed(invoice: Stripe.Invoice) {
   console.log('Processing invoice.payment_failed:', invoice.id);
 
-  if (invoice.subscription) {
+  // Check if invoice has a subscription - cast to any to handle API changes
+  const subscriptionId = (invoice as any).subscription || (invoice as any).parent?.subscription;
+  if (subscriptionId) {
     // Update subscription status to past_due
-    await updateSubscriptionStatus(invoice.subscription as string, 'past_due');
+    await updateSubscriptionStatus(subscriptionId as string, 'past_due');
     
     // Update customer membership status if applicable
-    await updateCustomerMembershipStatus(invoice.subscription as string, 'past_due');
+    await updateCustomerMembershipStatus(subscriptionId as string, 'past_due');
   }
 }
 
@@ -352,8 +360,8 @@ async function upsertSubscriptionRecord(subscription: Stripe.Subscription) {
           stripe_customer_id: subscription.customer as string,
           stripe_price_id: subscription.items.data[0]?.price.id || '',
           status: subscription.status,
-          current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
-          current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+          current_period_start: new Date((subscription.items.data[0]?.current_period_start || 0) * 1000).toISOString(),
+          current_period_end: new Date((subscription.items.data[0]?.current_period_end || 0) * 1000).toISOString(),
           updated_at: new Date().toISOString()
         });
 

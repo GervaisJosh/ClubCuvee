@@ -1,6 +1,18 @@
 import type { VercelRequest } from '@vercel/node';
-import { supabase } from '../src/supabase.js';
+import { createClient } from '@supabase/supabase-js';
 import { Pinecone } from '@pinecone-database/pinecone';
+
+// Inline Supabase client
+const supabase = createClient(
+  process.env.SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  }
+);
 
 export const config = {
   maxDuration: 300,

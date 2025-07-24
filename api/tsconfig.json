@@ -2,31 +2,29 @@
   "extends": "../tsconfig.json",
   "compilerOptions": {
     "composite": true,
-    "module": "ESNext",
-    "moduleResolution": "bundler",
+    "module": "CommonJS",
+    "moduleResolution": "node",
     "target": "ES2020",
-    "outDir": "../dist/api",
+    "outDir": ".",
     "baseUrl": ".",
-    "rootDir": "..",
-    "paths": {
-      "@/*": ["../*"],
-      "@/lib/*": ["../lib/*"],
-      "@/api/*": ["./*"]
-    },
-    "types": ["node", "vite/client"],
+    "rootDir": ".",
+    "types": ["node"],
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "declaration": true
+    "declaration": true,
+    "strict": true,
+    "noImplicitAny": true
   },
   "include": [
-    "./**/*.ts",
-    "../src/utils/priceUtils.ts",
-    "../src/utils/recommendation.ts",
-    "../src/lib/services/*.ts"
+    "*.ts",
+    "**/*.ts"
   ],
   "exclude": [
-    "node_modules",
-    "dist"
+    "../src/**/*",
+    "../scripts/**/*",
+    "../node_modules/**/*",
+    "**/*.test.ts",
+    "**/*.spec.ts"
   ]
 } 

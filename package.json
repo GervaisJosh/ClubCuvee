@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "type": "module",
   "engines": {
-    "node": "18.x"
+    "node": ">=22.0.0"
   },
   "scripts": {
     "dev": "vite",
@@ -23,9 +23,9 @@
     "@pinecone-database/pinecone": "4.0.0",
     "@stripe/react-stripe-js": "^3.3.0",
     "@stripe/stripe-js": "^5.10.0",
-    "@supabase/supabase-js": "2.47.8",
+    "@supabase/supabase-js": "2.52.1",
     "@types/express": "^5.0.1",
-    "axios": "1.7.8",
+    "axios": "1.11.0",
     "dotenv": "^16.4.7",
     "express-rate-limit": "^7.1.5",
     "lucide-react": "0.344.0",
@@ -37,7 +37,7 @@
     "react-responsive-carousel": "^3.2.23",
     "react-router-dom": "6.22.3",
     "recharts": "2.13.0",
-    "stripe": "^17.7.0",
+    "stripe": "^18.3.0",
     "supabase": "^2.20.12",
     "xlsx": "0.18.5",
     "zod": "^3.22.4"

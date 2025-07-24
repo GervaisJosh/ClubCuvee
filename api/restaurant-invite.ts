@@ -1,7 +1,63 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { z } from 'zod';
+import { createClient } from '@supabase/supabase-js';
+import { randomUUID } from 'crypto';
 import { withErrorHandler, APIError } from './utils/error-handler';
-import { createInvite } from '../src/lib/services/inviteService';
+
+// Inline Supabase client
+const supabase = createClient(
+  process.env.SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  }
+);
+
+// Inline invite interface
+interface InviteMetadata {
+  token: string;
+  email: string;
+  tier: string;
+  created_at: string;
+  expires_at: string;
+  used: boolean;
+}
+
+// Inline createInvite function
+async function createInvite(email: string, tier: string): Promise<InviteMetadata> {
+  const token = randomUUID();
+  const created_at = new Date();
+  const expires_at = new Date(created_at.getTime() + 24 * 60 * 60 * 1000); // 24h
+
+  const { error } = await supabase
+    .from('restaurant_invites')
+    .insert([
+      {
+        token,
+        email,
+        tier,
+        created_at: created_at.toISOString(),
+        expires_at: expires_at.toISOString(),
+        used: false,
+      },
+    ]);
+
+  if (error) {
+    throw new Error('Failed to create invite: ' + error.message);
+  }
+
+  return {
+    token,
+    email,
+    tier,
+    created_at: created_at.toISOString(),
+    expires_at: expires_at.toISOString(),
+    used: false,
+  };
+}
 
 const createInviteSchema = z.object({
   email: z.string().email(),

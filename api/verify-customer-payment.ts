@@ -81,7 +81,7 @@ const withErrorHandling = (
 };
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2025-02-24.acacia',
+  apiVersion: '2025-06-30.basil',
   typescript: true,
 });
 
@@ -258,7 +258,7 @@ const handler = async (req: VercelRequest, res: VercelResponse): Promise<void> =
       subscription: {
         id: subscription.id,
         status: subscription.status,
-        current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+        current_period_end: new Date((subscription.items.data[0]?.current_period_end || 0) * 1000).toISOString(),
         amount: subscription.items.data[0]?.price.unit_amount || 0
       }
     };

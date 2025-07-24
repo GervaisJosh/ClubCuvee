@@ -16,7 +16,7 @@ if (!stripeSecretKey) {
 }
 
 export const stripe = new Stripe(stripeSecretKey || 'invalid_key', {
-  apiVersion: '2025-02-24.acacia',
+  apiVersion: '2025-06-30.basil',
   maxNetworkRetries: 3,
   typescript: true,
   appInfo: {

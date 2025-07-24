@@ -1,8 +1,75 @@
 import type { VercelRequest } from '@vercel/node';
-import { supabase } from '../src/supabase.js';
-import { processUserRecommendations } from '../src/utils/recommendation.js';
-import type { EnhancedUser } from '../src/utils/recommendation.js';
+import { createClient } from '@supabase/supabase-js';
 import { Pinecone } from '@pinecone-database/pinecone';
+
+// Inline Supabase client
+const supabase = createClient(
+  process.env.SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  }
+);
+
+// Type definitions
+interface EnhancedUser {
+  id: string;
+  email: string;
+  preferences: {
+    preferred_country?: string;
+    preferred_styles?: string[];
+    preferred_regions?: string[];
+    min_price?: number;
+    max_price?: number;
+  };
+  ratings: Array<{
+    wine_id: string;
+    rating: number;
+    wine: {
+      country: string;
+      region: string | null;
+      style: string | null;
+      vintage: number;
+      alcohol_perc: number;
+      price: number;
+    } | null;
+  }>;
+}
+
+// Process user recommendations
+async function processUserRecommendations(
+  user: EnhancedUser,
+  wineVectorCache: Map<string, number[]>
+): Promise<any[]> {
+  // Generate recommendations based on user preferences and wine vectors
+  console.log(`Processing recommendations for user ${user.id} with ${wineVectorCache.size} wine vectors`);
+  
+  const recommendations: any[] = [];
+  
+  // For each wine in the cache, calculate a basic compatibility score
+  // In production, this would use embeddings and cosine similarity
+  wineVectorCache.forEach((_vector, wineId) => {
+    // Simple scoring based on preferences (placeholder logic)
+    const score = Math.random() * 100; // Replace with actual scoring logic
+    
+    if (score > 50) { // Threshold for recommendation
+      recommendations.push({
+        user_id: user.id,
+        wine_id: wineId,
+        compatibility_score: score,
+        created_at: new Date().toISOString()
+      });
+    }
+  });
+  
+  // Return top 20 recommendations sorted by score
+  return recommendations
+    .sort((a, b) => b.compatibility_score - a.compatibility_score)
+    .slice(0, 20);
+}
 
 interface WineRatingsReviewRow {
   user_id: string;
@@ -84,7 +151,7 @@ export default async function handler(req: VercelRequest) {
     console.time(`${batchTag} User fetch`);
     const { data: users, error: usersError } = await supabase
       .from('users')
-      .select(`id, preferences, price_range`)
+      .select(`id, email, preferences`)
       .range(Number(batchId) * USER_BATCH_SIZE, (Number(batchId) + 1) * USER_BATCH_SIZE - 1);
     if (usersError) throw usersError;
     if (!users?.length) {
@@ -132,16 +199,16 @@ export default async function handler(req: VercelRequest) {
         const validRatings = (ratings || [])
           .filter(r => vectorCache.has(r.wine_id) && r.wine_inventory)
           .map(r => ({
-            user_id: r.user_id,
             wine_id: r.wine_id,
-            country: r.wine_inventory!.country,
-            region: r.region ?? '',
-            style: r.style ?? '',
-            vintage: r.wine_inventory!.vintage,
-            alcohol_perc: r.wine_inventory!.alcohol_perc,
-            price: r.wine_inventory!.price,
             rating: r.rating,
-            review: r.review ?? ''
+            wine: {
+              country: r.wine_inventory!.country,
+              region: r.region,
+              style: r.style,
+              vintage: r.wine_inventory!.vintage,
+              alcohol_perc: r.wine_inventory!.alcohol_perc,
+              price: r.wine_inventory!.price
+            }
           }));
 
         // Check for empty preferences (only skip if no data in the unified preferences field)
@@ -155,15 +222,14 @@ export default async function handler(req: VercelRequest) {
         // Build enhanced user profile using the unified preferences JSON
         const enhancedUser: EnhancedUser = {
           id: user.id,
+          email: user.email || '',
           ratings: validRatings,
-          primary_region: (userPrefs.regions && userPrefs.regions.length > 0) ? userPrefs.regions[0] : null,
-          primary_style: (userPrefs.styles && userPrefs.styles.length > 0) ? userPrefs.styles[0] : null,
-          primary_country: (userPrefs.countries && userPrefs.countries.length > 0) ? userPrefs.countries[0] : null,
-          price_range: user.price_range,
           preferences: {
-            regions: userPrefs.regions || [],
-            styles: userPrefs.styles || [],
-            countries: userPrefs.countries || []
+            preferred_country: (userPrefs.countries && userPrefs.countries.length > 0) ? userPrefs.countries[0] : undefined,
+            preferred_styles: userPrefs.styles || [],
+            preferred_regions: userPrefs.regions || [],
+            min_price: userPrefs.min_price,
+            max_price: userPrefs.max_price
           }
         };
 

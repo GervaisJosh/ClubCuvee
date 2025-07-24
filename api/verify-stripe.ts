@@ -62,7 +62,7 @@ export default withErrorHandler(async (req: VercelRequest, res: VercelResponse):
           subscription: {
             id: subscription.id,
             status: subscription.status,
-            currentPeriodEnd: subscription.current_period_end,
+            currentPeriodEnd: subscription.items.data[0]?.current_period_end || 0,
           }
         }
       });

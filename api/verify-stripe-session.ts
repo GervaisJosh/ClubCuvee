@@ -3,7 +3,7 @@ import Stripe from 'stripe';
 
 // Initialize Stripe
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2025-02-24.acacia',
+  apiVersion: '2025-06-30.basil',
   typescript: true,
 });
 
@@ -60,7 +60,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       stripeCustomerId: customer.id,
       subscriptionId: subscription.id,
       subscriptionStatus: subscription.status,
-      currentPeriodEnd: subscription.current_period_end,
+      currentPeriodEnd: subscription.items.data[0]?.current_period_end || 0,
       email: customer.email || session.customer_email,
       metadata: {
         businessId: metadata.businessId,

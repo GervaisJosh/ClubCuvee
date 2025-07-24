@@ -100,7 +100,7 @@ const verifyStripeWebhook = (signature: string, payload: string) => {
   }
 
   const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-    apiVersion: '2025-02-24.acacia',
+    apiVersion: '2025-06-30.basil',
     typescript: true,
   });
 
@@ -121,7 +121,7 @@ const getSubscription = async (subscriptionId: string) => {
   }
 
   const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-    apiVersion: '2025-02-24.acacia',
+    apiVersion: '2025-06-30.basil',
     typescript: true,
   });
 

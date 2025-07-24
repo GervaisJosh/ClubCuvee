@@ -95,7 +95,7 @@ export default withErrorHandler(async (req: VercelRequest, res: VercelResponse):
 
   // Initialize Stripe client
   const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-    apiVersion: '2025-02-24.acacia',
+    apiVersion: '2025-06-30.basil',
     typescript: true,
   });
 
@@ -163,7 +163,7 @@ export default withErrorHandler(async (req: VercelRequest, res: VercelResponse):
         subscription: {
           id: subscription.id,
           status: subscription.status,
-          currentPeriodEnd: subscription.current_period_end,
+          currentPeriodEnd: subscription.items.data[0]?.current_period_end || 0,
           customerId: subscription.customer,
           priceId: subscription.items.data[0]?.price.id
         },

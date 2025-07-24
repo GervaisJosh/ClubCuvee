@@ -127,7 +127,7 @@ export default withErrorHandler(async (req: VercelRequest, res: VercelResponse):
 
   // Initialize Stripe client
   const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-    apiVersion: '2025-02-24.acacia',
+    apiVersion: '2025-06-30.basil',
     typescript: true,
   });
 
@@ -261,6 +261,7 @@ export default withErrorHandler(async (req: VercelRequest, res: VercelResponse):
 
     // 6. Update the existing business record (created during invitation)
     let businessId = invite.business_id;
+    let businessSlug: string;
     
     // If no business_id in invitation (old invitations), create one
     if (!businessId) {
@@ -273,7 +274,7 @@ export default withErrorHandler(async (req: VercelRequest, res: VercelResponse):
         .replace(/(^-|-$)/g, '');
       
       // Make slug unique by adding a random suffix if needed
-      const businessSlug = `${baseSlug}-${businessId.substring(0, 4)}`;
+      businessSlug = `${baseSlug}-${businessId.substring(0, 4)}`;
       
       const { error: businessError } = await supabaseAdmin
         .from('businesses')
@@ -307,6 +308,19 @@ export default withErrorHandler(async (req: VercelRequest, res: VercelResponse):
       }
     } else {
       // Update existing business record
+      const { data: existingBusiness, error: fetchError } = await supabaseAdmin
+        .from('businesses')
+        .select('slug')
+        .eq('id', businessId)
+        .single();
+        
+      if (fetchError || !existingBusiness) {
+        console.error('Error fetching existing business:', fetchError);
+        throw new APIError(500, 'Failed to fetch existing business', 'DATABASE_ERROR');
+      }
+      
+      businessSlug = existingBusiness.slug;
+      
       const { error: businessError } = await supabaseAdmin
         .from('businesses')
         .update({
