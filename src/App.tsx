@@ -1,7 +1,6 @@
 import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
-import { CalendarProvider } from './contexts/CalendarContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { ensureWineInventoryExists } from './utils/ensureWineInventory';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -36,6 +35,10 @@ const CustomerJoinPage = React.lazy(() => import('./pages/join/CustomerJoinPage'
 const ScopedCustomerDashboard = React.lazy(() => import('./pages/customer/ScopedCustomerDashboard'));
 const CustomerRegistration = React.lazy(() => import('./pages/customer/CustomerRegistration'));
 const CustomerWelcome = React.lazy(() => import('./pages/customer/CustomerWelcome'));
+
+// Admin pages
+const AdminLogin = React.lazy(() => import('./pages/admin/Login'));
+const AdminDashboard = React.lazy(() => import('./pages/admin/Dashboard'));
 
 const App = () => {
   // Initialize data check for development mode
@@ -233,6 +236,32 @@ const App = () => {
               
               {/* Unauthorized page */}
               <Route path="/unauthorized" element={<Unauthorized />} />
+              
+              {/* Admin routes */}
+              <Route 
+                path="/admin/login" 
+                element={
+                  <React.Suspense fallback={
+                    <div className="min-h-screen flex items-center justify-center bg-gray-900">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-500"></div>
+                    </div>
+                  }>
+                    <AdminLogin />
+                  </React.Suspense>
+                }
+              />
+              <Route 
+                path="/admin/dashboard" 
+                element={
+                  <React.Suspense fallback={
+                    <div className="min-h-screen flex items-center justify-center bg-gray-900">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-500"></div>
+                    </div>
+                  }>
+                    <AdminDashboard />
+                  </React.Suspense>
+                }
+              />
               
               {/* Default redirect */}
               <Route path="/" element={<Navigate to="/landing" replace />} />
