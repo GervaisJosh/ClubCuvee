@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Onboard Route</title>
+</head>
+<body>
+    <h1>Test Business Onboarding Route</h1>
+    <p>Click the link below to test the onboarding route with a dummy token:</p>
+    <a href="/onboard/test-token-123" style="display: inline-block; padding: 10px 20px; background-color: #800020; color: white; text-decoration: none; border-radius: 5px;">Test /onboard/test-token-123</a>
+    
+    <hr style="margin: 30px 0;">
+    
+    <h2>Expected Behavior:</h2>
+    <ul>
+        <li>The route should load the OnboardToken component</li>
+        <li>It should attempt to validate the token via /api/validate-business-invitation</li>
+        <li>With an invalid token, it should show an error message</li>
+    </ul>
+</body>
+</html>

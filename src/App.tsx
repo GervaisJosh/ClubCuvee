@@ -94,7 +94,7 @@ const App = () => {
                 }
               />
               
-              {/* Business invitation redirect - keeping for backward compatibility */}
+              {/* Business onboarding with invitation token */}
               <Route 
                 path="/onboard/:token" 
                 element={
@@ -102,7 +102,7 @@ const App = () => {
                     <div className="min-h-screen flex items-center justify-center bg-[#fdfaf7] px-6 py-10">
                       <div className="text-center">
                         <div className="h-12 w-12 animate-spin border-4 border-[#800020] border-t-transparent rounded-full mx-auto mb-6"></div>
-                        <p className="text-gray-600 text-lg">Redirecting to business onboarding...</p>
+                        <p className="text-gray-600 text-lg">Loading business onboarding...</p>
                       </div>
                     </div>
                   }>
@@ -165,22 +165,6 @@ const App = () => {
               {/* Legacy customer signup - deprecated */}
               <Route path="/join/:restaurantId" element={<CustomerSignup />} />
               
-              {/* Business onboarding flow */}
-              <Route 
-                path="/onboard/:token" 
-                element={
-                  <React.Suspense fallback={
-                    <div className="min-h-screen flex items-center justify-center bg-[#fdfaf7] px-6 md:px-10 py-10 md:py-20 overflow-x-hidden">
-                      <div className="text-center max-w-7xl w-full mx-auto">
-                        <div className="h-12 w-12 animate-spin border-4 border-[#872657] border-t-transparent rounded-full mx-auto mb-6"></div>
-                        <p className="text-gray-600 text-lg" style={{ fontFamily: 'TayBasal' }}>Loading your business registration...</p>
-                      </div>
-                    </div>
-                  }>
-                    <OnboardToken />
-                  </React.Suspense>
-                }
-              />
               <Route 
                 path="/onboard/:token/setup" 
                 element={
