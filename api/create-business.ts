@@ -229,7 +229,7 @@ export default withErrorHandler(async (req: VercelRequest, res: VercelResponse):
     let businessAuthUser: any;
     
     // First, create an auth user for the business email
-    const { data: newAuthUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
+    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email: businessData.email.trim(),
       email_confirm: true, // Auto-confirm since admin is creating
       password: businessData.password, // Set the password they provided
@@ -246,7 +246,7 @@ export default withErrorHandler(async (req: VercelRequest, res: VercelResponse):
         if (existingUser) {
           // Use existing user's ID
           businessAuthUser = existingUser;
-          console.log('Using existing auth user:', businessAuthUser.id);
+          console.log('Using existing auth user ID:', businessAuthUser.id);
         } else {
           throw new APIError(400, 'Email already in use', 'EMAIL_EXISTS');
         }
@@ -255,9 +255,23 @@ export default withErrorHandler(async (req: VercelRequest, res: VercelResponse):
         throw new APIError(500, 'Failed to create business account', 'AUTH_ERROR');
       }
     } else {
-      businessAuthUser = newAuthUser;
-      console.log('Created new auth user:', businessAuthUser.id);
+      // CRITICAL FIX: Properly extract the user object from the response
+      businessAuthUser = authData.user;
+      console.log('Created new auth user with ID:', businessAuthUser?.id);
+      
+      // Validate that we have the user ID
+      if (!businessAuthUser || !businessAuthUser.id) {
+        console.error('CRITICAL: Auth user created but ID is missing', authData);
+        throw new APIError(500, 'Auth user created but ID is missing', 'AUTH_ID_MISSING');
+      }
     }
+
+    // Final verification that we have a valid auth user ID
+    if (!businessAuthUser?.id) {
+      console.error('CRITICAL: Business auth user ID is undefined after creation/retrieval');
+      throw new APIError(500, 'Business auth user ID is undefined', 'AUTH_USER_MISSING');
+    }
+    console.log('Proceeding with business auth user ID:', businessAuthUser.id);
 
     // 6. Update the existing business record (created during invitation)
     let businessId = invite.business_id;
@@ -275,6 +289,8 @@ export default withErrorHandler(async (req: VercelRequest, res: VercelResponse):
       
       // Make slug unique by adding a random suffix if needed
       businessSlug = `${baseSlug}-${businessId.substring(0, 4)}`;
+      
+      console.log('Creating new business with owner_id:', businessAuthUser.id);
       
       const { error: businessError } = await supabaseAdmin
         .from('businesses')
@@ -321,6 +337,8 @@ export default withErrorHandler(async (req: VercelRequest, res: VercelResponse):
       
       businessSlug = existingBusiness.slug;
       
+      console.log('Updating existing business with owner_id:', businessAuthUser.id);
+      
       const { error: businessError } = await supabaseAdmin
         .from('businesses')
         .update({
@@ -349,7 +367,14 @@ export default withErrorHandler(async (req: VercelRequest, res: VercelResponse):
     }
 
     // 7. Create the business admin user profile with the new auth_id
-    const { error: profileError } = await supabaseAdmin
+    console.log('Creating business_users record with:', {
+      business_id: businessId,
+      auth_id: businessAuthUser.id,
+      email: businessData.email,
+      full_name: businessData.businessOwnerName
+    });
+
+    const { data: businessUserRecord, error: profileError } = await supabaseAdmin
       .from('business_users')
       .insert({
         auth_id: businessAuthUser.id, // The business email's auth ID
@@ -359,13 +384,23 @@ export default withErrorHandler(async (req: VercelRequest, res: VercelResponse):
         role: 'business_admin',
         is_active: true,
         created_at: new Date().toISOString()
-      });
+      })
+      .select()
+      .single();
 
-    if (profileError && !profileError.message?.includes('already exists')) {
-      console.error('Error creating business user profile:', profileError);
-      // Clean up business record if profile creation fails
-      await supabaseAdmin.from('businesses').delete().eq('id', businessId);
-      throw new APIError(500, 'Failed to create business user profile', 'DATABASE_ERROR');
+    if (profileError) {
+      console.error('CRITICAL: Failed to create business_users record:', profileError);
+      console.error('Error details:', JSON.stringify(profileError, null, 2));
+      
+      if (!profileError.message?.includes('already exists')) {
+        // Clean up business record if profile creation fails
+        await supabaseAdmin.from('businesses').delete().eq('id', businessId);
+        throw new APIError(500, 'Failed to create business user profile', 'DATABASE_ERROR');
+      } else {
+        console.log('Business user profile already exists, continuing...');
+      }
+    } else {
+      console.log('Successfully created business_users record:', businessUserRecord);
     }
 
     // 8. Create membership tiers for this business
