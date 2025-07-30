@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { apiClient } from '../../lib/api-client';
 import { supabase } from '../../lib/supabase';
+import { createClient } from '@supabase/supabase-js';
 import Button from '../../components/Button';
 import Card from '../../components/Card';
 import ThemeToggle from '../../components/ThemeToggle';
@@ -20,10 +21,16 @@ import {
   Wine,
   Sparkles,
   X,
-  Image
+  Image,
+  Upload
 } from 'lucide-react';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useAuth } from '../../contexts/AuthContext';
+
+// Inline Supabase configuration
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const supabaseServiceRoleKey = import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY;
 
 interface BusinessFormData {
   businessName: string;
@@ -46,6 +53,7 @@ interface CustomerTierFormData {
   description: string;
   monthlyPrice: number;
   benefits: string[];
+  imageFile?: File;
 }
 
 interface PaymentVerificationData {
@@ -70,6 +78,20 @@ const BusinessSetup: React.FC = () => {
   const navigate = useNavigate();
   const { theme } = useTheme();
   const isDark = theme === 'dark';
+  
+  // Create service role client for onboarding uploads
+  const supabaseService = React.useMemo(() => {
+    if (!supabaseServiceRoleKey) {
+      console.warn('Service role key not available for onboarding uploads');
+      return null;
+    }
+    return createClient(supabaseUrl, supabaseServiceRoleKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    });
+  }, []);
   
   const sessionId = searchParams.get('session_id');
   
@@ -98,6 +120,7 @@ const BusinessSetup: React.FC = () => {
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
   const [showTierForm, setShowTierForm] = useState(false);
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [logoFile, setLogoFile] = useState<File | null>(null);
   const [formErrors, setFormErrors] = useState<string[]>([]);
   const [authenticatedClient, setAuthenticatedClient] = useState<ReturnType<typeof createClient> | null>(null);
   const [businessId, setBusinessId] = useState<string | null>(null);
@@ -205,7 +228,7 @@ const BusinessSetup: React.FC = () => {
     setError(null);
   };
 
-  const handleTierChange = (index: number, field: keyof CustomerTierFormData, value: string | number | string[]) => {
+  const handleTierChange = (index: number, field: keyof CustomerTierFormData, value: string | number | string[] | File) => {
     setFormData(prev => ({
       ...prev,
       customerTiers: prev.customerTiers.map((tier, i) => 
@@ -258,6 +281,44 @@ const BusinessSetup: React.FC = () => {
 
 
   // Comprehensive form validation
+  // Inline upload function using service role client
+  const uploadImageWithServiceRole = async (file: File, businessId: string, path: string): Promise<string | null> => {
+    if (!supabaseService) {
+      console.error('Service role client not available for upload');
+      return null;
+    }
+
+    try {
+      const fileExt = file.name.split('.').pop()?.toLowerCase() || 'png';
+      const fileName = `${businessId}/${path}.${fileExt}`;
+      
+      console.log(`Uploading ${path} to:`, fileName);
+
+      // Upload using service role client
+      const { data, error } = await supabaseService.storage
+        .from('business-assets')
+        .upload(fileName, file, {
+          cacheControl: '3600',
+          upsert: true
+        });
+
+      if (error) {
+        console.error('Upload error:', error);
+        throw error;
+      }
+
+      // Get public URL using regular client
+      const { data: { publicUrl } } = supabase.storage
+        .from('business-assets')
+        .getPublicUrl(fileName);
+
+      return publicUrl;
+    } catch (error) {
+      console.error('Upload failed:', error);
+      return null;
+    }
+  };
+
   const validateForm = (): { isValid: boolean; errors: string[] } => {
     const errors: string[] = [];
     
@@ -368,19 +429,22 @@ const BusinessSetup: React.FC = () => {
       setLoading(true);
       setError(null);
 
-      // No authentication required - the API will create the auth account
+      // First, create the business account to get the business ID
       console.log('=== CREATING BUSINESS ACCOUNT ===');
       console.log('Business email:', formData.email);
       console.log('Token:', token);
       console.log('Session ID:', sessionId);
       
-      // Add image URLs to form data
-      const businessDataWithImages = {
+      // Initially create without images
+      const businessDataWithoutImages = {
         ...formData,
-        logoUrl: logoUrl || null,
-        customerTiers: formData.customerTiers.map((tier, index) => ({
-          ...tier,
-          imageUrl: tierImageUrls[index] || null
+        logoUrl: null,
+        customerTiers: formData.customerTiers.map((tier) => ({
+          name: tier.name,
+          description: tier.description,
+          monthlyPrice: tier.monthlyPrice,
+          benefits: tier.benefits,
+          imageUrl: null
         }))
       };
 
@@ -394,7 +458,7 @@ const BusinessSetup: React.FC = () => {
       }>('/api/create-business', {
         token,
         sessionId,
-        businessData: businessDataWithImages
+        businessData: businessDataWithoutImages
       });
 
       if (response.success) {
@@ -405,7 +469,84 @@ const BusinessSetup: React.FC = () => {
         console.log('Business Auth User ID:', businessAuthUserId);
         console.log('Business Email:', businessEmail);
         
-        // Now sign in as the business user to upload images
+        // Upload images using service role client
+        console.log('=== UPLOADING IMAGES WITH SERVICE ROLE ===');
+        
+        // Upload logo if selected
+        if (logoFile && supabaseService) {
+          try {
+            console.log('Uploading business logo...');
+            const logoUrl = await uploadImageWithServiceRole(logoFile, businessId, 'logo');
+            if (logoUrl) {
+              // Update business with logo URL
+              const { error: updateError } = await supabaseService
+                .from('businesses')
+                .update({ logo_url: logoUrl })
+                .eq('id', businessId);
+              
+              if (updateError) {
+                console.error('Failed to update business logo:', updateError);
+              } else {
+                console.log('Business logo updated successfully');
+              }
+            }
+          } catch (error) {
+            console.error('Logo upload error:', error);
+            // Don't fail the whole process for image errors
+          }
+        }
+        
+        // Upload tier images if selected
+        if (supabaseService) {
+          for (let i = 0; i < formData.customerTiers.length; i++) {
+            const tier = formData.customerTiers[i];
+            if (tier.imageFile) {
+              try {
+                console.log(`Uploading image for tier ${i}: ${tier.name}`);
+                
+                // Get the tier ID from the created tiers
+                const { data: createdTier, error: tierError } = await supabaseService
+                  .from('membership_tiers')
+                  .select('id')
+                  .eq('business_id', businessId)
+                  .eq('name', tier.name)
+                  .single();
+                
+                if (tierError || !createdTier) {
+                  console.error('Failed to find tier:', tierError);
+                  continue;
+                }
+                
+                const tierImageUrl = await uploadImageWithServiceRole(
+                  tier.imageFile, 
+                  businessId, 
+                  `tier-${createdTier.id}`
+                );
+                
+                if (tierImageUrl) {
+                  // Update tier with image URL
+                  const { error: updateError } = await supabaseService
+                    .from('membership_tiers')
+                    .update({ image_url: tierImageUrl })
+                    .eq('id', createdTier.id);
+                  
+                  if (updateError) {
+                    console.error('Failed to update tier image:', updateError);
+                  } else {
+                    console.log('Tier image updated successfully');
+                  }
+                }
+              } catch (error) {
+                console.error('Tier image upload error:', error);
+                // Don't fail the whole process for image errors
+              }
+            }
+          }
+        }
+        
+        console.log('=== IMAGE UPLOADS COMPLETE ===');
+        
+        // Now sign in as the business user
         console.log('=== SIGNING IN AS BUSINESS USER ===');
         const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
           email: formData.email,
@@ -414,326 +555,12 @@ const BusinessSetup: React.FC = () => {
         
         if (signInError) {
           console.error('Failed to sign in as business user:', signInError);
-          throw new Error('Failed to authenticate business account');
+          // Don't throw - business is created, just can't auto-login
+          navigate(`/onboard/${token}/success`);
+          return;
         }
         
         console.log('Successfully signed in as business user');
-        
-        // Get the session immediately after sign-in
-        const { data: { session: newSession } } = await supabase.auth.getSession();
-        
-        if (!newSession || !newSession.access_token) {
-          console.error('No session after sign-in, attempting to get user...');
-          // Try to get the user which might refresh the session
-          const { data: { user }, error: userError } = await supabase.auth.getUser();
-          if (userError || !user) {
-            console.error('Failed to get authenticated user:', userError);
-            throw new Error('Failed to establish authenticated session');
-          }
-          
-          // Get session again
-          const { data: { session: retrySession } } = await supabase.auth.getSession();
-          if (!retrySession || !retrySession.access_token) {
-            throw new Error('Failed to establish authenticated session');
-          }
-        }
-        
-        // Create a new Supabase client with explicit auth headers
-        const finalSession = newSession || (await supabase.auth.getSession()).data.session;
-        if (!finalSession) {
-          throw new Error('No session available for authenticated client');
-        }
-        
-        const newAuthenticatedClient = createClient(supabaseUrl, supabaseAnonKey, {
-          global: {
-            headers: {
-              Authorization: `Bearer ${finalSession.access_token}`
-            }
-          },
-          auth: {
-            autoRefreshToken: true,
-            persistSession: true,
-            detectSessionInUrl: true
-          }
-        });
-        
-        // Store the authenticated client in state
-        setAuthenticatedClient(newAuthenticatedClient);
-        
-        // Verify we're now authenticated as the business owner
-        const { data: { user: currentUser } } = await newAuthenticatedClient.auth.getUser();
-        const { data: { session: currentSession } } = await newAuthenticatedClient.auth.getSession();
-        
-        console.log('Current authenticated user:', {
-          userId: currentUser?.id,
-          email: currentUser?.email,
-          matchesBusinessAuth: currentUser?.id === businessAuthUserId,
-          hasSession: !!currentSession,
-          sessionUserId: currentSession?.user?.id,
-          accessToken: currentSession?.access_token ? 'Present' : 'Missing'
-        });
-        
-        if (!currentSession || !currentSession.access_token) {
-          console.error('CRITICAL: No valid session in authenticated client!');
-          throw new Error('Failed to establish authenticated session');
-        }
-        
-        // Check upload state before attempting uploads
-        console.log('=== UPLOAD STATE CHECK ===');
-        console.log('Logo upload state:', {
-          hasLogoFile: !!logoFile,
-          logoFileName: logoFile?.name,
-          logoFileSize: logoFile?.size,
-          logoFileType: logoFile?.type,
-          businessIdAvailable: !!businessId
-        });
-        
-        // Check tier images state
-        const tierImagesInfo = formData.customerTiers.map((tier, index) => ({
-          tierIndex: index,
-          tierName: tier.name,
-          hasImageFile: !!tier.imageFile,
-          imageFileName: tier.imageFile?.name,
-          imageFileSize: tier.imageFile?.size
-        }));
-        console.log('Tier images state:', tierImagesInfo);
-        
-        // Upload logo if selected (inline function)
-        if (logoFile && businessId) {
-          console.log('=== PROCEEDING WITH LOGO UPLOAD ===');
-          try {
-            console.log('=== LOGO UPLOAD START ===');
-            console.log('Logo file details:', {
-              name: logoFile.name,
-              size: logoFile.size,
-              sizeInMB: (logoFile.size / 1024 / 1024).toFixed(2) + 'MB',
-              type: logoFile.type,
-              lastModified: new Date(logoFile.lastModified).toISOString()
-            });
-            
-            // Verify business ID exists
-            if (!businessId) {
-              console.error('ERROR: No business ID available for upload!');
-              throw new Error('Business ID is required for upload');
-            }
-            
-            const fileExt = logoFile.name.split('.').pop()?.toLowerCase() || 'png';
-            const fileName = `${businessId}/logo.${fileExt}`;
-            console.log('Upload configuration:', {
-              bucket: 'business-assets',
-              path: fileName,
-              fileExtension: fileExt,
-              cacheControl: '3600',
-              upsert: true
-            });
-
-            // Check auth status right before upload
-            const { data: { session } } = await newAuthenticatedClient.auth.getSession();
-            console.log('Auth session before upload:', {
-              hasSession: !!session,
-              sessionUserId: session?.user?.id,
-              sessionEmail: session?.user?.email,
-              accessToken: session?.access_token ? 'Present' : 'Missing',
-              businessIdForUpload: businessId
-            });
-            
-            // Verify business ownership for RLS
-            const { data: businessOwnerCheck, error: ownerCheckError } = await newAuthenticatedClient
-              .from('businesses')
-              .select('owner_id')
-              .eq('id', businessId)
-              .single();
-              
-            console.log('Business ownership check before upload:', {
-              businessId,
-              businessOwnerId: businessOwnerCheck?.owner_id,
-              currentUserId: session?.user?.id,
-              ownershipMatch: businessOwnerCheck?.owner_id === session?.user?.id,
-              error: ownerCheckError
-            });
-            
-            if (businessOwnerCheck?.owner_id !== session?.user?.id) {
-              console.error('CRITICAL: User does not own the business! RLS will block upload.');
-            }
-            
-            // Double-check we have a valid session before upload
-            if (!session || !session.access_token) {
-              console.error('CRITICAL: No valid session for upload!');
-              throw new Error('Authentication session missing');
-            }
-            
-            // Log the auth header that will be used
-            console.log('Upload will use auth token:', session.access_token.substring(0, 20) + '...');
-
-            const { data: uploadData, error: uploadError } = await newAuthenticatedClient.storage
-              .from('business-assets')
-              .upload(fileName, logoFile, {
-                cacheControl: '3600',
-                upsert: true
-              });
-
-            if (uploadError) {
-              console.error('=== LOGO UPLOAD FAILED ===');
-              console.error('Full error:', uploadError);
-              
-              // Log available error properties
-              const errorInfo: Record<string, any> = {
-                message: uploadError.message || 'No message',
-                name: uploadError.name || 'Unknown error'
-              };
-              
-              // Add optional properties if they exist
-              if ('statusCode' in uploadError) errorInfo.statusCode = uploadError.statusCode;
-              if ('error' in uploadError) errorInfo.error = uploadError.error;
-              if ('details' in uploadError) errorInfo.details = uploadError.details;
-              if ('hint' in uploadError) errorInfo.hint = uploadError.hint;
-              if ('code' in uploadError) errorInfo.code = uploadError.code;
-              
-              console.error('Error details:', errorInfo);
-              
-              // Check specific error types
-              const errorMessage = uploadError.message || '';
-              if (errorMessage.includes('not found')) {
-                console.error('BUCKET ERROR: Storage bucket "business-assets" not found');
-              } else if (errorMessage.includes('policy')) {
-                console.error('POLICY ERROR: RLS policy violation');
-              } else if (errorMessage.includes('unauthorized')) {
-                console.error('AUTH ERROR: User not authorized');
-              }
-              
-              throw uploadError;
-            } else {
-              console.log('=== LOGO UPLOAD SUCCESS ===');
-              console.log('Upload response:', uploadData);
-              
-              // Get public URL
-              const { data: { publicUrl } } = newAuthenticatedClient.storage
-                .from('business-assets')
-                .getPublicUrl(fileName);
-              
-              console.log('Public URL:', publicUrl);
-
-              // Update business record with logo URL
-              const { error: updateError } = await newAuthenticatedClient
-                .from('businesses')
-                .update({ logo_url: publicUrl })
-                .eq('id', businessId);
-                
-              if (updateError) {
-                console.error('Failed to update business with logo URL:', updateError);
-              } else {
-                console.log('Business logo URL updated successfully');
-              }
-            }
-          } catch (err) {
-            console.error('Logo upload error:', err);
-            // Don't fail the whole process for image upload errors
-          }
-        }
-
-        // Upload tier images if selected (inline function)
-        console.log('=== CHECKING TIER IMAGES FOR UPLOAD ===');
-        console.log(`Total tiers to check: ${formData.customerTiers.length}`);
-        
-        for (let i = 0; i < formData.customerTiers.length; i++) {
-          const tier = formData.customerTiers[i];
-          console.log(`Checking tier ${i}:`, {
-            tierName: tier.name,
-            hasImageFile: !!tier.imageFile,
-            imageFileName: tier.imageFile?.name,
-            willUpload: !!(tier.imageFile && businessId)
-          });
-          
-          if (tier.imageFile && businessId) {
-            console.log(`=== PROCEEDING WITH TIER ${i} IMAGE UPLOAD ===`);
-            try {
-              console.log(`Starting tier image upload for tier ${i}:`, tier.name);
-              console.log('Tier image file:', tier.imageFile.name, tier.imageFile.size, tier.imageFile.type);
-              
-              // First, we need to get the tier ID from the created tiers
-              const { data: tiers, error: tierError } = await newAuthenticatedClient
-                .from('membership_tiers')
-                .select('id, name')
-                .eq('business_id', businessId)
-                .eq('name', tier.name)
-                .single();
-
-              if (tierError) {
-                console.error('Failed to find tier:', tierError);
-                continue;
-              }
-
-              if (tiers && tiers.id) {
-                const fileExt = tier.imageFile.name.split('.').pop()?.toLowerCase() || 'png';
-                const fileName = `${businessId}/tier-${tiers.id}.${fileExt}`;
-                console.log('Tier upload path:', fileName);
-
-                const { data: uploadData, error: uploadError } = await newAuthenticatedClient.storage
-                  .from('business-assets')
-                  .upload(fileName, tier.imageFile, {
-                    cacheControl: '3600',
-                    upsert: true
-                  });
-
-                if (uploadError) {
-                  console.error('=== TIER IMAGE UPLOAD FAILED ===');
-                  console.error('Full error:', uploadError);
-                  
-                  // Log available error properties
-                  const errorInfo: Record<string, any> = {
-                    message: uploadError.message || 'No message',
-                    name: uploadError.name || 'Unknown error',
-                    tierName: tier.name,
-                    tierId: tiers.id
-                  };
-                  
-                  // Add optional properties if they exist
-                  if ('statusCode' in uploadError) errorInfo.statusCode = uploadError.statusCode;
-                  if ('error' in uploadError) errorInfo.error = uploadError.error;
-                  if ('details' in uploadError) errorInfo.details = uploadError.details;
-                  
-                  console.error('Tier upload error details:', errorInfo);
-                  
-                  // Check specific error types
-                  const errorMessage = uploadError.message || '';
-                  if (errorMessage.includes('not found')) {
-                    console.error('BUCKET ERROR: Storage bucket "business-assets" not found');
-                  } else if (errorMessage.includes('policy')) {
-                    console.error('POLICY ERROR: RLS policy violation for tier image');
-                  }
-                } else {
-                  console.log('Tier image uploaded successfully:', uploadData);
-                  
-                  // Get public URL
-                  const { data: { publicUrl } } = newAuthenticatedClient.storage
-                    .from('business-assets')
-                    .getPublicUrl(fileName);
-                  
-                  console.log('Tier public URL:', publicUrl);
-
-                  // Update tier record with image URL
-                  const { error: updateError } = await newAuthenticatedClient
-                    .from('membership_tiers')
-                    .update({ image_url: publicUrl })
-                    .eq('id', tiers.id);
-                    
-                  if (updateError) {
-                    console.error('Failed to update tier with image URL:', updateError);
-                  } else {
-                    console.log('Tier image URL updated successfully');
-                  }
-                }
-              }
-            } catch (err) {
-              console.error('Tier image upload error:', err);
-              // Don't fail the whole process for image upload errors
-            }
-          }
-        }
-        
-        // Log upload summary
-        console.log('=== UPLOAD PROCESS COMPLETE ===');
-        console.log('Business setup completed. Navigating to success page...');
         
         // Navigate to success page
         navigate(`/onboard/${token}/success`);
@@ -976,17 +803,52 @@ const BusinessSetup: React.FC = () => {
                   Upload your business logo to personalize your wine club
                 </p>
                 
-                {businessId && (
-                  <ImageUploadField
-                    label=""
-                    onUploadComplete={(url) => setLogoUrl(url)}
-                    businessId={businessId}
-                    uploadPath="logo"
-                    maxSizeMB={2}
-                    existingImageUrl={logoUrl || undefined}
+                <div className="relative">
+                  <input
+                    type="file"
+                    accept="image/png, image/jpeg, image/jpg, image/webp"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        setLogoFile(file);
+                        // Create preview
+                        const reader = new FileReader();
+                        reader.onload = (e) => {
+                          setLogoUrl(e.target?.result as string);
+                        };
+                        reader.readAsDataURL(file);
+                      }
+                    }}
                     disabled={loading}
+                    className="hidden"
+                    id="logo-upload"
                   />
-                )}
+                  <label
+                    htmlFor="logo-upload"
+                    className={`block w-full border-2 border-dashed rounded-lg p-8 text-center transition-colors cursor-pointer ${
+                      loading
+                        ? 'border-gray-300 bg-gray-50 cursor-not-allowed'
+                        : 'border-gray-400 hover:border-[#800020] hover:bg-gray-50 dark:hover:bg-gray-800'
+                    }`}
+                  >
+                    {logoUrl ? (
+                      <div>
+                        <img src={logoUrl} alt="Logo preview" className="w-32 h-32 mx-auto mb-4 object-cover rounded-lg" />
+                        <p className="text-sm text-gray-600 dark:text-gray-400">Click to change logo</p>
+                      </div>
+                    ) : (
+                      <>
+                        <Upload className="h-8 w-8 mx-auto mb-2 text-gray-400" />
+                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                          Click to upload logo
+                        </p>
+                        <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
+                          PNG, JPEG, WEBP (max 2MB)
+                        </p>
+                      </>
+                    )}
+                  </label>
+                </div>
               </div>
             </div>
             </div>
@@ -1207,19 +1069,53 @@ const BusinessSetup: React.FC = () => {
                           Add an image to represent this membership tier
                         </p>
                         
-                        {businessId && (
-                          <ImageUploadField
-                            label=""
-                            onUploadComplete={(url) => {
-                              setTierImageUrls(prev => ({ ...prev, [tierIndex]: url }));
+                        <div className="relative">
+                          <input
+                            type="file"
+                            accept="image/png, image/jpeg, image/jpg, image/webp"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                // Update tier with image file
+                                handleTierChange(tierIndex, 'imageFile', file);
+                                // Create preview
+                                const reader = new FileReader();
+                                reader.onload = (e) => {
+                                  setTierImageUrls(prev => ({ ...prev, [tierIndex]: e.target?.result as string }));
+                                };
+                                reader.readAsDataURL(file);
+                              }
                             }}
-                            businessId={businessId}
-                            uploadPath={`tiers/tier-${tierIndex}`}
-                            maxSizeMB={3}
-                            existingImageUrl={tierImageUrls[tierIndex] || undefined}
                             disabled={loading}
+                            className="hidden"
+                            id={`tier-upload-${tierIndex}`}
                           />
-                        )}
+                          <label
+                            htmlFor={`tier-upload-${tierIndex}`}
+                            className={`block w-full border-2 border-dashed rounded-lg p-6 text-center transition-colors cursor-pointer ${
+                              loading
+                                ? 'border-gray-300 bg-gray-50 cursor-not-allowed'
+                                : 'border-gray-400 hover:border-[#800020] hover:bg-gray-50 dark:hover:bg-gray-800'
+                            }`}
+                          >
+                            {tierImageUrls[tierIndex] ? (
+                              <div>
+                                <img src={tierImageUrls[tierIndex]} alt="Tier preview" className="w-24 h-24 mx-auto mb-2 object-cover rounded-lg" />
+                                <p className="text-xs text-gray-600 dark:text-gray-400">Click to change image</p>
+                              </div>
+                            ) : (
+                              <>
+                                <Upload className="h-6 w-6 mx-auto mb-1 text-gray-400" />
+                                <p className="text-xs text-gray-600 dark:text-gray-400">
+                                  Click to upload tier image
+                                </p>
+                                <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
+                                  PNG, JPEG, WEBP (max 3MB)
+                                </p>
+                              </>
+                            )}
+                          </label>
+                        </div>
                       </div>
                     </div>
                   </div>
