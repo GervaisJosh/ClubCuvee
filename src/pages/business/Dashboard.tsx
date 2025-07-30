@@ -93,13 +93,13 @@ interface ActivityItem {
 
 const BusinessDashboard: React.FC = () => {
   const navigate = useNavigate();
-  const { userProfile, user } = useAuth();
+  const { userProfile, user, loading: authLoading } = useAuth();
   const { theme, setTheme } = useTheme();
   const [loading, setLoading] = useState(true);
   const [wines, setWines] = useState<WineItem[]>([]);
   const [activities, setActivities] = useState<ActivityItem[]>([]);
   
-  const businessName = user?.user_metadata?.restaurant_name || userProfile?.restaurant_name || 'Your Business';
+  const businessName = userProfile?.name || user?.user_metadata?.restaurant_name || userProfile?.restaurant_name || 'Your Business';
 
   useEffect(() => {
     checkAuth();
@@ -149,7 +149,7 @@ const BusinessDashboard: React.FC = () => {
     }).format(amount);
   };
 
-  if (loading) {
+  if (loading || authLoading) {
     return (
       <div className={`min-h-screen ${theme === 'dark' ? 'bg-black' : 'bg-gray-50'} flex items-center justify-center`}>
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-500"></div>

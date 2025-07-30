@@ -101,6 +101,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return;
       }
       
+      // 2b. Check business_users table for business admins
+      const { data: businessUserRecord, error: businessUserError } = await supabase
+        .from('business_users')
+        .select(`
+          *,
+          businesses:business_id (*)
+        `)
+        .eq('auth_id', authUser.id)
+        .eq('is_active', true)
+        .maybeSingle();
+      
+      if (businessUserRecord && !businessUserError && businessUserRecord.businesses) {
+        console.log('User is a business admin:', businessUserRecord.businesses.name);
+        setUserProfile({
+          id: businessUserRecord.businesses.id,
+          auth_id: authUser.id,
+          email: businessUserRecord.email || authUser.email,
+          name: businessUserRecord.full_name || businessUserRecord.businesses.name,
+          is_business: true,
+          business_id: businessUserRecord.business_id
+        });
+        setUserType('business');
+        setIsAdmin(false);
+        return;
+      }
+      
       // 3. Check customer
       const { data: customerUser, error: customerError } = await supabase
         .from('customers')
@@ -134,7 +160,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
     } catch (error) {
       console.error('Error determining user type:', error);
-      setUserProfile(null);
+      console.error('Error details:', {
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined
+      });
+      // Set basic profile even on error
+      setUserProfile({
+        auth_id: authUser.id,
+        email: authUser.email
+      });
       setUserType('none');
       setIsAdmin(false);
     }

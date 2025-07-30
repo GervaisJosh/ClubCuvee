@@ -81,16 +81,27 @@ const BusinessSetup: React.FC = () => {
   
   // Create service role client for onboarding uploads
   const supabaseService = React.useMemo(() => {
+    console.log('=== SERVICE CLIENT INIT ===');
+    console.log('Has URL:', !!supabaseUrl);
+    console.log('Has Service Key:', !!supabaseServiceRoleKey);
+    console.log('Service Key length:', supabaseServiceRoleKey?.length || 0);
+    
     if (!supabaseServiceRoleKey) {
-      console.warn('Service role key not available for onboarding uploads');
+      console.error('CRITICAL: Service role key not available for onboarding uploads');
+      console.error('Check VITE_SUPABASE_SERVICE_ROLE_KEY in .env');
+      console.error('Will use authenticated upload approach instead');
       return null;
     }
-    return createClient(supabaseUrl, supabaseServiceRoleKey, {
+    
+    const client = createClient(supabaseUrl, supabaseServiceRoleKey, {
       auth: {
         autoRefreshToken: false,
         persistSession: false
       }
     });
+    
+    console.log('Service client created:', !!client);
+    return client;
   }, []);
   
   const sessionId = searchParams.get('session_id');
@@ -291,8 +302,17 @@ const BusinessSetup: React.FC = () => {
     try {
       const fileExt = file.name.split('.').pop()?.toLowerCase() || 'png';
       const fileName = `${businessId}/${path}.${fileExt}`;
-      
-      console.log(`Uploading ${path} to:`, fileName);
+
+      console.log('=== UPLOAD ATTEMPT ===');
+      console.log('Bucket:', 'business-assets');
+      console.log('Full path:', fileName);
+      console.log('File details:', {
+        name: file.name,
+        size: file.size,
+        sizeInKB: (file.size / 1024).toFixed(2) + 'KB',
+        type: file.type
+      });
+      console.log('Service client exists:', !!supabaseService);
 
       // Upload using service role client
       const { data, error } = await supabaseService.storage
@@ -302,9 +322,26 @@ const BusinessSetup: React.FC = () => {
           upsert: true
         });
 
+      console.log('Upload response:', { data, error });
+
       if (error) {
-        console.error('Upload error:', error);
+        console.error('=== UPLOAD ERROR DETAILS ===');
+        console.error('Error object:', JSON.stringify(error, null, 2));
         throw error;
+      }
+
+      // Verify the file was actually uploaded
+      console.log('Verifying upload...');
+      const { data: listData, error: listError } = await supabaseService.storage
+        .from('business-assets')
+        .list(businessId, {
+          limit: 100,
+          offset: 0
+        });
+      
+      console.log('Files in businessId folder after upload:', listData);
+      if (listError) {
+        console.error('Error listing files:', listError);
       }
 
       // Get public URL using regular client
@@ -312,9 +349,47 @@ const BusinessSetup: React.FC = () => {
         .from('business-assets')
         .getPublicUrl(fileName);
 
+      console.log('Generated public URL:', publicUrl);
       return publicUrl;
     } catch (error) {
-      console.error('Upload failed:', error);
+      console.error('=== UPLOAD EXCEPTION ===');
+      console.error('Full error:', error);
+      return null;
+    }
+  };
+
+  // Alternative upload function using authenticated client
+  const uploadImageWithAuth = async (file: File, businessId: string, path: string): Promise<string | null> => {
+    try {
+      const fileExt = file.name.split('.').pop()?.toLowerCase() || 'png';
+      const fileName = `${businessId}/${path}.${fileExt}`;
+
+      console.log('=== AUTH UPLOAD ATTEMPT ===');
+      console.log('Using authenticated client');
+      console.log('Full path:', fileName);
+
+      const { data, error } = await supabase.storage
+        .from('business-assets')
+        .upload(fileName, file, {
+          cacheControl: '3600',
+          upsert: true
+        });
+
+      if (error) {
+        console.error('Auth upload error:', error);
+        throw error;
+      }
+
+      console.log('Auth upload success:', data);
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('business-assets')
+        .getPublicUrl(fileName);
+
+      return publicUrl;
+    } catch (error) {
+      console.error('Auth upload failed:', error);
       return null;
     }
   };
@@ -469,17 +544,48 @@ const BusinessSetup: React.FC = () => {
         console.log('Business Auth User ID:', businessAuthUserId);
         console.log('Business Email:', businessEmail);
         
-        // Upload images using service role client
-        console.log('=== UPLOADING IMAGES WITH SERVICE ROLE ===');
+        // Now sign in as the business user
+        console.log('=== SIGNING IN AS BUSINESS USER ===');
+        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+          email: formData.email,
+          password: formData.password
+        });
+        
+        if (signInError) {
+          console.error('Failed to sign in as business user:', signInError);
+          // Don't throw - business is created, just can't auto-login
+          navigate(`/onboard/${token}/success`);
+          return;
+        }
+        
+        console.log('Successfully signed in as business user');
+        
+        // Upload images after sign-in
+        console.log('=== UPLOADING IMAGES ===');
+        const useServiceRole = !!supabaseService;
+        console.log('Using service role:', useServiceRole);
         
         // Upload logo if selected
-        if (logoFile && supabaseService) {
+        if (logoFile) {
           try {
             console.log('Uploading business logo...');
-            const logoUrl = await uploadImageWithServiceRole(logoFile, businessId, 'logo');
+            let logoUrl = null;
+            
+            if (supabaseService) {
+              // Try service role first
+              logoUrl = await uploadImageWithServiceRole(logoFile, businessId, 'logo');
+            }
+            
+            if (!logoUrl) {
+              // Fallback to authenticated upload
+              console.log('Falling back to authenticated upload...');
+              logoUrl = await uploadImageWithAuth(logoFile, businessId, 'logo');
+            }
+            
             if (logoUrl) {
               // Update business with logo URL
-              const { error: updateError } = await supabaseService
+              const updateClient = supabaseService || supabase;
+              const { error: updateError } = await updateClient
                 .from('businesses')
                 .update({ logo_url: logoUrl })
                 .eq('id', businessId);
@@ -497,70 +603,69 @@ const BusinessSetup: React.FC = () => {
         }
         
         // Upload tier images if selected
-        if (supabaseService) {
-          for (let i = 0; i < formData.customerTiers.length; i++) {
-            const tier = formData.customerTiers[i];
-            if (tier.imageFile) {
-              try {
-                console.log(`Uploading image for tier ${i}: ${tier.name}`);
-                
-                // Get the tier ID from the created tiers
-                const { data: createdTier, error: tierError } = await supabaseService
-                  .from('membership_tiers')
-                  .select('id')
-                  .eq('business_id', businessId)
-                  .eq('name', tier.name)
-                  .single();
-                
-                if (tierError || !createdTier) {
-                  console.error('Failed to find tier:', tierError);
-                  continue;
-                }
-                
-                const tierImageUrl = await uploadImageWithServiceRole(
+        for (let i = 0; i < formData.customerTiers.length; i++) {
+          const tier = formData.customerTiers[i];
+          if (tier.imageFile) {
+            try {
+              console.log(`Uploading image for tier ${i}: ${tier.name}`);
+              
+              // Get the tier ID from the created tiers
+              const queryClient = supabaseService || supabase;
+              const { data: createdTier, error: tierError } = await queryClient
+                .from('membership_tiers')
+                .select('id')
+                .eq('business_id', businessId)
+                .eq('name', tier.name)
+                .single();
+              
+              if (tierError || !createdTier) {
+                console.error('Failed to find tier:', tierError);
+                continue;
+              }
+              
+              let tierImageUrl = null;
+              
+              if (supabaseService) {
+                // Try service role first
+                tierImageUrl = await uploadImageWithServiceRole(
                   tier.imageFile, 
                   businessId, 
                   `tier-${createdTier.id}`
                 );
-                
-                if (tierImageUrl) {
-                  // Update tier with image URL
-                  const { error: updateError } = await supabaseService
-                    .from('membership_tiers')
-                    .update({ image_url: tierImageUrl })
-                    .eq('id', createdTier.id);
-                  
-                  if (updateError) {
-                    console.error('Failed to update tier image:', updateError);
-                  } else {
-                    console.log('Tier image updated successfully');
-                  }
-                }
-              } catch (error) {
-                console.error('Tier image upload error:', error);
-                // Don't fail the whole process for image errors
               }
+              
+              if (!tierImageUrl) {
+                // Fallback to authenticated upload
+                console.log('Falling back to authenticated upload for tier...');
+                tierImageUrl = await uploadImageWithAuth(
+                  tier.imageFile,
+                  businessId,
+                  `tier-${createdTier.id}`
+                );
+              }
+              
+              if (tierImageUrl) {
+                // Update tier with image URL
+                const updateClient = supabaseService || supabase;
+                const { error: updateError } = await updateClient
+                  .from('membership_tiers')
+                  .update({ image_url: tierImageUrl })
+                  .eq('id', createdTier.id);
+                
+                if (updateError) {
+                  console.error('Failed to update tier image:', updateError);
+                } else {
+                  console.log('Tier image updated successfully');
+                }
+              }
+            } catch (error) {
+              console.error('Tier image upload error:', error);
+              // Don't fail the whole process for image errors
             }
           }
         }
         
         console.log('=== IMAGE UPLOADS COMPLETE ===');
-        
-        // Now sign in as the business user
-        console.log('=== SIGNING IN AS BUSINESS USER ===');
-        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-          email: formData.email,
-          password: formData.password
-        });
-        
-        if (signInError) {
-          console.error('Failed to sign in as business user:', signInError);
-          // Don't throw - business is created, just can't auto-login
-          navigate(`/onboard/${token}/success`);
-          return;
-        }
-        
-        console.log('Successfully signed in as business user');
         
         // Navigate to success page
         navigate(`/onboard/${token}/success`);
@@ -825,6 +930,33 @@ const BusinessSetup: React.FC = () => {
                   />
                   <label
                     htmlFor="logo-upload"
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      const files = e.dataTransfer.files;
+                      if (files && files[0]) {
+                        // Validate file type and size
+                        const file = files[0];
+                        if (!file.type.startsWith('image/')) {
+                          alert('Please upload an image file');
+                          return;
+                        }
+                        if (file.size > 2 * 1024 * 1024) {
+                          alert('File size must be less than 2MB');
+                          return;
+                        }
+                        setLogoFile(file);
+                        const reader = new FileReader();
+                        reader.onload = (evt) => {
+                          setLogoUrl(evt.target?.result as string);
+                        };
+                        reader.readAsDataURL(file);
+                      }
+                    }}
                     className={`block w-full border-2 border-dashed rounded-lg p-8 text-center transition-colors cursor-pointer ${
                       loading
                         ? 'border-gray-300 bg-gray-50 cursor-not-allowed'
@@ -1092,6 +1224,35 @@ const BusinessSetup: React.FC = () => {
                           />
                           <label
                             htmlFor={`tier-upload-${tierIndex}`}
+                            onDragOver={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                            }}
+                            onDrop={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              const files = e.dataTransfer.files;
+                              if (files && files[0]) {
+                                // Validate file type and size
+                                const file = files[0];
+                                if (!file.type.startsWith('image/')) {
+                                  alert('Please upload an image file');
+                                  return;
+                                }
+                                if (file.size > 3 * 1024 * 1024) {
+                                  alert('File size must be less than 3MB');
+                                  return;
+                                }
+                                // Update tier with image file
+                                handleTierChange(tierIndex, 'imageFile', file);
+                                // Create preview
+                                const reader = new FileReader();
+                                reader.onload = (e) => {
+                                  setTierImageUrls(prev => ({ ...prev, [tierIndex]: e.target?.result as string }));
+                                };
+                                reader.readAsDataURL(file);
+                              }
+                            }}
                             className={`block w-full border-2 border-dashed rounded-lg p-6 text-center transition-colors cursor-pointer ${
                               loading
                                 ? 'border-gray-300 bg-gray-50 cursor-not-allowed'
