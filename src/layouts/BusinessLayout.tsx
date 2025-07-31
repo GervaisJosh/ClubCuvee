@@ -26,8 +26,6 @@ const BusinessLayout: React.FC<BusinessLayoutProps> = ({ children }) => {
     { icon: Users, label: 'Members', path: '/business/customers' },
     { icon: Package, label: 'Orders', path: '/business/orders' },
     { icon: BarChart2, label: 'Analytics', path: '/business/analytics' },
-    { icon: Calendar, label: 'Events', path: '/business/events' },
-    { icon: Store, label: 'Store', path: '/business/store' },
     { icon: Settings, label: 'Settings', path: '/business/settings' },
   ];
 

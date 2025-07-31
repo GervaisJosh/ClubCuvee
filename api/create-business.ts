@@ -532,6 +532,78 @@ export default withErrorHandler(async (req: VercelRequest, res: VercelResponse):
       console.log('✅ Successfully updated invitation status to completed');
     }
 
+    // 12. Create test data for new businesses
+    console.log('🔄 Creating test data for new business');
+    try {
+      // Create test customer
+      const testCustomerId = randomUUID();
+      const { error: customerError } = await supabaseAdmin
+        .from('customers')
+        .insert({
+          id: testCustomerId,
+          business_id: businessId,
+          auth_id: randomUUID(), // Placeholder auth ID
+          email: 'testmember@example.com',
+          name: 'Test Member One',
+          tier_id: createdTiers[0]?.id, // First tier they created
+          subscription_status: 'active',
+          created_at: new Date().toISOString()
+        });
+
+      if (customerError) {
+        console.error('❌ Error creating test customer:', customerError);
+      } else {
+        console.log('✅ Created test customer');
+      }
+
+      // Create test wine
+      const testWineId = randomUUID();
+      const { error: wineError } = await supabaseAdmin
+        .from('wines')
+        .insert({
+          id: testWineId,
+          business_id: businessId,
+          name: 'Delicious Red 1',
+          type: 'Red Wine',
+          varietal: 'Cabernet Sauvignon',
+          vintage: new Date().getFullYear() - 2, // 2 years old vintage
+          price_cents: 2500, // $25
+          stock_quantity: 10,
+          rating: 87,
+          description: 'A smooth and elegant red wine with notes of blackberry and vanilla',
+          created_at: new Date().toISOString()
+        });
+
+      if (wineError) {
+        console.error('❌ Error creating test wine:', wineError);
+      } else {
+        console.log('✅ Created test wine');
+      }
+
+      // Create test order/sale
+      if (!customerError && !wineError) {
+        const { error: orderError } = await supabaseAdmin
+          .from('orders')
+          .insert({
+            id: randomUUID(),
+            business_id: businessId,
+            customer_id: testCustomerId,
+            status: 'completed',
+            total_amount_cents: 2500,
+            created_at: new Date().toISOString()
+          });
+
+        if (orderError) {
+          console.error('❌ Error creating test order:', orderError);
+        } else {
+          console.log('✅ Created test order');
+        }
+      }
+    } catch (testDataError) {
+      console.error('❌ Error creating test data:', testDataError);
+      // Don't fail the whole process if test data creation fails
+    }
+
     // 12. Return success response
     res.status(200).json({
       success: true,

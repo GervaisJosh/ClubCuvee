@@ -12,7 +12,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
   return (
     <div className={`min-h-screen flex flex-col ${isDark ? 'bg-black text-white' : 'bg-white text-gray-900'}`}>
-      <main className="flex-grow ml-0 lg:ml-20 p-4 sm:p-6 transition-all duration-200">
+      <main className="flex-grow ml-0 lg:ml-20 p-4 sm:p-6 transition-all duration-200 relative z-0">
         {children}
       </main>
       <div className="ml-0 lg:ml-20">
