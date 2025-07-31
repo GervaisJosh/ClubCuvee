@@ -41,6 +41,8 @@ interface CustomerFormData {
   zipCode: string;
   winePreferences: string;
   specialRequests: string;
+  password: string;
+  confirmPassword: string;
 }
 
 const CustomerJoinPage: React.FC = () => {
@@ -64,7 +66,9 @@ const CustomerJoinPage: React.FC = () => {
     state: '',
     zipCode: '',
     winePreferences: '',
-    specialRequests: ''
+    specialRequests: '',
+    password: '',
+    confirmPassword: ''
   });
 
   useEffect(() => {
@@ -167,11 +171,23 @@ const CustomerJoinPage: React.FC = () => {
     }
 
     // Validate required fields
-    const requiredFields = ['name', 'email', 'phone', 'address', 'city', 'state', 'zipCode'];
+    const requiredFields = ['name', 'email', 'phone', 'address', 'city', 'state', 'zipCode', 'password', 'confirmPassword'];
     const missingFields = requiredFields.filter(field => !customerData[field as keyof CustomerFormData]?.trim());
     
     if (missingFields.length > 0) {
       setError('Please fill in all required fields');
+      return;
+    }
+
+    // Validate passwords match
+    if (customerData.password !== customerData.confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+
+    // Validate password length
+    if (customerData.password.length < 8) {
+      setError('Password must be at least 8 characters long');
       return;
     }
 
@@ -207,6 +223,7 @@ const CustomerJoinPage: React.FC = () => {
             zipCode: customerData.zipCode,
             winePreferences: customerData.winePreferences,
             specialRequests: customerData.specialRequests,
+            password: customerData.password,
           }
         }),
       });
@@ -480,6 +497,44 @@ const CustomerJoinPage: React.FC = () => {
                     />
                   </div>
                 </div>
+              </div>
+              
+              <div className="mt-8">
+                <label className={`block text-sm font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'} mb-2`}>
+                  Password *
+                </label>
+                <input
+                  type="password"
+                  name="password"
+                  value={customerData.password}
+                  onChange={handleInputChange}
+                  required
+                  className={`w-full px-4 py-3 border rounded-xl ${
+                    isDark 
+                      ? 'bg-zinc-800 border-zinc-700 text-white placeholder-zinc-500 focus:border-[#800020]' 
+                      : 'bg-gray-50 border-gray-300 text-gray-900 placeholder-gray-500 focus:border-[#800020]'
+                  } focus:outline-none focus:ring-1 focus:ring-[#800020] transition-all duration-200`}
+                  placeholder="Minimum 8 characters"
+                />
+              </div>
+              
+              <div className="mt-6">
+                <label className={`block text-sm font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'} mb-2`}>
+                  Confirm Password *
+                </label>
+                <input
+                  type="password"
+                  name="confirmPassword"
+                  value={customerData.confirmPassword}
+                  onChange={handleInputChange}
+                  required
+                  className={`w-full px-4 py-3 border rounded-xl ${
+                    isDark 
+                      ? 'bg-zinc-800 border-zinc-700 text-white placeholder-zinc-500 focus:border-[#800020]' 
+                      : 'bg-gray-50 border-gray-300 text-gray-900 placeholder-gray-500 focus:border-[#800020]'
+                  } focus:outline-none focus:ring-1 focus:ring-[#800020] transition-all duration-200`}
+                  placeholder="Re-enter your password"
+                />
               </div>
               
               <div className="mt-8 space-y-6">

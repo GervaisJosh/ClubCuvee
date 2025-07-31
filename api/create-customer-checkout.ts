@@ -31,13 +31,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // Validate customer data
-    const requiredFields = ['name', 'email', 'phone', 'address', 'city', 'state', 'zipCode'];
+    const requiredFields = ['name', 'email', 'phone', 'address', 'city', 'state', 'zipCode', 'password'];
     for (const field of requiredFields) {
       if (!customerData[field]) {
         return res.status(400).json({ 
           error: `Missing required customer field: ${field}` 
         });
       }
+    }
+
+    // Validate password length
+    if (customerData.password && customerData.password.length < 8) {
+      return res.status(400).json({ 
+        error: 'Password must be at least 8 characters long' 
+      });
     }
 
     // Create Stripe checkout session with customer metadata
@@ -62,6 +69,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         customerZipCode: customerData.zipCode,
         customerWinePreferences: customerData.winePreferences || '',
         customerSpecialRequests: customerData.specialRequests || '',
+        // Store password temporarily in metadata (Stripe encrypts this)
+        customerPassword: customerData.password,
       },
       success_url: `${process.env.NEXT_PUBLIC_APP_URL || 'https://club-cuvee.com'}/customer/welcome?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${process.env.NEXT_PUBLIC_APP_URL || 'https://club-cuvee.com'}/join/${businessSlug || businessId}`,

@@ -14,32 +14,12 @@ const BusinessLayout: React.FC<BusinessLayoutProps> = ({ children }) => {
   const { theme } = useTheme();
   const { signOut, userProfile, user } = useAuth();
   const navigate = useNavigate();
-  const isDark = theme === 'dark';
   
-  // Extract restaurant name from user metadata or profile
-  const restaurantName = user?.user_metadata?.restaurant_name || userProfile?.restaurant_name || 'Your Restaurant';
-
-  const menuItems = [
-    { icon: Home, label: 'Dashboard', path: '/business/dashboard' },
-    { icon: Wine, label: 'Wine Inventory', path: '/business/wines' },
-    { icon: GlassWater, label: 'Membership Tiers', path: '/business/membership-tiers' },
-    { icon: Users, label: 'Members', path: '/business/customers' },
-    { icon: Package, label: 'Orders', path: '/business/orders' },
-    { icon: BarChart2, label: 'Analytics', path: '/business/analytics' },
-    { icon: Settings, label: 'Settings', path: '/business/settings' },
-  ];
-
+  // Since the dashboard has its own navigation, we'll just wrap children
   return (
-    <>
-      <Sidebar 
-        menuItems={menuItems} 
-        title={restaurantName || 'Club Cuvée'} 
-        subtitle="Business Portal"
-      />
-      <Layout>
-        {children}
-      </Layout>
-    </>
+    <div className="min-h-screen bg-black">
+      {children}
+    </div>
   );
 };
 

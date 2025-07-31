@@ -21,7 +21,8 @@ import {
   Sun,
   Moon,
   CircleDollarSign,
-  UserPlus
+  UserPlus,
+  CheckCircle
 } from 'lucide-react';
 
 interface BentoBoxProps {
@@ -49,17 +50,16 @@ const BentoBox: React.FC<BentoBoxProps> = ({
 
   return (
     <div className={`
-      ${theme === 'dark' ? 'bg-gray-900/50' : 'bg-white/90'} 
-      backdrop-blur-sm border 
-      ${theme === 'dark' ? 'border-gray-800' : 'border-gray-200'} 
+      bg-gray-900 
+      border border-gray-800 
       rounded-xl p-6 
-      ${theme === 'dark' ? 'hover:border-gray-700' : 'hover:border-gray-300'} 
+      hover:border-gray-700 
       transition-all duration-300
       ${sizeClasses[size]}
       ${className}
     `}>
       <div className="flex items-center justify-between mb-4">
-        <h3 className={`text-xl font-light ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+        <h3 className="text-xl font-light text-white">
           {title}
         </h3>
         {Icon && (
@@ -100,6 +100,8 @@ const BusinessDashboard: React.FC = () => {
   const [activities, setActivities] = useState<ActivityItem[]>([]);
   const [businessData, setBusinessData] = useState<any>(null);
   const [copySuccess, setCopySuccess] = useState(false);
+  const [showInvitation, setShowInvitation] = useState(false);
+  const [invitationLink, setInvitationLink] = useState('');
   const [realStats, setRealStats] = useState({
     totalWines: 0,
     totalMembers: 0,
@@ -223,84 +225,118 @@ const BusinessDashboard: React.FC = () => {
     }).format(amount);
   };
 
-  const generateCustomerSignUpLink = async () => {
+  const generateCustomerSignUpLink = () => {
+    if (!businessData?.slug) {
+      console.error('No business slug available');
+      return;
+    }
+    
+    const link = `${window.location.origin}/join/${businessData.slug}`;
+    setInvitationLink(link);
+    setShowInvitation(true);
+  };
+  
+  const copyInvitationLink = async () => {
     try {
-      if (!businessData?.slug) {
-        console.error('No business slug available');
-        return;
-      }
-      
-      // Use the business slug to create the link
-      const signUpLink = `${window.location.origin}/join/${businessData.slug}`;
-      
-      // Copy to clipboard
-      await navigator.clipboard.writeText(signUpLink);
-      
-      // Show success message
+      await navigator.clipboard.writeText(invitationLink);
       setCopySuccess(true);
       setTimeout(() => setCopySuccess(false), 3000);
     } catch (error) {
-      console.error('Error generating link:', error);
+      console.error('Error copying link:', error);
     }
   };
 
   if (loading || authLoading) {
     return (
-      <div className={`min-h-screen ${theme === 'dark' ? 'bg-black' : 'bg-gray-50'} flex items-center justify-center`}>
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-500"></div>
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#A0303D]"></div>
       </div>
     );
   }
 
   return (
-    <div className={`min-h-screen ${theme === 'dark' ? 'bg-black' : 'bg-gray-50'}`}>
+    <div className="min-h-screen bg-black">
       {/* Navigation Header */}
-      <nav className={`border-b ${theme === 'dark' ? 'border-gray-800 bg-gray-900/50' : 'border-gray-200 bg-white/90'} backdrop-blur-sm sticky top-0 z-50`}>
+      <nav className="bg-gray-900 border-b border-gray-800 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
-            <div className="flex items-center space-x-8">
-              <h1 className={`text-2xl font-light ${theme === 'dark' ? 'text-white' : 'text-gray-900'} tracking-wider`}>
-                {businessName}
-              </h1>
-              <div className="hidden md:flex space-x-6">
-                <a href="/business/dashboard" className="text-[#A0303D] border-b-2 border-[#A0303D] pb-1">
-                  Dashboard
-                </a>
-                <a href="/business/inventory" className={`${theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-600 hover:text-gray-900'} transition-colors`}>
-                  Inventory
-                </a>
-                <a href="/business/members" className={`${theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-600 hover:text-gray-900'} transition-colors`}>
-                  Members
-                </a>
-                <a href="/business/analytics" className={`${theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-600 hover:text-gray-900'} transition-colors`}>
-                  Analytics
-                </a>
-              </div>
+            {/* Business Name */}
+            <h1 className="text-xl font-semibold text-white">
+              {businessData?.name || businessName}
+            </h1>
+            
+            {/* Navigation Items */}
+            <div className="hidden md:flex space-x-8">
+              <a href="/business/dashboard" className="text-[#A0303D] border-b-2 border-[#A0303D] pb-1 transition-colors">
+                Dashboard
+              </a>
+              <a href="/business/inventory" className="text-gray-400 hover:text-white transition-colors">
+                Inventory
+              </a>
+              <a href="/business/members" className="text-gray-400 hover:text-white transition-colors">
+                Members
+              </a>
+              <a href="/business/orders" className="text-gray-400 hover:text-white transition-colors">
+                Orders
+              </a>
+              <a href="/business/analytics" className="text-gray-400 hover:text-white transition-colors">
+                Analytics
+              </a>
+              <a href="/business/settings" className="text-gray-400 hover:text-white transition-colors">
+                Settings
+              </a>
             </div>
-            <div className="flex items-center space-x-4">
-              <button
-                onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-                className={`p-2 rounded-lg ${theme === 'dark' ? 'bg-gray-800 hover:bg-gray-700' : 'bg-gray-100 hover:bg-gray-200'} transition-colors`}
-              >
-                {theme === 'dark' ? (
-                  <Sun className="h-5 w-5 text-[#A0303D]" />
-                ) : (
-                  <Moon className="h-5 w-5 text-gray-600" />
-                )}
-              </button>
-              <button
-                onClick={handleSignOut}
-                className={`flex items-center space-x-2 ${theme === 'dark' ? 'bg-gray-800 text-gray-300 hover:bg-gray-700' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'} px-4 py-2 rounded-lg transition-colors`}
-              >
-                <LogOut className="h-4 w-4" />
-                <span>Sign Out</span>
-              </button>
-            </div>
+            
+            {/* Sign Out Icon */}
+            <button
+              onClick={handleSignOut}
+              className="text-gray-400 hover:text-white transition-colors p-2"
+              title="Sign Out"
+            >
+              <LogOut className="h-5 w-5" />
+            </button>
           </div>
         </div>
       </nav>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Customer Invitation Display */}
+        {showInvitation && (
+          <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 mb-6">
+            <div className="flex items-center mb-4">
+              <CheckCircle className="h-6 w-6 text-green-400 mr-2" />
+              <h3 className="text-lg font-semibold text-white">
+                Customer Invitation Link Generated Successfully!
+              </h3>
+            </div>
+            
+            <div className="bg-gray-900 p-4 rounded-lg mb-4">
+              <p className="text-gray-300 text-sm mb-2">Share this link with customers to join your wine club:</p>
+              <div className="flex items-center space-x-2">
+                <input
+                  type="text"
+                  value={invitationLink}
+                  readOnly
+                  className="flex-1 bg-gray-800 text-white px-3 py-2 rounded border border-gray-700 font-mono text-sm"
+                />
+                <button
+                  onClick={copyInvitationLink}
+                  className="bg-[#722F37] hover:bg-[#8B2635] text-white px-4 py-2 rounded transition-colors font-medium"
+                >
+                  {copySuccess ? '✓ COPIED' : '📋 COPY'}
+                </button>
+              </div>
+            </div>
+            
+            <button
+              onClick={() => setShowInvitation(false)}
+              className="text-gray-400 hover:text-white text-sm transition-colors"
+            >
+              Close
+            </button>
+          </div>
+        )}
+        
         {/* Bento Box Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
           {/* Wine Inventory Overview - Large Box */}
@@ -308,8 +344,8 @@ const BusinessDashboard: React.FC = () => {
             <div className="space-y-4">
               <div className="flex justify-between items-baseline">
                 <div>
-                  <p className={`text-3xl font-light ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{realStats.totalWines || 0}</p>
-                  <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Total wines in portfolio</p>
+                  <p className="text-3xl font-light text-white">{realStats.totalWines || 0}</p>
+                  <p className="text-sm text-gray-400">Total wines in portfolio</p>
                 </div>
                 <div className="text-right">
                   <p className="text-sm text-red-400 flex items-center">
@@ -321,25 +357,33 @@ const BusinessDashboard: React.FC = () => {
               
               {/* Mini Wine List */}
               <div className="space-y-3 mt-4">
-                {wines.slice(0, 3).map((wine) => (
-                  <div key={wine.id} className={`flex items-center space-x-3 p-3 rounded-lg ${theme === 'dark' ? 'bg-gray-800/50' : 'bg-gray-50'}`}>
-                    <div className="w-12 h-12 bg-gradient-to-br from-[#722F37]/20 to-[#8B2635]/20 rounded-lg flex items-center justify-center">
-                      <Wine className="h-6 w-6 text-[#A0303D]" />
-                    </div>
-                    <div className="flex-1">
-                      <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{wine.name}</p>
-                      <div className="flex items-center space-x-2">
-                        <div className="flex items-center">
-                          <Star className="h-3 w-3 text-[#A0303D] fill-current" />
-                          <span className={`text-xs ml-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>{wine.rating}/100</span>
+                {realStats.totalWines > 0 ? (
+                  wines.slice(0, 3).map((wine) => (
+                    <div key={wine.id} className="flex items-center space-x-3 p-3 rounded-lg bg-gray-800">
+                      <div className="w-12 h-12 bg-gradient-to-br from-[#722F37]/20 to-[#8B2635]/20 rounded-lg flex items-center justify-center">
+                        <Wine className="h-6 w-6 text-[#A0303D]" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-medium text-white">{wine.name}</p>
+                        <div className="flex items-center space-x-2">
+                          <div className="flex items-center">
+                            <Star className="h-3 w-3 text-[#A0303D] fill-current" />
+                            <span className="text-xs ml-1 text-gray-400">{wine.rating}/100</span>
+                          </div>
+                          <span className={`text-xs ${wine.stock <= 5 ? 'text-red-400' : 'text-gray-400'}`}>
+                            {wine.stock} bottles
+                          </span>
                         </div>
-                        <span className={`text-xs ${wine.stock <= 5 ? 'text-red-400' : theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                          {wine.stock} bottles
-                        </span>
                       </div>
                     </div>
+                  ))
+                ) : (
+                  <div className="text-center py-6 bg-gray-800 rounded-lg">
+                    <Wine className="h-8 w-8 text-gray-600 mx-auto mb-2" />
+                    <p className="text-sm text-gray-400">No wines in inventory</p>
+                    <p className="text-xs text-gray-500 mt-1">Click below to add your first wine</p>
                   </div>
-                ))}
+                )}
               </div>
               
               <button className="w-full mt-4 bg-gradient-to-r from-[#722F37] to-[#8B2635] text-white px-4 py-2 rounded-lg hover:from-[#8B2635] hover:to-[#A0303D] transition-all duration-300 flex items-center justify-center space-x-2">
@@ -356,20 +400,18 @@ const BusinessDashboard: React.FC = () => {
                 onClick={generateCustomerSignUpLink}
                 className="w-full bg-gradient-to-r from-[#722F37] to-[#8B2635] hover:from-[#8B2635] hover:to-[#A0303D] text-white py-3 px-4 rounded-lg transition-all duration-300 font-medium flex items-center justify-center space-x-2"
               >
-                <span>📧</span>
-                <span className="text-sm">
-                  {copySuccess ? 'Link Copied!' : 'Generate Customer Sign-Up Link'}
-                </span>
+                <UserPlus className="h-4 w-4" />
+                <span className="text-sm">Generate Customer Sign-Up Link</span>
               </button>
-              <button className={`w-full ${theme === 'dark' ? 'bg-gray-800 hover:bg-gray-700' : 'bg-gray-100 hover:bg-gray-200'} px-4 py-3 rounded-lg transition-colors flex items-center justify-center space-x-2`}>
+              <button className="w-full bg-gray-800 hover:bg-gray-700 px-4 py-3 rounded-lg transition-colors flex items-center justify-center space-x-2">
                 <Wine className="h-4 w-4 text-[#A0303D]" />
-                <span className={`text-sm ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Add Wine</span>
+                <span className="text-sm text-white">Add Wine</span>
               </button>
-              <button className={`w-full ${theme === 'dark' ? 'bg-gray-800 hover:bg-gray-700' : 'bg-gray-100 hover:bg-gray-200'} px-4 py-3 rounded-lg transition-colors flex items-center justify-center space-x-2`}>
+              <button className="w-full bg-gray-800 hover:bg-gray-700 px-4 py-3 rounded-lg transition-colors flex items-center justify-center space-x-2">
                 <Package className="h-4 w-4 text-[#A0303D]" />
                 <span className={`text-sm ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Process Orders</span>
               </button>
-              <button className={`w-full ${theme === 'dark' ? 'bg-gray-800 hover:bg-gray-700' : 'bg-gray-100 hover:bg-gray-200'} px-4 py-3 rounded-lg transition-colors flex items-center justify-center space-x-2`}>
+              <button className="w-full bg-gray-800 hover:bg-gray-700 px-4 py-3 rounded-lg transition-colors flex items-center justify-center space-x-2">
                 <BarChart2 className="h-4 w-4 text-[#A0303D]" />
                 <span className={`text-sm ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>View Reports</span>
               </button>
@@ -380,27 +422,29 @@ const BusinessDashboard: React.FC = () => {
           <BentoBox size="medium" title="Sales Metrics" icon={TrendingUp}>
             <div className="space-y-4">
               <div>
-                <p className={`text-3xl font-light ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{formatCurrency(realStats.monthlyRevenue)}</p>
-                <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Monthly recurring revenue</p>
-                <p className="text-sm text-green-400 flex items-center mt-1">
-                  <ArrowUp className="h-3 w-3 mr-1" />
-                  12% from last month
-                </p>
+                <p className="text-3xl font-light text-white">{formatCurrency(realStats.monthlyRevenue)}</p>
+                <p className="text-sm text-gray-400">Monthly recurring revenue</p>
+                {realStats.monthlyRevenue > 0 && (
+                  <p className="text-sm text-green-400 flex items-center mt-1">
+                    <ArrowUp className="h-3 w-3 mr-1" />
+                    Growing month over month
+                  </p>
+                )}
               </div>
               
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <p className={`text-xl font-light ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{formatCurrency(3250)}</p>
-                  <p className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>This month</p>
+                  <p className="text-xl font-light text-white">{formatCurrency(realStats.monthlyRevenue / 12)}</p>
+                  <p className="text-xs text-gray-400">This month</p>
                 </div>
                 <div>
-                  <p className={`text-xl font-light ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{formatCurrency(142)}</p>
-                  <p className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Avg order value</p>
+                  <p className="text-xl font-light text-white">{formatCurrency(realStats.monthlyRevenue / Math.max(realStats.totalMembers, 1))}</p>
+                  <p className="text-xs text-gray-400">Avg member value</p>
                 </div>
               </div>
               
               {/* Mini Revenue Chart Placeholder */}
-              <div className={`h-24 ${theme === 'dark' ? 'bg-gray-800/50' : 'bg-gray-100'} rounded-lg flex items-end justify-between px-4 pb-2`}>
+              <div className="h-24 bg-gray-800 rounded-lg flex items-end justify-between px-4 pb-2">
                 {[40, 65, 45, 80, 55, 70, 85].map((height, i) => (
                   <div
                     key={i}
@@ -417,8 +461,8 @@ const BusinessDashboard: React.FC = () => {
             <div className="space-y-4">
               <div className="flex justify-between items-baseline">
                 <div>
-                  <p className={`text-3xl font-light ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{realStats.totalMembers}</p>
-                  <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Total active members</p>
+                  <p className="text-3xl font-light text-white">{realStats.totalMembers}</p>
+                  <p className="text-sm text-gray-400">Total active members</p>
                 </div>
                 <div className="text-right">
                   <p className="text-sm text-green-400 flex items-center">
@@ -430,112 +474,125 @@ const BusinessDashboard: React.FC = () => {
               
               {/* Member Distribution */}
               <div className="space-y-2">
-                <div className="flex justify-between items-center">
-                  <span className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Gold Tier</span>
-                  <span className={`text-sm font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>156 members</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Platinum Tier</span>
-                  <span className={`text-sm font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>124 members</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Diamond Tier</span>
-                  <span className={`text-sm font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>62 members</span>
-                </div>
+                {realStats.totalMembers > 0 ? (
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-400">Active Members</span>
+                    <span className="text-sm font-medium text-white">{realStats.totalMembers} total</span>
+                  </div>
+                ) : (
+                  <div className="text-center py-4">
+                    <p className="text-sm text-gray-500">No members yet</p>
+                    <p className="text-xs text-gray-600 mt-1">Share your sign-up link to get started!</p>
+                  </div>
+                )}
               </div>
               
               {/* Recent Members */}
-              <div className={`p-3 ${theme === 'dark' ? 'bg-gray-800/50' : 'bg-gray-50'} rounded-lg`}>
-                <p className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} mb-2`}>Recent members</p>
-                <div className="flex -space-x-2">
-                  {[1, 2, 3, 4, 5].map((i) => (
-                    <div key={i} className="w-8 h-8 bg-gradient-to-br from-[#722F37] to-[#8B2635] rounded-full border-2 border-gray-900" />
-                  ))}
-                  <div className={`w-8 h-8 ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-200'} rounded-full border-2 ${theme === 'dark' ? 'border-gray-900' : 'border-white'} flex items-center justify-center`}>
-                    <span className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>+18</span>
+              {realStats.totalMembers > 0 && (
+                <div className="p-3 bg-gray-800 rounded-lg">
+                  <p className="text-xs text-gray-400 mb-2">Recent members</p>
+                  <div className="flex -space-x-2">
+                    {[1, 2, 3, 4, 5].map((i) => (
+                      <div key={i} className="w-8 h-8 bg-gradient-to-br from-[#722F37] to-[#8B2635] rounded-full border-2 border-gray-900" />
+                    ))}
+                    {realStats.totalMembers > 5 && (
+                      <div className="w-8 h-8 bg-gray-700 rounded-full border-2 border-gray-900 flex items-center justify-center">
+                        <span className="text-xs text-gray-400">+{realStats.totalMembers - 5}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
-              </div>
+              )}
             </div>
           </BentoBox>
 
           {/* Recent Activity - Tall Box */}
           <BentoBox size="tall" title="Recent Activity" icon={Activity}>
             <div className="space-y-3 overflow-y-auto max-h-[400px]">
-              {activities.map((activity) => (
-                <div key={activity.id} className={`p-3 rounded-lg ${theme === 'dark' ? 'bg-gray-800/50' : 'bg-gray-50'} transition-all hover:scale-[1.02]`}>
-                  <div className="flex items-start space-x-3">
-                    <div className="flex-shrink-0">
-                      {activity.type === 'new_member' && (
-                        <div className="p-2 bg-green-500/10 rounded-lg">
-                          <UserPlus className="h-4 w-4 text-green-400" />
-                        </div>
-                      )}
-                      {activity.type === 'new_order' && (
-                        <div className="p-2 bg-blue-500/10 rounded-lg">
-                          <Package className="h-4 w-4 text-blue-400" />
-                        </div>
-                      )}
-                      {activity.type === 'wine_rating' && (
-                        <div className="p-2 bg-[#722F37]/10 rounded-lg">
-                          <Star className="h-4 w-4 text-[#A0303D]" />
-                        </div>
-                      )}
-                      {activity.type === 'low_stock' && (
-                        <div className="p-2 bg-red-500/10 rounded-lg">
-                          <AlertCircle className="h-4 w-4 text-red-400" />
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex-1">
-                      <p className={`text-sm font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{activity.title}</p>
-                      <p className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>{activity.description}</p>
-                      <p className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'} mt-1`}>{activity.timestamp}</p>
+              {realStats.totalMembers > 0 || realStats.totalWines > 0 ? (
+                activities.map((activity) => (
+                  <div key={activity.id} className="p-3 rounded-lg bg-gray-800 transition-all hover:scale-[1.02]">
+                    <div className="flex items-start space-x-3">
+                      <div className="flex-shrink-0">
+                        {activity.type === 'new_member' && (
+                          <div className="p-2 bg-green-500/10 rounded-lg">
+                            <UserPlus className="h-4 w-4 text-green-400" />
+                          </div>
+                        )}
+                        {activity.type === 'new_order' && (
+                          <div className="p-2 bg-blue-500/10 rounded-lg">
+                            <Package className="h-4 w-4 text-blue-400" />
+                          </div>
+                        )}
+                        {activity.type === 'wine_rating' && (
+                          <div className="p-2 bg-[#722F37]/10 rounded-lg">
+                            <Star className="h-4 w-4 text-[#A0303D]" />
+                          </div>
+                        )}
+                        {activity.type === 'low_stock' && (
+                          <div className="p-2 bg-red-500/10 rounded-lg">
+                            <AlertCircle className="h-4 w-4 text-red-400" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-white">{activity.title}</p>
+                        <p className="text-xs text-gray-400">{activity.description}</p>
+                        <p className="text-xs text-gray-500 mt-1">{activity.timestamp}</p>
+                      </div>
                     </div>
                   </div>
+                ))
+              ) : (
+                <div className="text-center py-8">
+                  <Activity className="h-12 w-12 text-gray-600 mx-auto mb-4" />
+                  <p className="text-gray-400 mb-2">No activity yet</p>
+                  <p className="text-sm text-gray-500">
+                    Start by adding wines to your inventory and inviting your first customer!
+                  </p>
                 </div>
-              ))}
+              )}
             </div>
           </BentoBox>
 
           {/* Performance Metrics - Small Boxes */}
           <div className="col-span-1">
-            <div className={`${theme === 'dark' ? 'bg-gray-900/50' : 'bg-white/90'} backdrop-blur-sm border ${theme === 'dark' ? 'border-gray-800' : 'border-gray-200'} rounded-xl p-6 ${theme === 'dark' ? 'hover:border-gray-700' : 'hover:border-gray-300'} transition-all duration-300`}>
+            <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 hover:border-gray-700 transition-all duration-300">
               <div className="flex items-center justify-between mb-2">
                 <Star className="h-5 w-5 text-[#A0303D]" />
-                <span className={`text-2xl font-light ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{realStats.avgRating || 0}</span>
+                <span className="text-2xl font-light text-white">{realStats.avgRating || 0}</span>
               </div>
-              <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Avg Wine Rating</p>
+              <p className="text-sm text-gray-400">Avg Wine Rating</p>
             </div>
           </div>
 
           <div className="col-span-1">
-            <div className={`${theme === 'dark' ? 'bg-gray-900/50' : 'bg-white/90'} backdrop-blur-sm border ${theme === 'dark' ? 'border-gray-800' : 'border-gray-200'} rounded-xl p-6 ${theme === 'dark' ? 'hover:border-gray-700' : 'hover:border-gray-300'} transition-all duration-300`}>
+            <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 hover:border-gray-700 transition-all duration-300">
               <div className="flex items-center justify-between mb-2">
                 <Users className="h-5 w-5 text-green-400" />
-                <span className={`text-2xl font-light ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>92%</span>
+                <span className="text-2xl font-light text-white">92%</span>
               </div>
-              <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Member Retention</p>
+              <p className="text-sm text-gray-400">Member Retention</p>
             </div>
           </div>
 
           <div className="col-span-1">
-            <div className={`${theme === 'dark' ? 'bg-gray-900/50' : 'bg-white/90'} backdrop-blur-sm border ${theme === 'dark' ? 'border-gray-800' : 'border-gray-200'} rounded-xl p-6 ${theme === 'dark' ? 'hover:border-gray-700' : 'hover:border-gray-300'} transition-all duration-300`}>
+            <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 hover:border-gray-700 transition-all duration-300">
               <div className="flex items-center justify-between mb-2">
                 <Package className="h-5 w-5 text-blue-400" />
-                <span className={`text-2xl font-light ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>98%</span>
+                <span className="text-2xl font-light text-white">98%</span>
               </div>
-              <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Fulfillment Rate</p>
+              <p className="text-sm text-gray-400">Fulfillment Rate</p>
             </div>
           </div>
 
           <div className="col-span-1">
-            <div className={`${theme === 'dark' ? 'bg-gray-900/50' : 'bg-white/90'} backdrop-blur-sm border ${theme === 'dark' ? 'border-gray-800' : 'border-gray-200'} rounded-xl p-6 ${theme === 'dark' ? 'hover:border-gray-700' : 'hover:border-gray-300'} transition-all duration-300`}>
+            <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 hover:border-gray-700 transition-all duration-300">
               <div className="flex items-center justify-between mb-2">
                 <Sparkles className="h-5 w-5 text-[#A0303D]" />
-                <span className={`text-2xl font-light ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>4.9</span>
+                <span className="text-2xl font-light text-white">4.9</span>
               </div>
-              <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Satisfaction Score</p>
+              <p className="text-sm text-gray-400">Satisfaction Score</p>
             </div>
           </div>
         </div>

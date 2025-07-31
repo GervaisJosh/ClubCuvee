@@ -210,12 +210,22 @@ const CustomerWelcome: React.FC = () => {
               </p>
             </div>
 
-            {/* CTA Button */}
+            {/* CTA Button with Account Created Emphasis */}
+            <div className={`p-6 ${isDark ? 'bg-emerald-900/20' : 'bg-emerald-50'} rounded-xl border ${isDark ? 'border-emerald-800/30' : 'border-emerald-200'} mb-6`}>
+              <CheckCircle className={`h-8 w-8 ${isDark ? 'text-emerald-400' : 'text-emerald-600'} mx-auto mb-3`} />
+              <p className={`text-lg font-medium ${isDark ? 'text-white' : 'text-gray-900'} mb-2`}>
+                Your account has been created!
+              </p>
+              <p className={`text-sm ${isDark ? 'text-gray-300' : 'text-gray-600'} mb-4`}>
+                Login with your email ({customerData.email}) and the password you just created.
+              </p>
+            </div>
+            
             <Button
               onClick={() => navigate('/login')}
               className="bg-[#722f37] hover:bg-[#5a252c] text-white px-8 py-4 text-lg font-medium shadow-lg transform transition-all duration-200 hover:scale-105"
             >
-              Visit Your Dashboard
+              Login to Your Dashboard
               <ArrowRight className="w-5 h-5 ml-2 inline" />
             </Button>
           </div>
@@ -312,7 +322,7 @@ const CustomerWelcome: React.FC = () => {
                   </p>
                   <p className={`${isDark ? 'text-gray-300' : 'text-gray-600'} flex items-start`}>
                     <Mail className="h-4 w-4 mr-2 mt-0.5 text-[#722f37]" />
-                    Check your inbox at {customerData.email} for important information and login details
+                    Check your inbox at {customerData.email} for order confirmations and wine updates
                   </p>
                 </div>
               </div>
@@ -394,18 +404,26 @@ const CustomerWelcome: React.FC = () => {
             </div>
           </Card>
 
-          {/* Final CTA */}
+          {/* Final CTA with Login Emphasis */}
           <div className="text-center">
-            <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'} mb-6`}>
-              A confirmation email has been sent to {customerData.email}
-            </p>
+            <div className={`inline-block p-6 ${isDark ? 'bg-zinc-900/50' : 'bg-gray-50'} rounded-xl border ${isDark ? 'border-zinc-800' : 'border-gray-200'} mb-6`}>
+              <h3 className={`text-lg font-medium ${isDark ? 'text-white' : 'text-gray-900'} mb-2`}>
+                Ready to explore your wine dashboard?
+              </h3>
+              <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'} mb-1`}>
+                <strong>Email:</strong> {customerData.email}
+              </p>
+              <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                <strong>Password:</strong> The one you just created
+              </p>
+            </div>
             
             <Button
               onClick={() => navigate('/login')}
               variant="secondary"
               className="px-8 py-3 border-2 border-[#722f37] text-[#722f37] hover:bg-[#722f37] hover:text-white transition-all duration-200"
             >
-              Access Your Member Dashboard
+              Login to Member Dashboard
               <ArrowRight className="w-5 h-5 ml-2 inline" />
             </Button>
           </div>

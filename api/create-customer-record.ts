@@ -1,6 +1,7 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
 import Stripe from 'stripe';
+import { randomUUID } from 'crypto';
 
 // Initialize Stripe
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
@@ -115,13 +116,80 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
 
+    // Get the password from metadata
+    const customerPassword = metadata.customerPassword;
+    const customerEmail = customer.email || session.customer_email || '';
+    
+    if (!customerPassword) {
+      console.error('No password provided in metadata');
+      return res.status(400).json({ 
+        error: 'Password is required to create customer account' 
+      });
+    }
+
+    // Create auth account for the customer
+    console.log('Creating auth account for customer:', customerEmail);
+    
+    let customerAuthId: string | null = null;
+    
+    try {
+      const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+        email: customerEmail,
+        email_confirm: true, // Auto-confirm since payment is complete
+        password: customerPassword,
+        user_metadata: {
+          name: metadata.customerName || 'Customer',
+          role: 'customer',
+          business_id: metadata.businessId
+        }
+      });
+
+      if (authError) {
+        // Check if user already exists
+        if (authError.message?.includes('already exists')) {
+          console.log('Auth user already exists for email, updating password...');
+          // Update password for existing user
+          const { data: { users } } = await supabaseAdmin.auth.admin.listUsers();
+          const existingUser = users.find(u => u.email === customerEmail);
+          
+          if (existingUser) {
+            // Update the password
+            const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
+              existingUser.id,
+              { password: customerPassword }
+            );
+            
+            if (updateError) {
+              console.error('Error updating password:', updateError);
+              throw updateError;
+            }
+            
+            customerAuthId = existingUser.id;
+            console.log('Updated password for existing auth user:', customerAuthId);
+          } else {
+            throw new Error('Could not find existing auth user');
+          }
+        } else {
+          console.error('Error creating auth user:', authError);
+          throw authError;
+        }
+      } else if (authData?.user) {
+        customerAuthId = authData.user.id;
+        console.log('Created new auth user with ID:', customerAuthId);
+      }
+    } catch (authError) {
+      console.error('Failed to create/update auth account:', authError);
+      // Don't fail the entire process if auth creation fails
+      // Customer can still be created and auth can be fixed later
+    }
+
     // Create new customer record with correct column names
     const customerData = {
       business_id: metadata.businessId,
       tier_id: metadata.tierId,
-      auth_id: null, // Will be set when customer creates account
+      auth_id: customerAuthId, // Link to the auth account we just created
       name: metadata.customerName || 'Unknown',
-      email: customer.email || session.customer_email || '',
+      email: customerEmail,
       phone: metadata.customerPhone || '',
       address: metadata.customerAddress || '',
       city: metadata.customerCity || '',
