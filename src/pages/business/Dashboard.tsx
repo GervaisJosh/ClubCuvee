@@ -40,21 +40,21 @@ const BentoBox: React.FC<BentoBoxProps> = ({
   children,
   className = ''
 }) => {
-  const { theme } = useTheme();
   const sizeClasses = {
     small: 'col-span-1',
-    medium: 'col-span-2',
-    large: 'col-span-3',
-    tall: 'col-span-2 row-span-2'
+    medium: 'col-span-1 md:col-span-2',
+    large: 'col-span-1 md:col-span-2 lg:col-span-3',
+    tall: 'col-span-1 md:col-span-2 row-span-2'
   };
 
   return (
     <div className={`
-      bg-gray-900 
+      bg-[#1a1a1a] 
       border border-gray-800 
-      rounded-xl p-6 
+      rounded-2xl p-8 
       hover:border-gray-700 
       transition-all duration-300
+      shadow-lg hover:shadow-xl
       ${sizeClasses[size]}
       ${className}
     `}>
@@ -248,17 +248,17 @@ const BusinessDashboard: React.FC = () => {
 
   if (loading || authLoading) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
+      <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#A0303D]"></div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-black">
+    <div className="min-h-screen bg-[#0a0a0a]">
       {/* Navigation Header */}
-      <nav className="bg-gray-900 border-b border-gray-800 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <nav className="bg-[#0a0a0a] border-b border-gray-800 sticky top-0 z-50">
+        <div className="w-full px-6">
           <div className="flex justify-between items-center h-16">
             {/* Business Name */}
             <h1 className="text-xl font-semibold text-white">
@@ -287,22 +287,38 @@ const BusinessDashboard: React.FC = () => {
               </a>
             </div>
             
-            {/* Sign Out Icon */}
-            <button
-              onClick={handleSignOut}
-              className="text-gray-400 hover:text-white transition-colors p-2"
-              title="Sign Out"
-            >
-              <LogOut className="h-5 w-5" />
-            </button>
+            {/* Right side actions */}
+            <div className="flex items-center space-x-4">
+              {/* Theme Toggle */}
+              <button
+                onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+                className="text-gray-400 hover:text-white transition-colors p-2"
+                title="Toggle theme"
+              >
+                {theme === 'dark' ? (
+                  <Sun className="h-5 w-5" />
+                ) : (
+                  <Moon className="h-5 w-5" />
+                )}
+              </button>
+              
+              {/* Sign Out Icon */}
+              <button
+                onClick={handleSignOut}
+                className="text-gray-400 hover:text-white transition-colors p-2"
+                title="Sign Out"
+              >
+                <LogOut className="h-5 w-5" />
+              </button>
+            </div>
           </div>
         </div>
       </nav>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="w-full px-6 py-8">
         {/* Customer Invitation Display */}
         {showInvitation && (
-          <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 mb-6">
+          <div className="bg-[#1a1a1a] border border-gray-800 rounded-lg p-6 mb-6">
             <div className="flex items-center mb-4">
               <CheckCircle className="h-6 w-6 text-green-400 mr-2" />
               <h3 className="text-lg font-semibold text-white">
@@ -310,14 +326,14 @@ const BusinessDashboard: React.FC = () => {
               </h3>
             </div>
             
-            <div className="bg-gray-900 p-4 rounded-lg mb-4">
+            <div className="bg-[#0a0a0a] p-4 rounded-lg mb-4">
               <p className="text-gray-300 text-sm mb-2">Share this link with customers to join your wine club:</p>
               <div className="flex items-center space-x-2">
                 <input
                   type="text"
                   value={invitationLink}
                   readOnly
-                  className="flex-1 bg-gray-800 text-white px-3 py-2 rounded border border-gray-700 font-mono text-sm"
+                  className="flex-1 bg-[#222222] text-white px-3 py-2 rounded border border-gray-700 font-mono text-sm"
                 />
                 <button
                   onClick={copyInvitationLink}
@@ -337,8 +353,8 @@ const BusinessDashboard: React.FC = () => {
           </div>
         )}
         
-        {/* Bento Box Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
+        {/* Bento Box Grid - Larger boxes with better spacing */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
           {/* Wine Inventory Overview - Large Box */}
           <BentoBox size="large" title="Wine Inventory" icon={Wine}>
             <div className="space-y-4">
@@ -359,7 +375,7 @@ const BusinessDashboard: React.FC = () => {
               <div className="space-y-3 mt-4">
                 {realStats.totalWines > 0 ? (
                   wines.slice(0, 3).map((wine) => (
-                    <div key={wine.id} className="flex items-center space-x-3 p-3 rounded-lg bg-gray-800">
+                    <div key={wine.id} className="flex items-center space-x-3 p-3 rounded-lg bg-[#0a0a0a]">
                       <div className="w-12 h-12 bg-gradient-to-br from-[#722F37]/20 to-[#8B2635]/20 rounded-lg flex items-center justify-center">
                         <Wine className="h-6 w-6 text-[#A0303D]" />
                       </div>
@@ -378,7 +394,7 @@ const BusinessDashboard: React.FC = () => {
                     </div>
                   ))
                 ) : (
-                  <div className="text-center py-6 bg-gray-800 rounded-lg">
+                  <div className="text-center py-6 bg-[#0a0a0a] rounded-lg">
                     <Wine className="h-8 w-8 text-gray-600 mx-auto mb-2" />
                     <p className="text-sm text-gray-400">No wines in inventory</p>
                     <p className="text-xs text-gray-500 mt-1">Click below to add your first wine</p>
@@ -403,17 +419,17 @@ const BusinessDashboard: React.FC = () => {
                 <UserPlus className="h-4 w-4" />
                 <span className="text-sm">Generate Customer Sign-Up Link</span>
               </button>
-              <button className="w-full bg-gray-800 hover:bg-gray-700 px-4 py-3 rounded-lg transition-colors flex items-center justify-center space-x-2">
+              <button className="w-full bg-[#0a0a0a] hover:bg-[#222222] px-4 py-3 rounded-lg transition-colors flex items-center justify-center space-x-2">
                 <Wine className="h-4 w-4 text-[#A0303D]" />
                 <span className="text-sm text-white">Add Wine</span>
               </button>
-              <button className="w-full bg-gray-800 hover:bg-gray-700 px-4 py-3 rounded-lg transition-colors flex items-center justify-center space-x-2">
+              <button className="w-full bg-[#0a0a0a] hover:bg-[#222222] px-4 py-3 rounded-lg transition-colors flex items-center justify-center space-x-2">
                 <Package className="h-4 w-4 text-[#A0303D]" />
-                <span className={`text-sm ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Process Orders</span>
+                <span className="text-sm text-white">Process Orders</span>
               </button>
-              <button className="w-full bg-gray-800 hover:bg-gray-700 px-4 py-3 rounded-lg transition-colors flex items-center justify-center space-x-2">
+              <button className="w-full bg-[#0a0a0a] hover:bg-[#222222] px-4 py-3 rounded-lg transition-colors flex items-center justify-center space-x-2">
                 <BarChart2 className="h-4 w-4 text-[#A0303D]" />
-                <span className={`text-sm ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>View Reports</span>
+                <span className="text-sm text-white">View Reports</span>
               </button>
             </div>
           </BentoBox>
@@ -444,7 +460,7 @@ const BusinessDashboard: React.FC = () => {
               </div>
               
               {/* Mini Revenue Chart Placeholder */}
-              <div className="h-24 bg-gray-800 rounded-lg flex items-end justify-between px-4 pb-2">
+              <div className="h-24 bg-[#0a0a0a] rounded-lg flex items-end justify-between px-4 pb-2">
                 {[40, 65, 45, 80, 55, 70, 85].map((height, i) => (
                   <div
                     key={i}
@@ -489,7 +505,7 @@ const BusinessDashboard: React.FC = () => {
               
               {/* Recent Members */}
               {realStats.totalMembers > 0 && (
-                <div className="p-3 bg-gray-800 rounded-lg">
+                <div className="p-3 bg-[#0a0a0a] rounded-lg">
                   <p className="text-xs text-gray-400 mb-2">Recent members</p>
                   <div className="flex -space-x-2">
                     {[1, 2, 3, 4, 5].map((i) => (
@@ -511,7 +527,7 @@ const BusinessDashboard: React.FC = () => {
             <div className="space-y-3 overflow-y-auto max-h-[400px]">
               {realStats.totalMembers > 0 || realStats.totalWines > 0 ? (
                 activities.map((activity) => (
-                  <div key={activity.id} className="p-3 rounded-lg bg-gray-800 transition-all hover:scale-[1.02]">
+                  <div key={activity.id} className="p-3 rounded-lg bg-[#0a0a0a] transition-all hover:scale-[1.02]">
                     <div className="flex items-start space-x-3">
                       <div className="flex-shrink-0">
                         {activity.type === 'new_member' && (
@@ -557,7 +573,7 @@ const BusinessDashboard: React.FC = () => {
 
           {/* Performance Metrics - Small Boxes */}
           <div className="col-span-1">
-            <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 hover:border-gray-700 transition-all duration-300">
+            <div className="bg-[#1a1a1a] border border-gray-800 rounded-2xl p-8 hover:border-gray-700 transition-all duration-300 shadow-lg hover:shadow-xl">
               <div className="flex items-center justify-between mb-2">
                 <Star className="h-5 w-5 text-[#A0303D]" />
                 <span className="text-2xl font-light text-white">{realStats.avgRating || 0}</span>
@@ -567,7 +583,7 @@ const BusinessDashboard: React.FC = () => {
           </div>
 
           <div className="col-span-1">
-            <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 hover:border-gray-700 transition-all duration-300">
+            <div className="bg-[#1a1a1a] border border-gray-800 rounded-2xl p-8 hover:border-gray-700 transition-all duration-300 shadow-lg hover:shadow-xl">
               <div className="flex items-center justify-between mb-2">
                 <Users className="h-5 w-5 text-green-400" />
                 <span className="text-2xl font-light text-white">92%</span>
@@ -577,7 +593,7 @@ const BusinessDashboard: React.FC = () => {
           </div>
 
           <div className="col-span-1">
-            <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 hover:border-gray-700 transition-all duration-300">
+            <div className="bg-[#1a1a1a] border border-gray-800 rounded-2xl p-8 hover:border-gray-700 transition-all duration-300 shadow-lg hover:shadow-xl">
               <div className="flex items-center justify-between mb-2">
                 <Package className="h-5 w-5 text-blue-400" />
                 <span className="text-2xl font-light text-white">98%</span>
@@ -587,7 +603,7 @@ const BusinessDashboard: React.FC = () => {
           </div>
 
           <div className="col-span-1">
-            <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 hover:border-gray-700 transition-all duration-300">
+            <div className="bg-[#1a1a1a] border border-gray-800 rounded-2xl p-8 hover:border-gray-700 transition-all duration-300 shadow-lg hover:shadow-xl">
               <div className="flex items-center justify-between mb-2">
                 <Sparkles className="h-5 w-5 text-[#A0303D]" />
                 <span className="text-2xl font-light text-white">4.9</span>

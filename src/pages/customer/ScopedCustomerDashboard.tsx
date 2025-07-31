@@ -69,8 +69,8 @@ const ScopedCustomerDashboard: React.FC = () => {
           tier_id,
           stripe_subscription_id,
           created_at,
-          businesses!inner(id, name, email),
-          membership_tiers(id, name, description)
+          businesses!business_id(id, name, email),
+          membership_tiers!tier_id(id, name, description)
         `)
         .eq('auth_id', user!.id)
         .single();
@@ -107,7 +107,7 @@ const ScopedCustomerDashboard: React.FC = () => {
         tierId: membershipData.tier_id || '',
         tierName: membershipData.membership_tiers?.name || 'Unknown Tier',
         tierDescription: membershipData.membership_tiers?.description || '',
-        status: membershipData.status || 'inactive',
+        status: membershipData.subscription_status || 'inactive',
         stripeSubscriptionId: membershipData.stripe_subscription_id || '',
         createdAt: membershipData.created_at
       };

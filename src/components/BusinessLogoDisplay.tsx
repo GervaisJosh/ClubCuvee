@@ -1,6 +1,7 @@
 import React from 'react';
 import { Building2 } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
+import { supabase } from '../lib/supabase';
 
 interface BusinessLogoDisplayProps {
   logoUrl?: string;
@@ -16,15 +17,46 @@ const BusinessLogoDisplay: React.FC<BusinessLogoDisplayProps> = ({
   className = ''
 }) => {
   const { theme } = useTheme();
+  const isDark = theme === 'dark';
+
+  // Construct full URL if logoUrl is just a path
+  const getLogoUrl = (url: string | undefined) => {
+    if (!url) return undefined;
+    
+    // If it's already a full URL, use it as is
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      return url;
+    }
+    
+    // If it's a path in the business-assets bucket, construct the full URL
+    // Handle both cases: with or without leading slash
+    const cleanPath = url.startsWith('/') ? url.slice(1) : url;
+    
+    // If it looks like a Supabase storage path
+    if (cleanPath.includes('businesses/') || cleanPath.includes('business-assets/')) {
+      const pathWithoutBucket = cleanPath.replace('business-assets/', '');
+      const { data: { publicUrl } } = supabase.storage
+        .from('business-assets')
+        .getPublicUrl(pathWithoutBucket);
+      return publicUrl;
+    }
+    
+    // Default: assume it's a path in the business-assets bucket
+    const { data: { publicUrl } } = supabase.storage
+      .from('business-assets')
+      .getPublicUrl(cleanPath);
+    return publicUrl;
+  };
+
+  const fullLogoUrl = getLogoUrl(logoUrl);
   
   // Debug logging
-  console.log('BusinessLogoDisplay props:', {
-    logoUrl,
+  console.log('BusinessLogoDisplay:', {
+    originalUrl: logoUrl,
+    fullUrl: fullLogoUrl,
     businessName,
-    hasLogo: !!logoUrl,
-    size
+    hasLogo: !!fullLogoUrl
   });
-  const isDark = theme === 'dark';
 
   const sizeClasses = {
     small: 'h-12 w-12 text-base',
@@ -38,14 +70,19 @@ const BusinessLogoDisplay: React.FC<BusinessLogoDisplayProps> = ({
     large: 'h-24 w-24'
   };
 
-  if (logoUrl) {
+  if (fullLogoUrl) {
     return (
       <div className={`${containerSizeClasses[size]} ${className}`}>
         <img
-          src={logoUrl}
+          src={fullLogoUrl}
           alt={`${businessName} logo`}
           className={`w-full h-full object-cover rounded-xl ${isDark ? 'shadow-lg shadow-black/20' : 'shadow-md'}`}
           loading="lazy"
+          onError={(e) => {
+            console.error('Failed to load logo:', fullLogoUrl);
+            // Hide the broken image and show fallback
+            (e.target as HTMLImageElement).style.display = 'none';
+          }}
         />
       </div>
     );
