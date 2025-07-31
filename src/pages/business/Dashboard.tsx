@@ -109,7 +109,7 @@ const BusinessDashboard: React.FC = () => {
   const checkAuth = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
-      navigate('/business/login');
+      navigate('/login');
       return;
     }
   };
@@ -138,7 +138,7 @@ const BusinessDashboard: React.FC = () => {
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
-    navigate('/business/login');
+    navigate('/login');
   };
 
   const formatCurrency = (amount: number) => {

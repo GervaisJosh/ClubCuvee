@@ -13,13 +13,21 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   children, 
   requiredPortal 
 }) => {
-  const { user, userProfile, isAdmin } = useAuth();
+  const { user, userProfile, isAdmin, userType } = useAuth();
   const location = useLocation();
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthorized, setIsAuthorized] = useState(false);
 
   useEffect(() => {
     const checkAuthorization = async () => {
+      console.log('ProtectedRoute check:', {
+        requiredPortal,
+        userType,
+        user: !!user,
+        isAdmin,
+        path: location.pathname
+      });
+      
       // Not authenticated at all
       if (!user) {
         setIsAuthorized(false);
@@ -36,18 +44,15 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
             break;
             
           case 'business':
-            // Business owners with restaurant_id in their profile
-            const metadata = user.user_metadata || {};
-            const hasRestaurantId = Boolean(metadata.restaurant_id || userProfile?.restaurant_id);
-            const isBusinessRole = metadata.role === 'restaurant_admin' || metadata.role === 'business_owner';
-            
-            setIsAuthorized(hasRestaurantId || isBusinessRole);
+            // Business owners identified by userType from AuthContext
+            const isBusiness = userType === 'business';
+            console.log('Business auth check:', { userType, isBusiness });
+            setIsAuthorized(isBusiness);
             break;
             
           case 'customer':
-            // Regular customers (default)
-            const isCustomer = !isAdmin && (!user.user_metadata?.role || user.user_metadata?.role === 'customer');
-            setIsAuthorized(isCustomer);
+            // Customers identified by userType from AuthContext
+            setIsAuthorized(userType === 'customer');
             break;
             
           default:
@@ -63,7 +68,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     };
 
     checkAuthorization();
-  }, [user, userProfile, isAdmin, requiredPortal]);
+  }, [user, userProfile, isAdmin, userType, requiredPortal]);
 
   if (isLoading) {
     // Show loading state while checking authorization
@@ -80,13 +85,16 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   }
 
   if (!isAuthorized) {
-    // Redirect to appropriate dashboard based on user role
-    if (isAdmin) {
+    // Redirect to appropriate dashboard based on userType from AuthContext
+    if (userType === 'admin') {
       return <Navigate to="/admin/dashboard" replace />;
-    } else if (user.user_metadata?.restaurant_id || userProfile?.restaurant_id) {
+    } else if (userType === 'business') {
       return <Navigate to="/business/dashboard" replace />;
-    } else {
+    } else if (userType === 'customer') {
       return <Navigate to="/customer/dashboard" replace />;
+    } else {
+      // No profile yet
+      return <Navigate to="/profile-setup" replace />;
     }
   }
 
