@@ -72,6 +72,11 @@ const OnboardingSuccess: React.FC = () => {
         }
 
         const data = await response.json();
+        console.log('Business data received:', {
+          businessName: data.business?.name,
+          logoUrl: data.business?.logo_url,
+          hasLogo: !!data.business?.logo_url
+        });
         setBusinessData(data);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'An error occurred');

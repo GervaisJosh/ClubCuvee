@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import Button from '../../components/Button';
 import Card from '../../components/Card';
@@ -32,7 +33,8 @@ interface BusinessInfo {
 }
 
 const ScopedCustomerDashboard: React.FC = () => {
-  const { user, signOut } = useAuth();
+  const { user, signOut, userType } = useAuth();
+  const navigate = useNavigate();
   const [profile, setProfile] = useState<CustomerProfile | null>(null);
   const [membership, setMembership] = useState<CustomerMembership | null>(null);
   const [businessInfo, setBusinessInfo] = useState<BusinessInfo | null>(null);
@@ -40,10 +42,17 @@ const ScopedCustomerDashboard: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    // Check if user is a business user and redirect
+    if (userType === 'business') {
+      console.log('Business user detected on customer dashboard, redirecting to business dashboard');
+      navigate('/business/dashboard');
+      return;
+    }
+    
     if (user) {
       loadCustomerData();
     }
-  }, [user]);
+  }, [user, userType, navigate]);
 
   const loadCustomerData = async () => {
     try {

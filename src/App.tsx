@@ -10,6 +10,7 @@ import AdminRoutes from './routes/AdminRoutes';
 import BusinessRoutes from './routes/BusinessRoutes';
 import CustomerRoutes from './routes/CustomerRoutes';
 import AuthRouter from './components/auth/AuthRouter';
+import DashboardRouter from './components/DashboardRouter';
 import { AdminRoute, BusinessRoute, CustomerRoute } from './components/auth/RouteGuards';
 
 // Public pages
@@ -76,6 +77,9 @@ const App = () => {
               
               {/* Auth redirect route - determines user type and redirects appropriately */}
               <Route path="/auth-redirect" element={<AuthRouter />} />
+              
+              {/* General dashboard route that redirects based on user type */}
+              <Route path="/dashboard" element={<DashboardRouter />} />
               
               {/* Customer join page - business slug based */}
               <Route 

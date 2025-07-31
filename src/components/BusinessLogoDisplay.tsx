@@ -16,6 +16,14 @@ const BusinessLogoDisplay: React.FC<BusinessLogoDisplayProps> = ({
   className = ''
 }) => {
   const { theme } = useTheme();
+  
+  // Debug logging
+  console.log('BusinessLogoDisplay props:', {
+    logoUrl,
+    businessName,
+    hasLogo: !!logoUrl,
+    size
+  });
   const isDark = theme === 'dark';
 
   const sizeClasses = {

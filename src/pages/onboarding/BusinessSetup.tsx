@@ -568,7 +568,13 @@ const BusinessSetup: React.FC = () => {
         // Upload logo if selected
         if (logoFile) {
           try {
-            console.log('Uploading business logo...');
+            console.log('=== LOGO UPLOAD START ===');
+            console.log('Logo file:', {
+              name: logoFile.name,
+              size: logoFile.size,
+              type: logoFile.type
+            });
+            console.log('Business ID for upload:', businessId);
             let logoUrl = null;
             
             if (supabaseService) {
@@ -584,16 +590,21 @@ const BusinessSetup: React.FC = () => {
             
             if (logoUrl) {
               // Update business with logo URL
+              console.log('=== UPDATING BUSINESS WITH LOGO ===');
+              console.log('Business ID:', businessId);
+              console.log('Logo URL:', logoUrl);
+              
               const updateClient = supabaseService || supabase;
-              const { error: updateError } = await updateClient
+              const { data: updateData, error: updateError } = await updateClient
                 .from('businesses')
                 .update({ logo_url: logoUrl })
-                .eq('id', businessId);
+                .eq('id', businessId)
+                .select();
               
               if (updateError) {
                 console.error('Failed to update business logo:', updateError);
               } else {
-                console.log('Business logo updated successfully');
+                console.log('Business logo updated successfully:', updateData);
               }
             }
           } catch (error) {
@@ -666,6 +677,9 @@ const BusinessSetup: React.FC = () => {
         }
         
         console.log('=== IMAGE UPLOADS COMPLETE ===');
+        
+        // Small delay to ensure database updates are complete
+        await new Promise(resolve => setTimeout(resolve, 1000));
         
         // Navigate to success page
         navigate(`/onboard/${token}/success`);
