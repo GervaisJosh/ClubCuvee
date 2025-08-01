@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Wine, CheckCircle } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 
@@ -26,6 +26,7 @@ const TierImageCard: React.FC<TierImageCardProps> = ({
 }) => {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
+  const [imageError, setImageError] = useState(false);
 
   const benefits = typeof tier.benefits === 'string' 
     ? JSON.parse(tier.benefits) 
@@ -45,12 +46,28 @@ const TierImageCard: React.FC<TierImageCardProps> = ({
     >
       {/* Image Section */}
       <div className="relative h-48 overflow-hidden">
-        {tier.image_url ? (
+        {tier.image_url && !imageError ? (
           <img
             src={tier.image_url}
             alt={tier.name}
             className="w-full h-full object-cover"
             loading="lazy"
+            onError={(e) => {
+              console.error('Failed to load tier image:', tier.image_url);
+              console.error('Image error details:', {
+                tierName: tier.name,
+                tierId: tier.id,
+                imageUrl: tier.image_url,
+                error: e
+              });
+              setImageError(true);
+            }}
+            onLoad={() => {
+              console.log('Successfully loaded tier image:', {
+                tierName: tier.name,
+                imageUrl: tier.image_url
+              });
+            }}
           />
         ) : (
           <div className={`

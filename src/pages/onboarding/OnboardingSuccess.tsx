@@ -219,6 +219,18 @@ const OnboardingSuccess: React.FC = () => {
                         src={tier.image_url} 
                         alt={tier.name}
                         className="w-full h-full object-cover"
+                        onError={(e) => {
+                          console.error('Failed to load tier image on success page:', tier.image_url);
+                          // Hide the image container on error
+                          const imgElement = e.target as HTMLImageElement;
+                          const container = imgElement.parentElement;
+                          if (container) {
+                            container.style.display = 'none';
+                          }
+                        }}
+                        onLoad={() => {
+                          console.log('Successfully loaded tier image on success page:', tier.name);
+                        }}
                       />
                     </div>
                   )}
