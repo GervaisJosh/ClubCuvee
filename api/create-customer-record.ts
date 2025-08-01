@@ -141,7 +141,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           name: metadata.customerName || 'Customer',
           role: 'customer',
           business_id: metadata.businessId
-        }
+        },
+        // CRITICAL: Ensure NO admin metadata
+        app_metadata: {}
       });
 
       if (authError) {
@@ -153,16 +155,34 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           const existingUser = users.find(u => u.email === customerEmail);
           
           if (existingUser) {
-            // Update the password
+            // Update the password AND metadata - ensure they're marked as customer
             const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
               existingUser.id,
-              { password: customerPassword }
+              { 
+                password: customerPassword,
+                user_metadata: {
+                  name: metadata.customerName || 'Customer',
+                  role: 'customer',
+                  business_id: metadata.businessId
+                },
+                // CRITICAL: Clear any app_metadata that might mark them as admin/business
+                app_metadata: {}
+              }
             );
             
             if (updateError) {
               console.error('Error updating password:', updateError);
               throw updateError;
             }
+            
+            // Log the user's metadata to debug
+            console.log('Updated existing user metadata:', {
+              userId: existingUser.id,
+              email: existingUser.email,
+              old_app_metadata: existingUser.app_metadata,
+              old_user_metadata: existingUser.user_metadata,
+              new_metadata: { role: 'customer', business_id: metadata.businessId }
+            });
             
             customerAuthId = existingUser.id;
             console.log('Updated password for existing auth user:', customerAuthId);
@@ -176,6 +196,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       } else if (authData?.user) {
         customerAuthId = authData.user.id;
         console.log('Created new auth user with ID:', customerAuthId);
+        console.log('New customer auth metadata:', {
+          userId: authData.user.id,
+          email: authData.user.email,
+          app_metadata: authData.user.app_metadata,
+          user_metadata: authData.user.user_metadata
+        });
       }
     } catch (authError) {
       console.error('Failed to create/update auth account:', authError);

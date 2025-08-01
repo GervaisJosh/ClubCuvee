@@ -66,6 +66,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const determineUserType = async (authUser: User) => {
     try {
+      // Log all metadata for debugging
+      console.log('Determining user type for:', {
+        email: authUser.email,
+        id: authUser.id,
+        app_metadata: authUser.app_metadata,
+        user_metadata: authUser.user_metadata
+      });
+
       // 1. Check admin first (highest priority) - using app_metadata
       if (authUser.app_metadata?.is_admin === true) {
         console.log('User is admin (from app_metadata)');
@@ -79,7 +87,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return;
       }
 
-      // 2. Check business owner
+      // 2. CRITICAL: Check user_metadata role FIRST
+      // If they have customer role in user_metadata, they ARE a customer regardless of other data
+      if (authUser.user_metadata?.role === 'customer') {
+        console.log('User is explicitly marked as customer in user_metadata');
+        
+        // Get customer record
+        const { data: customerUser, error: customerError } = await supabase
+          .from('customers')
+          .select('*')
+          .eq('auth_id', authUser.id)
+          .maybeSingle();
+        
+        if (customerUser && !customerError) {
+          console.log('Found customer record:', customerUser.name);
+          setUserProfile({
+            id: customerUser.id,
+            auth_id: authUser.id,
+            email: customerUser.email,
+            name: customerUser.name,
+            is_customer: true,
+            customer_id: customerUser.id
+          });
+          setUserType('customer');
+          setIsAdmin(false);
+          return;
+        }
+      }
+
+      // 3. Check business owner
       const { data: businessUser, error: businessError } = await supabase
         .from('businesses')
         .select('*')
@@ -127,7 +163,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return;
       }
       
-      // 3. Check customer
+      // 4. Check customer (moved after business checks)
       const { data: customerUser, error: customerError } = await supabase
         .from('customers')
         .select('*')
@@ -149,7 +185,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return;
       }
       
-      // 4. No profile found
+      // 5. No profile found
       console.log('User has no profile yet');
       setUserProfile({
         auth_id: authUser.id,

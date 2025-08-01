@@ -6,6 +6,7 @@ import ThemeToggle from '../../components/ThemeToggle';
 import BusinessLogoDisplay from '../../components/BusinessLogoDisplay';
 import { CheckCircle, ArrowRight, Settings, Users, Copy, ExternalLink, AlertCircle } from 'lucide-react';
 import { useTheme } from '../../contexts/ThemeContext';
+import { supabase } from '../../lib/supabase';
 
 interface BusinessData {
   business: {
@@ -211,31 +212,77 @@ const OnboardingSuccess: React.FC = () => {
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-              {businessData.membershipTiers.map((tier) => (
-                <div key={tier.id} className={`relative overflow-hidden ${isDark ? 'bg-zinc-800/30 border-zinc-700' : 'bg-gray-50 border-gray-200'} border rounded-lg hover:scale-105 transition-transform duration-200`}>
-                  {tier.image_url && (
-                    <div className="h-32 w-full overflow-hidden">
-                      <img 
-                        src={tier.image_url} 
-                        alt={tier.name}
-                        className="w-full h-full object-cover"
-                        onError={(e) => {
-                          console.error('Failed to load tier image on success page:', tier.image_url);
-                          // Hide the image container on error
-                          const imgElement = e.target as HTMLImageElement;
-                          const container = imgElement.parentElement;
-                          if (container) {
-                            container.style.display = 'none';
-                          }
-                        }}
-                        onLoad={() => {
-                          console.log('Successfully loaded tier image on success page:', tier.name);
-                        }}
-                      />
-                    </div>
-                  )}
+              {businessData.membershipTiers.map((tier) => {
+                // Apply same URL logic as BusinessLogoDisplay
+                const getTierImageUrl = (url: string | undefined) => {
+                  if (!url) return undefined;
+                  
+                  // If it's already a full URL, use it as is
+                  if (url.startsWith('http://') || url.startsWith('https://')) {
+                    return url;
+                  }
+                  
+                  // Handle paths that need the business-assets bucket
+                  const cleanPath = url.startsWith('/') ? url.slice(1) : url;
+                  
+                  // If it looks like it already has a business ID in the path
+                  if (cleanPath.match(/^[a-f0-9-]{36}\//)) {
+                    const { data: { publicUrl } } = supabase.storage
+                      .from('business-assets')
+                      .getPublicUrl(cleanPath);
+                    return publicUrl;
+                  }
+                  
+                  // If we have a business ID and the path doesn't include it
+                  if (businessData.business.id) {
+                    const { data: { publicUrl } } = supabase.storage
+                      .from('business-assets')
+                      .getPublicUrl(`${businessData.business.id}/${cleanPath}`);
+                    return publicUrl;
+                  }
+                  
+                  // Default: assume it's a path in the business-assets bucket
+                  const { data: { publicUrl } } = supabase.storage
+                    .from('business-assets')
+                    .getPublicUrl(cleanPath);
+                  return publicUrl;
+                };
+
+                const tierImageUrl = getTierImageUrl(tier.image_url);
+
+                return (
+                  <div key={tier.id} className={`relative overflow-hidden ${isDark ? 'bg-zinc-800/30 border-zinc-700' : 'bg-gray-50 border-gray-200'} border rounded-lg hover:scale-105 transition-transform duration-200`}>
+                    {tierImageUrl && (
+                      <div className="h-32 w-full overflow-hidden">
+                        <img 
+                          src={tierImageUrl} 
+                          alt={tier.name}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            console.error('Failed to load tier image on success page:', {
+                              originalUrl: tier.image_url,
+                              processedUrl: tierImageUrl,
+                              tierName: tier.name
+                            });
+                            // Hide the image container on error
+                            const imgElement = e.target as HTMLImageElement;
+                            const container = imgElement.parentElement;
+                            if (container) {
+                              container.style.display = 'none';
+                            }
+                          }}
+                          onLoad={() => {
+                            console.log('Successfully loaded tier image on success page:', {
+                              tierName: tier.name,
+                              originalUrl: tier.image_url,
+                              processedUrl: tierImageUrl
+                            });
+                          }}
+                        />
+                      </div>
+                    )}
                   <div className="p-6 text-center">
-                    {!tier.image_url && (
+                    {!tierImageUrl && (
                       <div className="w-12 h-12 bg-gray-600 rounded-lg flex items-center justify-center mx-auto mb-4">
                         <Users className="h-6 w-6 text-white" />
                       </div>
@@ -265,7 +312,8 @@ const OnboardingSuccess: React.FC = () => {
                     </div>
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
 
           {/* Customer Link Generation */}
