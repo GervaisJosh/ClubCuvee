@@ -59,28 +59,55 @@ const ScopedCustomerDashboard: React.FC = () => {
       setLoading(true);
       setError(null);
 
-      // Load customer profile using auth user with customer membership to get business scoping
-      const { data: membershipData, error: membershipError } = await supabase
+      // Load customer profile using auth user
+      const { data: customerData, error: customerError } = await supabase
         .from('customers')
-        .select(`
-          id,
-          business_id,
-          subscription_status,
-          tier_id,
-          stripe_subscription_id,
-          created_at,
-          businesses!business_id(id, name, email),
-          membership_tiers!tier_id(id, name, description)
-        `)
+        .select('*')
         .eq('auth_id', user!.id)
         .single();
 
-      if (membershipError) {
-        throw new Error('Could not load customer membership: ' + membershipError.message);
+      if (customerError) {
+        throw new Error('Could not load customer data: ' + customerError.message);
       }
 
-      if (!membershipData) {
-        throw new Error('Customer membership not found. You may not have access to any business.');
+      if (!customerData) {
+        throw new Error('Customer record not found. You may not have access to any business.');
+      }
+
+      // Load business data separately
+      const { data: businessData, error: businessError } = await supabase
+        .from('businesses')
+        .select('id, name, email')
+        .eq('id', customerData.business_id)
+        .single();
+
+      if (businessError) {
+        throw new Error('Could not load business data: ' + businessError.message);
+      }
+
+      // Load membership tier data separately
+      let tierData = null;
+      if (customerData.tier_id) {
+        const { data: tier, error: tierError } = await supabase
+          .from('membership_tiers')
+          .select('id, name, description')
+          .eq('id', customerData.tier_id)
+          .single();
+        
+        if (!tierError && tier) {
+          tierData = tier;
+        }
+      }
+
+      // Combine the data
+      const membershipData = {
+        ...customerData,
+        businesses: businessData,
+        membership_tiers: tierData
+      };
+
+      if (!businessData) {
+        throw new Error('Business not found.');
       }
 
       // Create profile from user auth info and membership data

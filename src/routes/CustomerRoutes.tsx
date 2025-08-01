@@ -2,7 +2,7 @@ import React from 'react';
 import { Route, Routes } from 'react-router-dom';
 import ProtectedRoute from './ProtectedRoute';
 import CustomerLayout from '../layouts/CustomerLayout';
-import CustomerDashboard from '../pages/customer/CustomerDashboard';
+import ScopedCustomerDashboard from '../pages/customer/ScopedCustomerDashboard';
 import MyWines from '../pages/customer/MyWines';
 import RateWines from '../pages/customer/RateWines';
 import OrderHistory from '../pages/customer/OrderHistory';
@@ -17,8 +17,8 @@ const CustomerRoutes: React.FC = () => {
     <ProtectedRoute requiredPortal="customer">
       <CustomerLayout>
         <Routes>
-          <Route index element={<CustomerDashboard />} />
-          <Route path="dashboard" element={<CustomerDashboard />} />
+          <Route index element={<ScopedCustomerDashboard />} />
+          <Route path="dashboard" element={<ScopedCustomerDashboard />} />
           <Route path="my-wines" element={<MyWines />} />
           <Route path="rate-wines" element={<RateWines />} />
           <Route path="order-history" element={<OrderHistory />} />
