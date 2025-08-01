@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Building2 } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { supabase } from '../lib/supabase';
@@ -6,6 +6,7 @@ import { supabase } from '../lib/supabase';
 interface BusinessLogoDisplayProps {
   logoUrl?: string;
   businessName: string;
+  businessId?: string;
   size?: 'small' | 'medium' | 'large';
   className?: string;
 }
@@ -13,11 +14,13 @@ interface BusinessLogoDisplayProps {
 const BusinessLogoDisplay: React.FC<BusinessLogoDisplayProps> = ({
   logoUrl,
   businessName,
+  businessId,
   size = 'medium',
   className = ''
 }) => {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
+  const [imageError, setImageError] = useState(false);
 
   // Construct full URL if logoUrl is just a path
   const getLogoUrl = (url: string | undefined) => {
@@ -28,16 +31,35 @@ const BusinessLogoDisplay: React.FC<BusinessLogoDisplayProps> = ({
       return url;
     }
     
-    // If it's a path in the business-assets bucket, construct the full URL
-    // Handle both cases: with or without leading slash
-    const cleanPath = url.startsWith('/') ? url.slice(1) : url;
-    
-    // If it looks like a Supabase storage path
-    if (cleanPath.includes('businesses/') || cleanPath.includes('business-assets/')) {
-      const pathWithoutBucket = cleanPath.replace('business-assets/', '');
+    // If it's just a filename like "logo.jpg" and we have a businessId, construct the path
+    if (businessId && (url === 'logo.jpg' || url === 'logo.png' || url.match(/^logo\.[a-zA-Z]+$/))) {
       const { data: { publicUrl } } = supabase.storage
         .from('business-assets')
-        .getPublicUrl(pathWithoutBucket);
+        .getPublicUrl(`${businessId}/${url}`);
+      console.log('Constructed logo URL from filename:', {
+        original: url,
+        businessId,
+        constructed: publicUrl
+      });
+      return publicUrl;
+    }
+    
+    // Handle paths that already include the businessId
+    const cleanPath = url.startsWith('/') ? url.slice(1) : url;
+    
+    // If it looks like it already has a business ID in the path
+    if (cleanPath.match(/^[a-f0-9-]{36}\//)) {
+      const { data: { publicUrl } } = supabase.storage
+        .from('business-assets')
+        .getPublicUrl(cleanPath);
+      return publicUrl;
+    }
+    
+    // If we have a businessId but the path doesn't include it, prepend it
+    if (businessId) {
+      const { data: { publicUrl } } = supabase.storage
+        .from('business-assets')
+        .getPublicUrl(`${businessId}/${cleanPath}`);
       return publicUrl;
     }
     
@@ -55,6 +77,7 @@ const BusinessLogoDisplay: React.FC<BusinessLogoDisplayProps> = ({
     originalUrl: logoUrl,
     fullUrl: fullLogoUrl,
     businessName,
+    businessId,
     hasLogo: !!fullLogoUrl
   });
 
@@ -70,21 +93,28 @@ const BusinessLogoDisplay: React.FC<BusinessLogoDisplayProps> = ({
     large: 'h-24 w-24'
   };
 
-  if (fullLogoUrl) {
+  if (fullLogoUrl && !imageError) {
     return (
-      <div className={`${containerSizeClasses[size]} ${className}`}>
-        <img
-          src={fullLogoUrl}
-          alt={`${businessName} logo`}
-          className={`w-full h-full object-cover rounded-xl ${isDark ? 'shadow-lg shadow-black/20' : 'shadow-md'}`}
-          loading="lazy"
-          onError={(e) => {
-            console.error('Failed to load logo:', fullLogoUrl);
-            // Hide the broken image and show fallback
-            (e.target as HTMLImageElement).style.display = 'none';
-          }}
-        />
-      </div>
+      <>
+        <div className={`${containerSizeClasses[size]} ${className} ${imageError ? 'hidden' : ''}`}>
+          <img
+            src={fullLogoUrl}
+            alt={`${businessName} logo`}
+            className={`w-full h-full object-cover rounded-xl ${isDark ? 'shadow-lg shadow-black/20' : 'shadow-md'}`}
+            loading="lazy"
+            onError={(e) => {
+              console.error('Failed to load logo:', fullLogoUrl);
+              console.error('Logo error details:', {
+                originalUrl: logoUrl,
+                businessId,
+                constructedUrl: fullLogoUrl
+              });
+              setImageError(true);
+            }}
+          />
+        </div>
+        {imageError && <FallbackLogo />}
+      </>
     );
   }
 
@@ -97,7 +127,8 @@ const BusinessLogoDisplay: React.FC<BusinessLogoDisplayProps> = ({
     .join('')
     .toUpperCase();
 
-  return (
+  // Fallback component
+  const FallbackLogo = () => (
     <div 
       className={`
         ${containerSizeClasses[size]} 
@@ -115,6 +146,8 @@ const BusinessLogoDisplay: React.FC<BusinessLogoDisplayProps> = ({
       {initials || <Building2 className="w-1/2 h-1/2" />}
     </div>
   );
+
+  return <FallbackLogo />;
 };
 
 export default BusinessLogoDisplay;

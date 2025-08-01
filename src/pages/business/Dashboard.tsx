@@ -42,19 +42,18 @@ const BentoBox: React.FC<BentoBoxProps> = ({
 }) => {
   const sizeClasses = {
     small: 'col-span-1',
-    medium: 'col-span-1 md:col-span-2',
-    large: 'col-span-1 md:col-span-2 lg:col-span-3',
-    tall: 'col-span-1 md:col-span-2 row-span-2'
+    medium: 'col-span-1 lg:col-span-2',
+    large: 'col-span-1 lg:col-span-2',
+    tall: 'col-span-1 lg:col-span-2 row-span-2'
   };
 
   return (
     <div className={`
       bg-[#1a1a1a] 
       border border-gray-800 
-      rounded-2xl p-8 
+      rounded-xl p-6 
       hover:border-gray-700 
       transition-all duration-300
-      shadow-lg hover:shadow-xl
       ${sizeClasses[size]}
       ${className}
     `}>
@@ -315,7 +314,7 @@ const BusinessDashboard: React.FC = () => {
         </div>
       </nav>
 
-      <div className="w-full px-6 py-8">
+      <div className="max-w-7xl mx-auto px-6 py-8">
         {/* Customer Invitation Display */}
         {showInvitation && (
           <div className="bg-[#1a1a1a] border border-gray-800 rounded-lg p-6 mb-6">
@@ -353,10 +352,10 @@ const BusinessDashboard: React.FC = () => {
           </div>
         )}
         
-        {/* Bento Box Grid - Larger boxes with better spacing */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-          {/* Wine Inventory Overview - Large Box */}
-          <BentoBox size="large" title="Wine Inventory" icon={Wine}>
+        {/* Bento Box Grid - Better proportions */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {/* Wine Inventory Overview - Medium Box */}
+          <BentoBox size="medium" title="Wine Inventory" icon={Wine}>
             <div className="space-y-4">
               <div className="flex justify-between items-baseline">
                 <div>
@@ -409,7 +408,7 @@ const BusinessDashboard: React.FC = () => {
             </div>
           </BentoBox>
 
-          {/* Quick Actions - Small Box */}
+          {/* Quick Actions - Single Box */}
           <BentoBox size="small" title="Quick Actions" icon={Zap}>
             <div className="space-y-3">
               <button 
@@ -434,8 +433,8 @@ const BusinessDashboard: React.FC = () => {
             </div>
           </BentoBox>
 
-          {/* Sales Metrics - Medium Box */}
-          <BentoBox size="medium" title="Sales Metrics" icon={TrendingUp}>
+          {/* Sales Metrics - Single Box */}
+          <BentoBox size="small" title="Sales Metrics" icon={TrendingUp}>
             <div className="space-y-4">
               <div>
                 <p className="text-3xl font-light text-white">{formatCurrency(realStats.monthlyRevenue)}</p>
@@ -472,8 +471,8 @@ const BusinessDashboard: React.FC = () => {
             </div>
           </BentoBox>
 
-          {/* Wine Club Members - Medium Box */}
-          <BentoBox size="medium" title="Wine Club Members" icon={Users}>
+          {/* Wine Club Members - Single Box */}
+          <BentoBox size="small" title="Wine Club Members" icon={Users}>
             <div className="space-y-4">
               <div className="flex justify-between items-baseline">
                 <div>
@@ -524,7 +523,7 @@ const BusinessDashboard: React.FC = () => {
 
           {/* Recent Activity - Tall Box */}
           <BentoBox size="tall" title="Recent Activity" icon={Activity}>
-            <div className="space-y-3 overflow-y-auto max-h-[400px]">
+            <div className="space-y-3 overflow-y-auto max-h-[350px] pr-2">
               {realStats.totalMembers > 0 || realStats.totalWines > 0 ? (
                 activities.map((activity) => (
                   <div key={activity.id} className="p-3 rounded-lg bg-[#0a0a0a] transition-all hover:scale-[1.02]">
@@ -571,9 +570,12 @@ const BusinessDashboard: React.FC = () => {
             </div>
           </BentoBox>
 
-          {/* Performance Metrics - Small Boxes */}
-          <div className="col-span-1">
-            <div className="bg-[#1a1a1a] border border-gray-800 rounded-2xl p-8 hover:border-gray-700 transition-all duration-300 shadow-lg hover:shadow-xl">
+        </div>
+        
+        {/* Performance Metrics Row - Separate grid for small boxes */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mt-6">
+          <div>
+            <div className="bg-[#1a1a1a] border border-gray-800 rounded-xl p-6 hover:border-gray-700 transition-all duration-300">
               <div className="flex items-center justify-between mb-2">
                 <Star className="h-5 w-5 text-[#A0303D]" />
                 <span className="text-2xl font-light text-white">{realStats.avgRating || 0}</span>
@@ -582,8 +584,8 @@ const BusinessDashboard: React.FC = () => {
             </div>
           </div>
 
-          <div className="col-span-1">
-            <div className="bg-[#1a1a1a] border border-gray-800 rounded-2xl p-8 hover:border-gray-700 transition-all duration-300 shadow-lg hover:shadow-xl">
+          <div>
+            <div className="bg-[#1a1a1a] border border-gray-800 rounded-xl p-6 hover:border-gray-700 transition-all duration-300">
               <div className="flex items-center justify-between mb-2">
                 <Users className="h-5 w-5 text-green-400" />
                 <span className="text-2xl font-light text-white">92%</span>
@@ -592,8 +594,8 @@ const BusinessDashboard: React.FC = () => {
             </div>
           </div>
 
-          <div className="col-span-1">
-            <div className="bg-[#1a1a1a] border border-gray-800 rounded-2xl p-8 hover:border-gray-700 transition-all duration-300 shadow-lg hover:shadow-xl">
+          <div>
+            <div className="bg-[#1a1a1a] border border-gray-800 rounded-xl p-6 hover:border-gray-700 transition-all duration-300">
               <div className="flex items-center justify-between mb-2">
                 <Package className="h-5 w-5 text-blue-400" />
                 <span className="text-2xl font-light text-white">98%</span>
@@ -602,8 +604,8 @@ const BusinessDashboard: React.FC = () => {
             </div>
           </div>
 
-          <div className="col-span-1">
-            <div className="bg-[#1a1a1a] border border-gray-800 rounded-2xl p-8 hover:border-gray-700 transition-all duration-300 shadow-lg hover:shadow-xl">
+          <div>
+            <div className="bg-[#1a1a1a] border border-gray-800 rounded-xl p-6 hover:border-gray-700 transition-all duration-300">
               <div className="flex items-center justify-between mb-2">
                 <Sparkles className="h-5 w-5 text-[#A0303D]" />
                 <span className="text-2xl font-light text-white">4.9</span>

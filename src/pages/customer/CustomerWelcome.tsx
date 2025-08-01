@@ -195,6 +195,7 @@ const CustomerWelcome: React.FC = () => {
               <BusinessLogoDisplay 
                 logoUrl={businessData.logo_url}
                 businessName={businessData.name}
+                businessId={businessData.id}
                 size="large"
                 className="mx-auto mb-6"
               />

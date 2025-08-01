@@ -294,6 +294,7 @@ const CustomerJoinPage: React.FC = () => {
           <BusinessLogoDisplay 
             logoUrl={business?.logo_url}
             businessName={business?.name || ''}
+            businessId={business?.id}
             size="large"
             className="mx-auto mb-6"
           />

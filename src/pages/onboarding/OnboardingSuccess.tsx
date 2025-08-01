@@ -186,6 +186,7 @@ const OnboardingSuccess: React.FC = () => {
           <BusinessLogoDisplay
             logoUrl={businessData.business.logo_url}
             businessName={businessData.business.name}
+            businessId={businessData.business.id}
             size="large"
             className="mx-auto mb-6"
           />
