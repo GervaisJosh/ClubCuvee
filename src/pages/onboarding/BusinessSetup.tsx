@@ -613,26 +613,34 @@ const BusinessSetup: React.FC = () => {
           }
         }
         
-        // Upload tier images if selected
-        for (let i = 0; i < formData.customerTiers.length; i++) {
-          const tier = formData.customerTiers[i];
-          if (tier.imageFile) {
-            try {
-              console.log(`Uploading image for tier ${i}: ${tier.name}`);
-              
-              // Get the tier ID from the created tiers
-              const queryClient = supabaseService || supabase;
-              const { data: createdTier, error: tierError } = await queryClient
-                .from('membership_tiers')
-                .select('id')
-                .eq('business_id', businessId)
-                .eq('name', tier.name)
-                .single();
-              
-              if (tierError || !createdTier) {
-                console.error('Failed to find tier:', tierError);
-                continue;
-              }
+        // Wait a moment to ensure the business creation is fully committed
+        console.log('Waiting for database to settle...');
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        // First, get all created tiers for this business
+        console.log('=== FETCHING ALL CREATED TIERS ===');
+        console.log('Using service client:', !!supabaseService);
+        const queryClient = supabaseService || supabase;
+        const { data: allCreatedTiers, error: fetchError } = await queryClient
+          .from('membership_tiers')
+          .select('id, name, image_url')
+          .eq('business_id', businessId)
+          .order('created_at', { ascending: true });
+        
+        if (fetchError || !allCreatedTiers) {
+          console.error('Failed to fetch created tiers:', fetchError);
+          console.log('Continuing without tier images...');
+        } else {
+          console.log('Found created tiers:', allCreatedTiers);
+          
+          // Upload tier images if selected
+          for (let i = 0; i < formData.customerTiers.length; i++) {
+            const tier = formData.customerTiers[i];
+            if (tier.imageFile && allCreatedTiers[i]) {
+              try {
+                console.log(`Uploading image for tier ${i}: ${tier.name}`);
+                const createdTier = allCreatedTiers[i];
+                console.log('Using tier:', createdTier);
               
               let tierImageUrl = null;
               
@@ -656,22 +664,36 @@ const BusinessSetup: React.FC = () => {
               }
               
               if (tierImageUrl) {
+                console.log('=== UPDATING TIER IMAGE URL ===');
+                console.log('Tier ID:', createdTier.id);
+                console.log('Image URL to save:', tierImageUrl);
+                
                 // Update tier with image URL
                 const updateClient = supabaseService || supabase;
-                const { error: updateError } = await updateClient
+                const { data: updateData, error: updateError } = await updateClient
                   .from('membership_tiers')
                   .update({ image_url: tierImageUrl })
-                  .eq('id', createdTier.id);
+                  .eq('id', createdTier.id)
+                  .select();
                 
                 if (updateError) {
                   console.error('Failed to update tier image:', updateError);
+                  console.error('Update error details:', {
+                    tierId: createdTier.id,
+                    imageUrl: tierImageUrl,
+                    error: updateError
+                  });
                 } else {
                   console.log('Tier image updated successfully');
+                  console.log('Updated tier data:', updateData);
                 }
+              } else {
+                console.log('No tier image URL generated');
               }
-            } catch (error) {
-              console.error('Tier image upload error:', error);
-              // Don't fail the whole process for image errors
+              } catch (error) {
+                console.error('Tier image upload error:', error);
+                // Don't fail the whole process for image errors
+              }
             }
           }
         }
