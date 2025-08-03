@@ -594,17 +594,45 @@ const BusinessSetup: React.FC = () => {
               console.log('Business ID:', businessId);
               console.log('Logo URL:', logoUrl);
               
-              const updateClient = supabaseService || supabase;
-              const { data: updateData, error: updateError } = await updateClient
-                .from('businesses')
-                .update({ logo_url: logoUrl })
-                .eq('id', businessId)
-                .select();
-              
-              if (updateError) {
-                console.error('Failed to update business logo:', updateError);
+              // CRITICAL: Must use service role client for business updates
+              if (!supabaseService) {
+                console.error('Service role client not available, using API endpoint for logo update');
+                
+                // Fallback to API endpoint
+                try {
+                  const updateResponse = await fetch('/api/update-business-logo', {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                      businessId: businessId,
+                      logoUrl: logoUrl
+                    }),
+                  });
+                  
+                  if (!updateResponse.ok) {
+                    const errorData = await updateResponse.json();
+                    console.error('API failed to update business logo:', errorData);
+                  } else {
+                    const { business } = await updateResponse.json();
+                    console.log('Business logo updated successfully via API:', business);
+                  }
+                } catch (apiError) {
+                  console.error('Failed to update logo via API:', apiError);
+                }
               } else {
-                console.log('Business logo updated successfully:', updateData);
+                const { data: updateData, error: updateError } = await supabaseService
+                  .from('businesses')
+                  .update({ logo_url: logoUrl })
+                  .eq('id', businessId)
+                  .select();
+                
+                if (updateError) {
+                  console.error('Failed to update business logo:', updateError);
+                } else {
+                  console.log('Business logo updated successfully:', updateData);
+                }
               }
             }
           } catch (error) {
@@ -668,24 +696,53 @@ const BusinessSetup: React.FC = () => {
                 console.log('Tier ID:', createdTier.id);
                 console.log('Image URL to save:', tierImageUrl);
                 
-                // Update tier with image URL
-                const updateClient = supabaseService || supabase;
-                const { data: updateData, error: updateError } = await updateClient
-                  .from('membership_tiers')
-                  .update({ image_url: tierImageUrl })
-                  .eq('id', createdTier.id)
-                  .select();
-                
-                if (updateError) {
-                  console.error('Failed to update tier image:', updateError);
-                  console.error('Update error details:', {
-                    tierId: createdTier.id,
-                    imageUrl: tierImageUrl,
-                    error: updateError
-                  });
+                // CRITICAL: Must use service role client for tier updates
+                if (!supabaseService) {
+                  console.error('Service role client not available, using API endpoint for tier image update');
+                  
+                  // Fallback to API endpoint
+                  try {
+                    const updateResponse = await fetch('/api/update-tier-image', {
+                      method: 'POST',
+                      headers: {
+                        'Content-Type': 'application/json',
+                      },
+                      body: JSON.stringify({
+                        tierId: createdTier.id,
+                        imageUrl: tierImageUrl,
+                        businessId: businessId
+                      }),
+                    });
+                    
+                    if (!updateResponse.ok) {
+                      const errorData = await updateResponse.json();
+                      console.error('API failed to update tier image:', errorData);
+                    } else {
+                      const { tier } = await updateResponse.json();
+                      console.log('Tier image updated successfully via API:', tier);
+                    }
+                  } catch (apiError) {
+                    console.error('Failed to update tier image via API:', apiError);
+                  }
                 } else {
-                  console.log('Tier image updated successfully');
-                  console.log('Updated tier data:', updateData);
+                  // Update tier with image URL using service role client
+                  const { data: updateData, error: updateError } = await supabaseService
+                    .from('membership_tiers')
+                    .update({ image_url: tierImageUrl })
+                    .eq('id', createdTier.id)
+                    .select();
+                  
+                  if (updateError) {
+                    console.error('Failed to update tier image:', updateError);
+                    console.error('Update error details:', {
+                      tierId: createdTier.id,
+                      imageUrl: tierImageUrl,
+                      error: updateError
+                    });
+                  } else {
+                    console.log('Tier image updated successfully');
+                    console.log('Updated tier data:', updateData);
+                  }
                 }
               } else {
                 console.log('No tier image URL generated');
