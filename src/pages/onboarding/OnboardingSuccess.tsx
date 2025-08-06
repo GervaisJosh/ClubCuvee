@@ -4,6 +4,7 @@ import Button from '../../components/Button';
 import Card from '../../components/Card';
 import ThemeToggle from '../../components/ThemeToggle';
 import BusinessLogoDisplay from '../../components/BusinessLogoDisplay';
+import OptimizedImage from '../../components/OptimizedImage';
 import { CheckCircle, ArrowRight, Settings, Users, Copy, ExternalLink, AlertCircle } from 'lucide-react';
 import { useTheme } from '../../contexts/ThemeContext';
 import { supabase } from '../../lib/supabase';
@@ -254,11 +255,12 @@ const OnboardingSuccess: React.FC = () => {
                   <div key={tier.id} className={`relative overflow-hidden ${isDark ? 'bg-zinc-800/30 border-zinc-700' : 'bg-gray-50 border-gray-200'} border rounded-lg hover:scale-105 transition-transform duration-200`}>
                     {tierImageUrl && (
                       <div className="h-32 w-full overflow-hidden">
-                        <img 
-                          src={tierImageUrl} 
+                        <OptimizedImage
+                          src={tierImageUrl}
                           alt={tier.name}
-                          className="w-full h-full object-cover"
-                          onError={(e) => {
+                          className="w-full h-full"
+                          objectFit="cover"
+                          onError={() => {
                             console.error('Failed to load tier image on success page:', {
                               originalUrl: tier.image_url,
                               processedUrl: tierImageUrl,

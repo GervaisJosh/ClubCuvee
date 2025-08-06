@@ -131,11 +131,13 @@ const BusinessSetup: React.FC = () => {
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
   const [showTierForm, setShowTierForm] = useState(false);
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [logoPath, setLogoPath] = useState<string | null>(null);
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [formErrors, setFormErrors] = useState<string[]>([]);
   const [authenticatedClient, setAuthenticatedClient] = useState<ReturnType<typeof createClient> | null>(null);
   const [businessId, setBusinessId] = useState<string | null>(null);
   const [tierImageUrls, setTierImageUrls] = useState<Record<number, string>>({});
+  const [tierImagePaths, setTierImagePaths] = useState<Record<number, string>>({});
 
   useEffect(() => {
     if (!token || !sessionId) {
@@ -565,36 +567,15 @@ const BusinessSetup: React.FC = () => {
         const useServiceRole = !!supabaseService;
         console.log('Using service role:', useServiceRole);
         
-        // Upload logo if selected
-        if (logoFile) {
+        // Update business with logo if already uploaded
+        if (logoUrl || logoPath) {
           try {
-            console.log('=== LOGO UPLOAD START ===');
-            console.log('Logo file:', {
-              name: logoFile.name,
-              size: logoFile.size,
-              type: logoFile.type
-            });
-            console.log('Business ID for upload:', businessId);
-            let logoUrl = null;
+            console.log('=== UPDATING BUSINESS WITH LOGO ===');
+            console.log('Business ID:', businessId);
+            console.log('Logo URL:', logoUrl);
+            console.log('Logo Path:', logoPath);
             
-            if (supabaseService) {
-              // Try service role first
-              logoUrl = await uploadImageWithServiceRole(logoFile, businessId, 'logo');
-            }
-            
-            if (!logoUrl) {
-              // Fallback to authenticated upload
-              console.log('Falling back to authenticated upload...');
-              logoUrl = await uploadImageWithAuth(logoFile, businessId, 'logo');
-            }
-            
-            if (logoUrl) {
-              // Update business with logo URL
-              console.log('=== UPDATING BUSINESS WITH LOGO ===');
-              console.log('Business ID:', businessId);
-              console.log('Logo URL:', logoUrl);
-              
-              // CRITICAL: Must use service role client for business updates
+            // CRITICAL: Must use service role client for business updates
               if (!supabaseService) {
                 console.error('Service role client not available, using API endpoint for logo update');
                 
@@ -661,98 +642,7 @@ const BusinessSetup: React.FC = () => {
         } else {
           console.log('Found created tiers:', allCreatedTiers);
           
-          // Upload tier images if selected
-          for (let i = 0; i < formData.customerTiers.length; i++) {
-            const tier = formData.customerTiers[i];
-            if (tier.imageFile && allCreatedTiers[i]) {
-              try {
-                console.log(`Uploading image for tier ${i}: ${tier.name}`);
-                const createdTier = allCreatedTiers[i];
-                console.log('Using tier:', createdTier);
-              
-              let tierImageUrl = null;
-              
-              if (supabaseService) {
-                // Try service role first
-                tierImageUrl = await uploadImageWithServiceRole(
-                  tier.imageFile, 
-                  businessId, 
-                  `tier-${createdTier.id}`
-                );
-              }
-              
-              if (!tierImageUrl) {
-                // Fallback to authenticated upload
-                console.log('Falling back to authenticated upload for tier...');
-                tierImageUrl = await uploadImageWithAuth(
-                  tier.imageFile,
-                  businessId,
-                  `tier-${createdTier.id}`
-                );
-              }
-              
-              if (tierImageUrl) {
-                console.log('=== UPDATING TIER IMAGE URL ===');
-                console.log('Tier ID:', createdTier.id);
-                console.log('Image URL to save:', tierImageUrl);
-                
-                // CRITICAL: Must use service role client for tier updates
-                if (!supabaseService) {
-                  console.error('Service role client not available, using API endpoint for tier image update');
-                  
-                  // Fallback to API endpoint
-                  try {
-                    const updateResponse = await fetch('/api/update-tier-image', {
-                      method: 'POST',
-                      headers: {
-                        'Content-Type': 'application/json',
-                      },
-                      body: JSON.stringify({
-                        tierId: createdTier.id,
-                        imageUrl: tierImageUrl,
-                        businessId: businessId
-                      }),
-                    });
-                    
-                    if (!updateResponse.ok) {
-                      const errorData = await updateResponse.json();
-                      console.error('API failed to update tier image:', errorData);
-                    } else {
-                      const { tier } = await updateResponse.json();
-                      console.log('Tier image updated successfully via API:', tier);
-                    }
-                  } catch (apiError) {
-                    console.error('Failed to update tier image via API:', apiError);
-                  }
-                } else {
-                  // Update tier with image URL using service role client
-                  const { data: updateData, error: updateError } = await supabaseService
-                    .from('membership_tiers')
-                    .update({ image_url: tierImageUrl })
-                    .eq('id', createdTier.id)
-                    .select();
-                  
-                  if (updateError) {
-                    console.error('Failed to update tier image:', updateError);
-                    console.error('Update error details:', {
-                      tierId: createdTier.id,
-                      imageUrl: tierImageUrl,
-                      error: updateError
-                    });
-                  } else {
-                    console.log('Tier image updated successfully');
-                    console.log('Updated tier data:', updateData);
-                  }
-                }
-              } else {
-                console.log('No tier image URL generated');
-              }
-              } catch (error) {
-                console.error('Tier image upload error:', error);
-                // Don't fail the whole process for image errors
-              }
-            }
-          }
+          // Note: Tier images will be handled in a separate step after tier creation
         }
         
         console.log('=== IMAGE UPLOADS COMPLETE ===');
@@ -1001,79 +891,24 @@ const BusinessSetup: React.FC = () => {
                   Upload your business logo to personalize your wine club
                 </p>
                 
-                <div className="relative">
-                  <input
-                    type="file"
-                    accept="image/png, image/jpeg, image/jpg, image/webp"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        setLogoFile(file);
-                        // Create preview
-                        const reader = new FileReader();
-                        reader.onload = (e) => {
-                          setLogoUrl(e.target?.result as string);
-                        };
-                        reader.readAsDataURL(file);
-                      }
-                    }}
+                {businessId ? (
+                  <ImageUploadField
+                    label=""
+                    businessId={businessId}
+                    uploadPath="logo"
+                    onUploadComplete={(url) => setLogoUrl(url)}
+                    onPathChange={(path) => setLogoPath(path)}
+                    existingImageUrl={logoUrl}
                     disabled={loading}
-                    className="hidden"
-                    id="logo-upload"
+                    maxSizeMB={2}
                   />
-                  <label
-                    htmlFor="logo-upload"
-                    onDragOver={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                    }}
-                    onDrop={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      const files = e.dataTransfer.files;
-                      if (files && files[0]) {
-                        // Validate file type and size
-                        const file = files[0];
-                        if (!file.type.startsWith('image/')) {
-                          alert('Please upload an image file');
-                          return;
-                        }
-                        if (file.size > 2 * 1024 * 1024) {
-                          alert('File size must be less than 2MB');
-                          return;
-                        }
-                        setLogoFile(file);
-                        const reader = new FileReader();
-                        reader.onload = (evt) => {
-                          setLogoUrl(evt.target?.result as string);
-                        };
-                        reader.readAsDataURL(file);
-                      }
-                    }}
-                    className={`block w-full border-2 border-dashed rounded-lg p-8 text-center transition-colors cursor-pointer ${
-                      loading
-                        ? 'border-gray-300 bg-gray-50 cursor-not-allowed'
-                        : 'border-gray-400 hover:border-[#800020] hover:bg-gray-50 dark:hover:bg-gray-800'
-                    }`}
-                  >
-                    {logoUrl ? (
-                      <div>
-                        <img src={logoUrl} alt="Logo preview" className="w-32 h-32 mx-auto mb-4 object-cover rounded-lg" />
-                        <p className="text-sm text-gray-600 dark:text-gray-400">Click to change logo</p>
-                      </div>
-                    ) : (
-                      <>
-                        <Upload className="h-8 w-8 mx-auto mb-2 text-gray-400" />
-                        <p className="text-sm text-gray-600 dark:text-gray-400">
-                          Click to upload logo
-                        </p>
-                        <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
-                          PNG, JPEG, WEBP (max 2MB)
-                        </p>
-                      </>
-                    )}
-                  </label>
-                </div>
+                ) : (
+                  <div className={`text-center py-8 border-2 border-dashed ${isDark ? 'border-zinc-700' : 'border-gray-300'} rounded-lg`}>
+                    <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                      Business ID will be generated after initial setup
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
             </div>
@@ -1294,81 +1129,12 @@ const BusinessSetup: React.FC = () => {
                           Add an image to represent this membership tier
                         </p>
                         
-                        <div className="relative">
-                          <input
-                            type="file"
-                            accept="image/png, image/jpeg, image/jpg, image/webp"
-                            onChange={(e) => {
-                              const file = e.target.files?.[0];
-                              if (file) {
-                                // Update tier with image file
-                                handleTierChange(tierIndex, 'imageFile', file);
-                                // Create preview
-                                const reader = new FileReader();
-                                reader.onload = (e) => {
-                                  setTierImageUrls(prev => ({ ...prev, [tierIndex]: e.target?.result as string }));
-                                };
-                                reader.readAsDataURL(file);
-                              }
-                            }}
-                            disabled={loading}
-                            className="hidden"
-                            id={`tier-upload-${tierIndex}`}
-                          />
-                          <label
-                            htmlFor={`tier-upload-${tierIndex}`}
-                            onDragOver={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                            }}
-                            onDrop={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              const files = e.dataTransfer.files;
-                              if (files && files[0]) {
-                                // Validate file type and size
-                                const file = files[0];
-                                if (!file.type.startsWith('image/')) {
-                                  alert('Please upload an image file');
-                                  return;
-                                }
-                                if (file.size > 3 * 1024 * 1024) {
-                                  alert('File size must be less than 3MB');
-                                  return;
-                                }
-                                // Update tier with image file
-                                handleTierChange(tierIndex, 'imageFile', file);
-                                // Create preview
-                                const reader = new FileReader();
-                                reader.onload = (e) => {
-                                  setTierImageUrls(prev => ({ ...prev, [tierIndex]: e.target?.result as string }));
-                                };
-                                reader.readAsDataURL(file);
-                              }
-                            }}
-                            className={`block w-full border-2 border-dashed rounded-lg p-6 text-center transition-colors cursor-pointer ${
-                              loading
-                                ? 'border-gray-300 bg-gray-50 cursor-not-allowed'
-                                : 'border-gray-400 hover:border-[#800020] hover:bg-gray-50 dark:hover:bg-gray-800'
-                            }`}
-                          >
-                            {tierImageUrls[tierIndex] ? (
-                              <div>
-                                <img src={tierImageUrls[tierIndex]} alt="Tier preview" className="w-24 h-24 mx-auto mb-2 object-cover rounded-lg" />
-                                <p className="text-xs text-gray-600 dark:text-gray-400">Click to change image</p>
-                              </div>
-                            ) : (
-                              <>
-                                <Upload className="h-6 w-6 mx-auto mb-1 text-gray-400" />
-                                <p className="text-xs text-gray-600 dark:text-gray-400">
-                                  Click to upload tier image
-                                </p>
-                                <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
-                                  PNG, JPEG, WEBP (max 3MB)
-                                </p>
-                              </>
-                            )}
-                          </label>
+                        {/* Note: Tier images will be uploaded after tier creation */}
+                        <div className={`text-center py-6 border-2 border-dashed ${isDark ? 'border-zinc-700' : 'border-gray-300'} rounded-lg`}>
+                          <Image className="h-8 w-8 mx-auto mb-2 text-gray-400" />
+                          <p className="text-xs text-gray-500 dark:text-gray-400">
+                            Tier images can be added after initial setup
+                          </p>
                         </div>
                       </div>
                     </div>

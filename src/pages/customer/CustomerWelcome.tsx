@@ -5,6 +5,7 @@ import Button from '../../components/Button';
 import Card from '../../components/Card';
 import ThemeToggle from '../../components/ThemeToggle';
 import BusinessLogoDisplay from '../../components/BusinessLogoDisplay';
+import OptimizedImage from '../../components/OptimizedImage';
 import { CheckCircle, AlertCircle, Wine, Calendar, Heart, ArrowRight, Loader2, Sparkles, Gift, Clock, Mail } from 'lucide-react';
 import { useTheme } from '../../contexts/ThemeContext';
 
@@ -24,6 +25,7 @@ interface TierData {
   description?: string;
   benefits?: string[] | string;
   image_url?: string;
+  image_storage_path?: string;
 }
 
 interface CustomerData {
@@ -241,10 +243,12 @@ const CustomerWelcome: React.FC = () => {
               <div className={`relative overflow-hidden p-6 ${isDark ? 'bg-[#722f37]/20' : 'bg-[#722f37]/5'} rounded-xl border ${isDark ? 'border-[#722f37]/30' : 'border-[#722f37]/20'} transform transition-all duration-200 hover:scale-105`}>
                 {tierData.image_url ? (
                   <div className="absolute inset-0 opacity-20">
-                    <img 
-                      src={tierData.image_url} 
+                    <OptimizedImage
+                      src={tierData.image_url}
+                      storagePath={tierData.image_storage_path}
                       alt={tierData.name}
-                      className="w-full h-full object-cover"
+                      className="w-full h-full"
+                      objectFit="cover"
                     />
                   </div>
                 ) : null}

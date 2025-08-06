@@ -1,4 +1,4 @@
-import React, { createContext, useState, useEffect, useContext } from 'react'
+import React, { createContext, useState, useEffect, useContext, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { User, Session } from '@supabase/supabase-js'
 
@@ -23,8 +23,10 @@ interface AuthContextType {
   userType: UserType
   loading: boolean
   isAdmin: boolean
+  isRefreshing: boolean
   setUser: (user: User | null) => void
   signOut: () => Promise<void>
+  refreshSession: () => Promise<Session | null>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -36,12 +38,70 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [userType, setUserType] = useState<UserType>('none')
   const [isAdmin, setIsAdmin] = useState<boolean>(false)
   const [loading, setLoading] = useState<boolean>(true)
+  const [isRefreshing, setIsRefreshing] = useState<boolean>(false)
+  const sessionRefreshTimerRef = useRef<NodeJS.Timeout | null>(null)
+
+  // Set up auto-refresh for session
+  const setupAutoRefresh = (session: Session | null) => {
+    // Clear any existing timer
+    if (sessionRefreshTimerRef.current) {
+      clearTimeout(sessionRefreshTimerRef.current)
+      sessionRefreshTimerRef.current = null
+    }
+
+    if (!session?.expires_at) return
+
+    // Calculate when to refresh (5 minutes before expiry)
+    const expiresAt = new Date(session.expires_at).getTime()
+    const now = Date.now()
+    const refreshIn = expiresAt - now - 5 * 60 * 1000 // 5 minutes before expiry
+
+    if (refreshIn > 0) {
+      console.log(`Setting up session refresh in ${Math.round(refreshIn / 1000 / 60)} minutes`)
+      sessionRefreshTimerRef.current = setTimeout(() => {
+        refreshSession()
+      }, refreshIn)
+    } else {
+      // Session is about to expire or already expired, refresh immediately
+      refreshSession()
+    }
+  }
+
+  // Refresh session method
+  const refreshSession = async (): Promise<Session | null> => {
+    try {
+      setIsRefreshing(true)
+      console.log('Refreshing session...')
+      
+      const { data: { session }, error } = await supabase.auth.refreshSession()
+      
+      if (error) {
+        console.error('Error refreshing session:', error)
+        return null
+      }
+      
+      if (session) {
+        console.log('Session refreshed successfully')
+        setSession(session)
+        setUser(session.user)
+        setupAutoRefresh(session)
+      }
+      
+      return session
+    } catch (error) {
+      console.error('Failed to refresh session:', error)
+      return null
+    } finally {
+      setIsRefreshing(false)
+    }
+  }
 
   useEffect(() => {
     setLoading(true)
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session)
       setUser(session?.user ?? null)
+      setupAutoRefresh(session)
       if (session?.user) {
         determineUserType(session.user).finally(() => setLoading(false))
       } else {
@@ -52,6 +112,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session)
       setUser(session?.user ?? null)
+      setupAutoRefresh(session)
       if (session?.user) {
         determineUserType(session.user)
       } else {
@@ -61,7 +122,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     })
 
-    return () => subscription.unsubscribe()
+    return () => {
+      subscription.unsubscribe()
+      if (sessionRefreshTimerRef.current) {
+        clearTimeout(sessionRefreshTimerRef.current)
+      }
+    }
   }, [])
 
   const determineUserType = async (authUser: User) => {
@@ -211,9 +277,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }
 
   const signOut = async () => {
+    // Clear refresh timer
+    if (sessionRefreshTimerRef.current) {
+      clearTimeout(sessionRefreshTimerRef.current)
+      sessionRefreshTimerRef.current = null
+    }
+    
     const { error } = await supabase.auth.signOut()
     if (error) throw error
     setUser(null)
+    setSession(null)
     setUserProfile(null)
     setUserType('none')
     setIsAdmin(false)
@@ -226,9 +299,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       userProfile, 
       userType,
       loading,
-      isAdmin, 
+      isAdmin,
+      isRefreshing,
       setUser, 
-      signOut 
+      signOut,
+      refreshSession
     }}>
       {children}
     </AuthContext.Provider>

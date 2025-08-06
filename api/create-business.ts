@@ -87,6 +87,7 @@ interface CustomerTierData {
   monthlyPrice: number;
   benefits: string[];
   imageUrl?: string;
+  imagePath?: string;
 }
 
 interface StripeProductUpdate {
@@ -109,6 +110,7 @@ interface BusinessFormData {
   website: string;
   description: string;
   logoUrl?: string;
+  logoPath?: string;
   customerTiers: CustomerTierData[];
 }
 
@@ -308,6 +310,7 @@ export default withErrorHandler(async (req: VercelRequest, res: VercelResponse):
           state: businessData.state?.trim() || null,
           zip_code: businessData.zipCode?.trim() || null,
           logo_url: businessData.logoUrl || null,
+          logo_storage_path: businessData.logoPath || null,
           pricing_tier_id: pricingTier.id,
           stripe_customer_id: subscription.customer as string,
           stripe_subscription_id: subscriptionId,
@@ -352,6 +355,7 @@ export default withErrorHandler(async (req: VercelRequest, res: VercelResponse):
           state: businessData.state?.trim() || null,
           zip_code: businessData.zipCode?.trim() || null,
           logo_url: businessData.logoUrl || null,
+          logo_storage_path: businessData.logoPath || null,
           pricing_tier_id: pricingTier.id,
           stripe_customer_id: subscription.customer as string,
           stripe_subscription_id: subscriptionId,
@@ -411,6 +415,7 @@ export default withErrorHandler(async (req: VercelRequest, res: VercelResponse):
       monthly_price_cents: Math.round(tier.monthlyPrice * 100),
       benefits: tier.benefits.filter(b => b.trim()).map(b => b.trim()), // Store benefits as JSONB array
       image_url: tier.imageUrl || null,
+      image_storage_path: tier.imagePath || null,
       is_active: true
     }));
 

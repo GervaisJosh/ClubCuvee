@@ -1,11 +1,13 @@
 import React, { useState, useRef } from 'react';
 import { Image, Upload, X, AlertCircle } from 'lucide-react';
-import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import { imageService } from '../services/imageService';
+import { ImageValidationOptions, ImageUploadOptions } from '../types/image';
 
 interface ImageUploadFieldProps {
   label: string;
   onUploadComplete: (url: string) => void;
+  onPathChange?: (path: string) => void; // New optional callback for path
   businessId: string;
   uploadPath: string; // e.g., 'logo' or 'tiers/{tierId}'
   maxSizeMB?: number;
@@ -18,6 +20,7 @@ interface ImageUploadFieldProps {
 const ImageUploadField: React.FC<ImageUploadFieldProps> = ({
   label,
   onUploadComplete,
+  onPathChange,
   businessId,
   uploadPath,
   maxSizeMB = 5,
@@ -33,20 +36,7 @@ const ImageUploadField: React.FC<ImageUploadFieldProps> = ({
   const [preview, setPreview] = useState<string | null>(existingImageUrl || null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const validateFile = (file: File): string | null => {
-    // Check file size
-    const maxSize = maxSizeMB * 1024 * 1024;
-    if (file.size > maxSize) {
-      return `File size must be less than ${maxSizeMB}MB`;
-    }
-
-    // Check file type
-    if (!acceptedTypes.includes(file.type)) {
-      return `Please upload one of: ${acceptedTypes.join(', ').replace(/image\//g, '').toUpperCase()}`;
-    }
-
-    return null;
-  };
+  // Remove local validateFile - we'll use imageService.validateFile instead
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -56,10 +46,15 @@ const ImageUploadField: React.FC<ImageUploadFieldProps> = ({
     setError(null);
     setUploadProgress(0);
 
-    // Validate file
-    const validationError = validateFile(file);
-    if (validationError) {
-      setError(validationError);
+    // Validate file using imageService
+    try {
+      const validationOptions: ImageValidationOptions = {
+        maxSizeMB,
+        acceptedTypes
+      };
+      await imageService.validateFile(file, validationOptions);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Invalid file');
       return;
     }
 
@@ -84,31 +79,49 @@ const ImageUploadField: React.FC<ImageUploadFieldProps> = ({
     setError(null);
 
     try {
-      // Generate unique filename
-      const timestamp = Date.now();
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${uploadPath.replace(/\//g, '-')}-${timestamp}.${fileExt}`;
-      const filePath = `businesses/${businessId}/${uploadPath}/${fileName}`;
+      // Determine entity type and ID from uploadPath
+      let entityType: 'logo' | 'tiers' | 'wines' | 'customers' | 'gallery' = 'logo';
+      let entityId: string | undefined;
+      let subPath: string | undefined;
 
-      // Upload to Supabase storage with progress tracking
-      const { data, error: uploadError } = await supabase.storage
-        .from('business-assets')
-        .upload(filePath, file, {
-          cacheControl: '3600',
-          upsert: false
-        });
-
-      if (uploadError) {
-        throw uploadError;
+      // Parse the uploadPath to determine entity type
+      if (uploadPath.includes('tiers/')) {
+        entityType = 'tiers';
+        const parts = uploadPath.split('/');
+        entityId = parts[1]; // tier ID
+      } else if (uploadPath.includes('wines/')) {
+        entityType = 'wines';
+        const parts = uploadPath.split('/');
+        entityId = parts[1]; // wine ID
+        if (parts.length > 2) {
+          subPath = parts.slice(2).join('/'); // e.g., 'gallery'
+        }
+      } else if (uploadPath === 'logo') {
+        entityType = 'logo';
       }
 
-      // Get public URL
-      const { data: { publicUrl } } = supabase.storage
-        .from('business-assets')
-        .getPublicUrl(filePath);
+      // Generate storage path using imageService
+      const storagePath = imageService.generateStoragePath(
+        entityType,
+        businessId,
+        file.name,
+        entityId,
+        subPath
+      );
 
-      // Notify parent component
-      onUploadComplete(publicUrl);
+      // Upload using imageService
+      const uploadOptions: ImageUploadOptions = {
+        onProgress: (progress) => setUploadProgress(progress)
+      };
+
+      const { path, url } = await imageService.upload(file, storagePath, uploadOptions);
+
+      // Notify parent component with both URL and path
+      onUploadComplete(url);
+      if (onPathChange) {
+        onPathChange(path);
+      }
+      
       setUploadProgress(100);
 
     } catch (err) {
@@ -128,6 +141,9 @@ const ImageUploadField: React.FC<ImageUploadFieldProps> = ({
       fileInputRef.current.value = '';
     }
     onUploadComplete('');
+    if (onPathChange) {
+      onPathChange('');
+    }
   };
 
   return (
