@@ -615,7 +615,6 @@ const BusinessSetup: React.FC = () => {
                   console.log('Business logo updated successfully:', updateData);
                 }
               }
-            }
           } catch (error) {
             console.error('Logo upload error:', error);
             // Don't fail the whole process for image errors
