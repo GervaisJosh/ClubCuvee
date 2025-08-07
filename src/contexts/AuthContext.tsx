@@ -40,9 +40,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState<boolean>(true)
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false)
   const sessionRefreshTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const isSettingUpRef = useRef<boolean>(false)
+  const lastRefreshTimeRef = useRef<number>(0)
 
   // Set up auto-refresh for session
   const setupAutoRefresh = (session: Session | null) => {
+    // Prevent concurrent setup calls
+    if (isSettingUpRef.current) {
+      console.log('Setup already in progress, skipping...')
+      return
+    }
+
     // Clear any existing timer
     if (sessionRefreshTimerRef.current) {
       clearTimeout(sessionRefreshTimerRef.current)
@@ -51,26 +59,56 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     if (!session?.expires_at) return
 
-    // Calculate when to refresh (5 minutes before expiry)
-    const expiresAt = new Date(session.expires_at).getTime()
-    const now = Date.now()
-    const refreshIn = expiresAt - now - 5 * 60 * 1000 // 5 minutes before expiry
+    isSettingUpRef.current = true
 
-    if (refreshIn > 0) {
-      console.log(`Setting up session refresh in ${Math.round(refreshIn / 1000 / 60)} minutes`)
-      sessionRefreshTimerRef.current = setTimeout(() => {
-        refreshSession()
-      }, refreshIn)
-    } else {
-      // Session is about to expire or already expired, refresh immediately
-      refreshSession()
+    try {
+      // Calculate when to refresh (5 minutes before expiry)
+      const expiresAt = new Date(session.expires_at).getTime()
+      const now = Date.now()
+      const refreshIn = expiresAt - now - 5 * 60 * 1000 // 5 minutes before expiry
+
+      // Ensure minimum refresh interval of 1 minute
+      const minRefreshInterval = 60 * 1000 // 1 minute
+      const adjustedRefreshIn = Math.max(refreshIn, minRefreshInterval)
+
+      if (adjustedRefreshIn > 0) {
+        console.log(`Setting up session refresh in ${Math.round(adjustedRefreshIn / 1000 / 60)} minutes`)
+        sessionRefreshTimerRef.current = setTimeout(() => {
+          refreshSession()
+        }, adjustedRefreshIn)
+      } else {
+        console.log('Session needs immediate refresh, but applying cooldown...')
+        // Apply a small delay to prevent rapid refreshes
+        setTimeout(() => {
+          refreshSession()
+        }, 5000) // 5 second delay
+      }
+    } finally {
+      isSettingUpRef.current = false
     }
   }
 
   // Refresh session method
   const refreshSession = async (): Promise<Session | null> => {
+    // Check cooldown to prevent rapid refreshes
+    const now = Date.now()
+    const timeSinceLastRefresh = now - lastRefreshTimeRef.current
+    const cooldownPeriod = 60 * 1000 // 60 seconds
+
+    if (timeSinceLastRefresh < cooldownPeriod) {
+      console.log(`Refresh cooldown active. Time since last refresh: ${Math.round(timeSinceLastRefresh / 1000)}s`)
+      return null
+    }
+
+    // Prevent concurrent refreshes
+    if (isRefreshing) {
+      console.log('Refresh already in progress, skipping...')
+      return null
+    }
+
     try {
       setIsRefreshing(true)
+      lastRefreshTimeRef.current = now
       console.log('Refreshing session...')
       
       const { data: { session }, error } = await supabase.auth.refreshSession()
@@ -82,9 +120,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       if (session) {
         console.log('Session refreshed successfully')
-        setSession(session)
-        setUser(session.user)
-        setupAutoRefresh(session)
+        // Don't call setSession or setupAutoRefresh here - let onAuthStateChange handle it
       }
       
       return session
@@ -109,10 +145,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     })
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('Auth state changed:', event)
+      
+      // Update state
       setSession(session)
       setUser(session?.user ?? null)
-      setupAutoRefresh(session)
+      
+      // Only setup auto-refresh for specific events
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') {
+        setupAutoRefresh(session)
+      }
+      
       if (session?.user) {
         determineUserType(session.user)
       } else {
