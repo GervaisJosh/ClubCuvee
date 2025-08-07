@@ -49,11 +49,14 @@ interface BusinessFormData {
 }
 
 interface CustomerTierFormData {
+  id?: string; // Add ID for tracking
   name: string;
   description: string;
   monthlyPrice: number;
   benefits: string[];
   imageFile?: File;
+  imageUrl?: string; // Add image URL for uploaded images
+  imagePath?: string; // Add image path for storage location
 }
 
 interface PaymentVerificationData {
@@ -251,13 +254,19 @@ const BusinessSetup: React.FC = () => {
   };
 
   const addCustomerTier = () => {
+    // Generate a unique ID for the tier (will be used for image upload path)
+    const tierId = `tier_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    
     setFormData(prev => ({
       ...prev,
       customerTiers: [...prev.customerTiers, {
+        id: tierId,
         name: '',
         description: '',
         monthlyPrice: 99,
-        benefits: ['']
+        benefits: [''],
+        imageUrl: '',
+        imagePath: ''
       }]
     }));
     setShowTierForm(true);
@@ -521,7 +530,8 @@ const BusinessSetup: React.FC = () => {
           description: tier.description,
           monthlyPrice: tier.monthlyPrice,
           benefits: tier.benefits,
-          imageUrl: null
+          imageUrl: tier.imageUrl || null,  // Include the uploaded image URL
+          imagePath: tier.imagePath || null  // Include the storage path
         }))
       };
 
@@ -1128,13 +1138,34 @@ const BusinessSetup: React.FC = () => {
                           Add an image to represent this membership tier
                         </p>
                         
-                        {/* Note: Tier images will be uploaded after tier creation */}
-                        <div className={`text-center py-6 border-2 border-dashed ${isDark ? 'border-zinc-700' : 'border-gray-300'} rounded-lg`}>
-                          <Image className="h-8 w-8 mx-auto mb-2 text-gray-400" />
-                          <p className="text-xs text-gray-500 dark:text-gray-400">
-                            Tier images can be added after initial setup
-                          </p>
-                        </div>
+                        {/* Use ImageUploadField for tier images */}
+                        {businessId && tier.id ? (
+                          <ImageUploadField
+                            label=""
+                            businessId={businessId}
+                            uploadPath={`tiers/${tier.id}`}
+                            onUploadComplete={(url) => {
+                              const updatedTiers = [...formData.customerTiers];
+                              updatedTiers[tierIndex].imageUrl = url;
+                              setFormData(prev => ({ ...prev, customerTiers: updatedTiers }));
+                            }}
+                            onPathChange={(path) => {
+                              const updatedTiers = [...formData.customerTiers];
+                              updatedTiers[tierIndex].imagePath = path;
+                              setFormData(prev => ({ ...prev, customerTiers: updatedTiers }));
+                            }}
+                            existingImageUrl={tier.imageUrl}
+                            disabled={loading}
+                            maxSizeMB={2}
+                          />
+                        ) : (
+                          <div className={`text-center py-6 border-2 border-dashed ${isDark ? 'border-zinc-700' : 'border-gray-300'} rounded-lg`}>
+                            <Image className="h-8 w-8 mx-auto mb-2 text-gray-400" />
+                            <p className="text-xs text-gray-500 dark:text-gray-400">
+                              Business must be created before uploading tier images
+                            </p>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>

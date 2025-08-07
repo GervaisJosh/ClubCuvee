@@ -184,22 +184,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         user_metadata: authUser.user_metadata
       });
 
-      // 1. Check admin first (highest priority) - using app_metadata
-      if (authUser.app_metadata?.is_admin === true) {
-        console.log('User is admin (from app_metadata)');
-        setUserProfile({
-          auth_id: authUser.id,
-          email: authUser.email,
-          is_admin: true
-        });
-        setUserType('admin');
-        setIsAdmin(true);
-        return;
-      }
-
-      // 2. CRITICAL: Check user_metadata role FIRST
+      // 1. CRITICAL: Check user_metadata role FIRST (most specific)
       // If they have customer role in user_metadata, they ARE a customer regardless of other data
-      if (authUser.user_metadata?.role === 'customer') {
+      if (authUser.user_metadata?.role === 'customer' || authUser.user_metadata?.user_type === 'customer') {
         console.log('User is explicitly marked as customer in user_metadata');
         
         // Get customer record
@@ -225,29 +212,69 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       }
 
-      // 3. Check business owner
-      const { data: businessUser, error: businessError } = await supabase
+      // 2. Check for business user in user_metadata
+      if (authUser.user_metadata?.role === 'business' || authUser.user_metadata?.user_type === 'business') {
+        console.log('User is explicitly marked as business in user_metadata');
+        
+        // Get business record
+        const { data: businessUser, error: businessError } = await supabase
+          .from('businesses')
+          .select('*')
+          .eq('owner_id', authUser.id)
+          .maybeSingle();
+        
+        if (businessUser && !businessError) {
+          console.log('Found business record:', businessUser.name);
+          setUserProfile({
+            id: businessUser.id,
+            auth_id: authUser.id,
+            email: businessUser.email,
+            name: businessUser.name,
+            is_business: true,
+            business_id: businessUser.id
+          });
+          setUserType('business');
+          setIsAdmin(false);
+          return;
+        }
+      }
+
+      // 3. Check admin LAST (only if explicitly true, not just truthy) - using app_metadata
+      if (authUser.app_metadata?.is_admin === true && authUser.app_metadata?.is_admin !== undefined) {
+        console.log('User is admin (from app_metadata, explicitly true)');
+        setUserProfile({
+          auth_id: authUser.id,
+          email: authUser.email,
+          is_admin: true
+        });
+        setUserType('admin');
+        setIsAdmin(true);
+        return;
+      }
+
+      // 4. Check business owner (if not explicitly marked in metadata)
+      const { data: businessOwner, error: businessOwnerError } = await supabase
         .from('businesses')
         .select('*')
         .eq('owner_id', authUser.id)
         .maybeSingle();
       
-      if (businessUser && !businessError) {
-        console.log('User is a business owner:', businessUser.name);
+      if (businessOwner && !businessOwnerError) {
+        console.log('User is a business owner:', businessOwner.name);
         setUserProfile({
-          id: businessUser.id,
+          id: businessOwner.id,
           auth_id: authUser.id,
-          email: businessUser.email,
-          name: businessUser.name,
+          email: businessOwner.email,
+          name: businessOwner.name,
           is_business: true,
-          business_id: businessUser.id
+          business_id: businessOwner.id
         });
         setUserType('business');
         setIsAdmin(false);
         return;
       }
       
-      // 2b. Check business_users table for business admins
+      // 5. Check business_users table for business admins
       const { data: businessUserRecord, error: businessUserError } = await supabase
         .from('business_users')
         .select(`
@@ -273,30 +300,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return;
       }
       
-      // 4. Check customer (moved after business checks)
-      const { data: customerUser, error: customerError } = await supabase
+      // 6. Check customer table (last resort if no metadata)
+      const { data: customerRecord, error: customerRecordError } = await supabase
         .from('customers')
         .select('*')
         .eq('auth_id', authUser.id)
         .maybeSingle();
       
-      if (customerUser && !customerError) {
-        console.log('User is a customer:', customerUser.name);
+      if (customerRecord && !customerRecordError) {
+        console.log('User is a customer (from table):', customerRecord.name);
         setUserProfile({
-          id: customerUser.id,
+          id: customerRecord.id,
           auth_id: authUser.id,
-          email: customerUser.email,
-          name: customerUser.name,
+          email: customerRecord.email,
+          name: customerRecord.name,
           is_customer: true,
-          customer_id: customerUser.id
+          customer_id: customerRecord.id
         });
         setUserType('customer');
         setIsAdmin(false);
         return;
       }
       
-      // 5. No profile found
-      console.log('User has no profile yet');
+      // 7. No profile found - default to none
+      console.log('User has no profile yet, setting type to none');
       setUserProfile({
         auth_id: authUser.id,
         email: authUser.email
