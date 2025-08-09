@@ -224,31 +224,68 @@ export default withErrorHandler(async (req: VercelRequest, res: VercelResponse):
       }
     }
 
-    // 5. Create an auth account for the BUSINESS EMAIL (not the admin)
+    // 5. Determine business ID first (needed for metadata)
+    let businessId = invite.business_id;
+    if (!businessId) {
+      businessId = randomUUID();
+    }
+    console.log('Business ID determined:', businessId);
+
+    // 6. Create an auth account for the BUSINESS EMAIL (not the admin)
     // This gives them an auth_id immediately
     console.log('Creating auth account for business email:', businessData.email);
     
     let businessAuthUser: any;
     
     // First, create an auth user for the business email
+    // CRITICAL: Must set user_metadata to identify this as a business owner
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email: businessData.email.trim(),
       email_confirm: true, // Auto-confirm since admin is creating
       password: businessData.password, // Set the password they provided
+      user_metadata: {
+        role: 'business',
+        user_type: 'business', // Backup identifier
+        business_id: businessId, // Now we have the business ID
+        name: businessData.businessOwnerName.trim()
+      },
+      // Ensure no admin metadata unless explicitly set
+      app_metadata: {}
     });
 
     if (authError) {
       // Check if user already exists
       if (authError.message?.includes('already exists')) {
-        console.log('Auth user already exists for email, fetching existing user...');
+        console.log('Auth user already exists for email, updating metadata...');
         // Get existing user
         const { data: { users } } = await supabaseAdmin.auth.admin.listUsers();
         const existingUser = users.find(u => u.email === businessData.email.trim());
         
         if (existingUser) {
-          // Use existing user's ID
+          // Update existing user's metadata to mark them as business owner
+          const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
+            existingUser.id,
+            { 
+              user_metadata: {
+                role: 'business',
+                user_type: 'business',
+                business_id: businessId,
+                name: businessData.businessOwnerName.trim()
+              },
+              // Clear any conflicting app_metadata
+              app_metadata: existingUser.app_metadata?.is_admin === true 
+                ? existingUser.app_metadata // Keep admin status if they have it
+                : {} // Otherwise clear app_metadata
+            }
+          );
+          
+          if (updateError) {
+            console.error('Error updating user metadata:', updateError);
+            throw new APIError(500, 'Failed to update user metadata', 'METADATA_UPDATE_ERROR');
+          }
+          
           businessAuthUser = existingUser;
-          console.log('Using existing auth user ID:', businessAuthUser.id);
+          console.log('Updated existing auth user ID with business metadata:', businessAuthUser.id);
         } else {
           throw new APIError(400, 'Email already in use', 'EMAIL_EXISTS');
         }
@@ -275,13 +312,12 @@ export default withErrorHandler(async (req: VercelRequest, res: VercelResponse):
     }
     console.log('Proceeding with business auth user ID:', businessAuthUser.id);
 
-    // 6. Update the existing business record (created during invitation)
-    let businessId = invite.business_id;
+    // 7. Update the existing business record (created during invitation)
+    // businessId already determined above for metadata
     let businessSlug: string;
     
     // If no business_id in invitation (old invitations), create one
-    if (!businessId) {
-      businessId = randomUUID();
+    if (!invite.business_id) {
       
       // Generate URL-friendly slug from business name
       const baseSlug = businessData.businessName.trim()
@@ -370,7 +406,7 @@ export default withErrorHandler(async (req: VercelRequest, res: VercelResponse):
       }
     }
 
-    // 7. Create the business admin user profile with the new auth_id
+    // 8. Create the business admin user profile with the new auth_id
     console.log('Creating business_users record with:', {
       business_id: businessId,
       auth_id: businessAuthUser.id,
@@ -407,7 +443,7 @@ export default withErrorHandler(async (req: VercelRequest, res: VercelResponse):
       console.log('Successfully created business_users record:', businessUserRecord);
     }
 
-    // 8. Create membership tiers for this business
+    // 9. Create membership tiers for this business
     const tierInserts = businessData.customerTiers.map((tier) => ({
       business_id: businessId,
       name: tier.name.trim(),
@@ -435,7 +471,7 @@ export default withErrorHandler(async (req: VercelRequest, res: VercelResponse):
     
     console.log('✅ Created tiers:', createdTiers);
 
-    // 9. Create Stripe products and prices for each tier
+    // 10. Create Stripe products and prices for each tier
     const stripeProductUpdates: StripeProductUpdate[] = [];
     console.log('🔄 Creating Stripe products for', createdTiers.length, 'tiers');
     
@@ -488,7 +524,7 @@ export default withErrorHandler(async (req: VercelRequest, res: VercelResponse):
       }
     }
 
-    // 10. Update Supabase records with Stripe IDs
+    // 11. Update Supabase records with Stripe IDs
     console.log('🔄 Updating', stripeProductUpdates.length, 'tiers with Stripe IDs');
     
     for (const update of stripeProductUpdates) {
@@ -519,7 +555,7 @@ export default withErrorHandler(async (req: VercelRequest, res: VercelResponse):
       }
     }
 
-    // 11. Mark the invitation as completed
+    // 12. Mark the invitation as completed
     console.log('🔄 Updating invitation status to completed for token:', token);
     const { error: invitationUpdateError } = await supabaseAdmin
       .from('restaurant_invitations')
@@ -537,7 +573,7 @@ export default withErrorHandler(async (req: VercelRequest, res: VercelResponse):
       console.log('✅ Successfully updated invitation status to completed');
     }
 
-    // 12. Create test data for new businesses
+    // 13. Create test data for new businesses
     console.log('🔄 Creating test data for new business');
     try {
       // Create test customer
@@ -609,7 +645,7 @@ export default withErrorHandler(async (req: VercelRequest, res: VercelResponse):
       // Don't fail the whole process if test data creation fails
     }
 
-    // 12. Return success response
+    // 14. Return success response
     res.status(200).json({
       success: true,
       data: {
